@@ -1,6 +1,131 @@
 import { NextRequest, NextResponse } from "next/server";
+import { spawn } from "child_process";
+import { writeFile, unlink, mkdir } from "fs/promises";
+import { join } from "path";
+import { tmpdir } from "os";
 
-// 简单的代码运行模拟（实际项目中应该使用沙箱环境）
+// 创建临时目录
+const TEMP_DIR = join(tmpdir(), "skboj-run");
+
+async function ensureTempDir() {
+  try {
+    await mkdir(TEMP_DIR, { recursive: true });
+  } catch {
+    // 目录已存在
+  }
+}
+
+// 使用 spawn 执行命令并捕获输出
+function runCommand(
+  command: string,
+  args: string[],
+  input: string,
+  timeout: number = 5000
+): Promise<string> {
+  return new Promise((resolve) => {
+    const proc = spawn(command, args, {
+      cwd: TEMP_DIR,
+    });
+
+    let stdout = "";
+    let stderr = "";
+
+    proc.stdout.on("data", (data) => {
+      stdout += data.toString();
+    });
+
+    proc.stderr.on("data", (data) => {
+      stderr += data.toString();
+    });
+
+    // 写入输入
+    if (input) {
+      proc.stdin.write(input);
+    }
+    proc.stdin.end();
+
+    // 超时处理
+    const timer = setTimeout(() => {
+      proc.kill();
+      resolve("运行超时（超过 " + timeout / 1000 + " 秒）");
+    }, timeout);
+
+    proc.on("close", (code) => {
+      clearTimeout(timer);
+      if (code === 0) {
+        resolve(stdout || "程序执行完毕（无输出）");
+      } else {
+        resolve(`运行错误 (退出码: ${code}):\n${stderr || stdout}`);
+      }
+    });
+
+    proc.on("error", (err) => {
+      clearTimeout(timer);
+      resolve(`执行错误: ${err.message}`);
+    });
+  });
+}
+
+// 执行C++代码
+async function runCpp(code: string, input: string): Promise<string> {
+  await ensureTempDir();
+  const id = Date.now();
+  const sourceFile = join(TEMP_DIR, `code_${id}.cpp`);
+  const execFile = join(TEMP_DIR, `code_${id}`);
+
+  try {
+    // 写入源代码
+    await writeFile(sourceFile, code);
+
+    // 编译
+    const compileResult = await runCommand("g++", ["-o", execFile, sourceFile, "-std=c++17", "-O2"], "", 10000);
+    
+    // 检查是否编译成功（通过检查可执行文件是否存在）
+    try {
+      const { access } = await import("fs/promises");
+      await access(execFile);
+    } catch {
+      return `编译错误:\n${compileResult}`;
+    }
+
+    // 运行
+    const output = await runCommand(execFile, [], input, 5000);
+    return output;
+  } finally {
+    // 清理文件
+    try {
+      await unlink(sourceFile);
+      await unlink(execFile);
+    } catch {}
+  }
+}
+
+// 执行Python代码
+async function runPython(code: string, input: string): Promise<string> {
+  await ensureTempDir();
+  const id = Date.now();
+  const sourceFile = join(TEMP_DIR, `code_${id}.py`);
+
+  try {
+    // 写入源代码
+    await writeFile(sourceFile, code);
+
+    // 运行
+    const output = await runCommand("python3", [sourceFile], input, 5000);
+    return output;
+  } finally {
+    // 清理文件
+    try {
+      await unlink(sourceFile);
+    } catch {}
+  }
+}
+
+// HTML代码处理
+function processHtml(code: string): string {
+  return "HTML代码已在预览区域渲染";
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -10,19 +135,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "请输入代码" }, { status: 400 });
     }
 
-    // 模拟运行结果
-    // 实际项目中应该使用安全的沙箱环境执行代码
-    let output = "";
+    let output: string;
 
     switch (language) {
       case "cpp":
-        output = simulateCppExecution(code, input);
+        output = await runCpp(code, input || "");
         break;
       case "python":
-        output = simulatePythonExecution(code, input);
+        output = await runPython(code, input || "");
         break;
       case "html":
-        output = "HTML代码已在预览中渲染";
+        output = processHtml(code);
         break;
       default:
         output = "不支持的语言";
@@ -31,22 +154,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ output });
   } catch (error) {
     console.error("Run code error:", error);
-    return NextResponse.json({ error: "运行失败" }, { status: 500 });
+    return NextResponse.json({ error: "运行失败: " + (error as Error).message }, { status: 500 });
   }
-}
-
-function simulateCppExecution(code: string, input: string): string {
-  // 简单模拟 - 实际应该用沙箱
-  if (code.includes("cout") || code.includes("printf")) {
-    return `编译成功\n运行结果:\n${input ? `输入: ${input}\n` : ""}Hello, SKBOJ!`;
-  }
-  return `编译成功\n程序执行完毕`;
-}
-
-function simulatePythonExecution(code: string, input: string): string {
-  // 简单模拟 - 实际应该用沙箱
-  if (code.includes("print")) {
-    return `运行结果:\n${input ? `输入: ${input}\n` : ""}Hello, SKBOJ!`;
-  }
-  return `程序执行完毕`;
 }

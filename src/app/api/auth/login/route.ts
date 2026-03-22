@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
     // 查找用户
     const { data: user, error } = await client
       .from("users")
-      .select("id, username, password, role, created_at")
+      .select("id, username, password, role, name_color, created_at")
       .eq("username", validatedData.username)
       .single();
 
@@ -46,6 +46,7 @@ export async function POST(request: NextRequest) {
         id: user.id,
         username: user.username,
         role: user.role,
+        name_color: user.name_color,
       }),
       {
         httpOnly: true,
@@ -61,6 +62,7 @@ export async function POST(request: NextRequest) {
         id: user.id,
         username: user.username,
         role: user.role,
+        name_color: user.name_color,
       },
     });
   } catch (error) {

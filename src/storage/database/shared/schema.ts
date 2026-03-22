@@ -11,6 +11,16 @@ export const users = pgTable(
     username: varchar("username", { length: 50 }).notNull().unique(),
     password: varchar("password", { length: 255 }).notNull(),
     role: varchar("role", { length: 20 }).notNull().default("user"), // user, admin, super_admin
+    // Rating系统
+    creditRating: integer("credit_rating").default(100).notNull(), // 个人信用，初始100
+    problemRating: integer("problem_rating").default(0).notNull(), // 做题得分
+    contestRating: integer("contest_rating").default(0).notNull(), // 比赛得分
+    totalRating: integer("total_rating").default(100).notNull(), // 总Rating
+    nameColor: varchar("name_color", { length: 20 }).default("gray").notNull(), // gray, blue, green, orange, red, purple, brown
+    // 统计
+    solvedEasy: integer("solved_easy").default(0).notNull(),
+    solvedMedium: integer("solved_medium").default(0).notNull(),
+    solvedHard: integer("solved_hard").default(0).notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true }),
   },
@@ -31,7 +41,8 @@ export const problems = pgTable(
     outputFormat: text("output_format"),
     samples: jsonb("samples").$type<Array<{ input: string; output: string }>>().default([]),
     hint: text("hint"),
-    difficulty: varchar("difficulty", { length: 20 }).notNull().default("medium"), // easy, medium, hard
+    // 洛谷风格难度: entry(入门), popular(普及), improve(提高), provincial(省选), noi(NOI), noip(NOI+), unknown(未知)
+    difficulty: varchar("difficulty", { length: 20 }).notNull().default("popular"),
     timeLimit: integer("time_limit").default(1000), // ms
     memoryLimit: integer("memory_limit").default(256), // MB
     isVisible: boolean("is_visible").default(true).notNull(),

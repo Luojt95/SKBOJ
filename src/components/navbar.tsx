@@ -19,6 +19,7 @@ interface User {
   id: number;
   username: string;
   role: string;
+  name_color?: string;
 }
 
 const navItems = [
@@ -31,6 +32,27 @@ const navItems = [
   { href: "/shares", label: "分享", icon: Share2 },
   { href: "/tickets", label: "工单", icon: Ticket },
 ];
+
+// 颜色样式映射
+const nameColorStyles: Record<string, string> = {
+  gray: "text-gray-500",
+  blue: "text-blue-500",
+  green: "text-green-500",
+  orange: "text-orange-500",
+  red: "text-red-500",
+  purple: "text-purple-500",
+  brown: "text-amber-700",
+};
+
+const nameBgStyles: Record<string, string> = {
+  gray: "bg-gray-500",
+  blue: "bg-blue-500",
+  green: "bg-green-500",
+  orange: "bg-orange-500",
+  red: "bg-red-500",
+  purple: "bg-purple-500",
+  brown: "bg-amber-700",
+};
 
 export function Navbar() {
   const pathname = usePathname();
@@ -69,6 +91,9 @@ export function Navbar() {
         return null;
     }
   };
+
+  const userColorStyle = user?.name_color ? nameColorStyles[user.name_color] || "" : "";
+  const userBgStyle = user?.name_color ? nameBgStyles[user.name_color] || "bg-gradient-to-br from-blue-500 to-purple-600" : "bg-gradient-to-br from-blue-500 to-purple-600";
 
   return (
     <nav className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -114,17 +139,17 @@ export function Navbar() {
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="flex items-center space-x-2">
                     <Avatar className="h-8 w-8">
-                      <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white">
+                      <AvatarFallback className={`${userBgStyle} text-white`}>
                         {user.username[0].toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
-                    <span className="font-medium">{user.username}</span>
+                    <span className={`font-medium ${userColorStyle}`}>{user.username}</span>
                     {getRoleBadge(user.role)}
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-48">
                   <DropdownMenuItem asChild>
-                    <Link href="/profile">个人中心</Link>
+                    <Link href={`/profile/${user.id}`}>个人中心</Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleLogout} className="text-red-600">
@@ -184,15 +209,15 @@ export function Navbar() {
                   <>
                     <div className="flex items-center space-x-2 px-3 py-2">
                       <Avatar className="h-8 w-8">
-                        <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white">
+                        <AvatarFallback className={`${userBgStyle} text-white`}>
                           {user.username[0].toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
-                      <span className="font-medium">{user.username}</span>
+                      <span className={`font-medium ${userColorStyle}`}>{user.username}</span>
                       {getRoleBadge(user.role)}
                     </div>
                     <Button variant="ghost" asChild className="justify-start">
-                      <Link href="/profile">个人中心</Link>
+                      <Link href={`/profile/${user.id}`}>个人中心</Link>
                     </Button>
                     <Button
                       variant="ghost"

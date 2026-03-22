@@ -14,6 +14,9 @@ export const metadata: Metadata = {
   },
   description: "SKBOJ - 一个为OIer打造的在线评测系统",
   keywords: ["SKBOJ", "OJ", "OI", "ACM", "算法", "编程", "竞赛"],
+  icons: {
+    icon: "/favicon.svg",
+  },
 };
 
 export default function RootLayout({
