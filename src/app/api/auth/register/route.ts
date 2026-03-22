@@ -75,9 +75,13 @@ export async function POST(request: NextRequest) {
         problem_rating: 0,
         contest_rating: 0,
         total_rating: 100,
-        solved_easy: 0,
-        solved_medium: 0,
-        solved_hard: 0,
+        solved_entry: 0,
+        solved_popular_minus: 0,
+        solved_popular: 0,
+        solved_popular_plus: 0,
+        solved_improve_plus: 0,
+        solved_provincial: 0,
+        solved_noi: 0,
       })
       .select("id, username, role, name_color, created_at")
       .single();

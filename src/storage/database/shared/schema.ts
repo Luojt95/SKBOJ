@@ -17,10 +17,14 @@ export const users = pgTable(
     contestRating: integer("contest_rating").default(0).notNull(), // 比赛得分
     totalRating: integer("total_rating").default(100).notNull(), // 总Rating
     nameColor: varchar("name_color", { length: 20 }).default("gray").notNull(), // gray, blue, green, orange, red, purple, brown
-    // 统计
-    solvedEasy: integer("solved_easy").default(0).notNull(),
-    solvedMedium: integer("solved_medium").default(0).notNull(),
-    solvedHard: integer("solved_hard").default(0).notNull(),
+    // 统计 - 洛谷风格难度
+    solvedEntry: integer("solved_entry").default(0).notNull(), // 入门
+    solvedPopularMinus: integer("solved_popular_minus").default(0).notNull(), // 普及-
+    solvedPopular: integer("solved_popular").default(0).notNull(), // 普及/提高-
+    solvedPopularPlus: integer("solved_popular_plus").default(0).notNull(), // 普及+/提高
+    solvedImprovePlus: integer("solved_improve_plus").default(0).notNull(), // 提高+/省选-
+    solvedProvincial: integer("solved_provincial").default(0).notNull(), // 省选/NOI-
+    solvedNoi: integer("solved_noi").default(0).notNull(), // NOI/NOI+/CTSC
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true }),
   },

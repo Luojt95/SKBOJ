@@ -14,7 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Trophy, Code, Target, Star, User, Calendar, Shield, AlertTriangle } from "lucide-react";
+import { Trophy, Code, Target, Star, User, Calendar, Shield } from "lucide-react";
 
 interface UserProfile {
   id: number;
@@ -25,9 +25,13 @@ interface UserProfile {
   contest_rating: number;
   total_rating: number;
   name_color: string;
-  solved_easy: number;
-  solved_medium: number;
-  solved_hard: number;
+  solved_entry: number;
+  solved_popular_minus: number;
+  solved_popular: number;
+  solved_popular_plus: number;
+  solved_improve_plus: number;
+  solved_provincial: number;
+  solved_noi: number;
   created_at: string;
 }
 
@@ -36,17 +40,6 @@ interface User {
   username: string;
   role: string;
 }
-
-// 洛谷风格难度标签
-const difficultyLabels: Record<string, string> = {
-  entry: "入门",
-  popular: "普及",
-  improve: "提高",
-  provincial: "省选",
-  noi: "NOI",
-  noip: "NOI+",
-  unknown: "未知",
-};
 
 // 颜色名称对应的颜色
 const nameColorStyles: Record<string, { color: string; bg: string; label: string }> = {
@@ -59,15 +52,16 @@ const nameColorStyles: Record<string, { color: string; bg: string; label: string
   brown: { color: "text-amber-700", bg: "bg-amber-700", label: "棕名(警告)" },
 };
 
-// 根据总Rating计算颜色
-function calculateColorByRating(rating: number, role: string): string {
-  if (role === "admin" || role === "super_admin") return "purple";
-  if (rating <= 50) return "gray";
-  if (rating <= 120) return "blue";
-  if (rating <= 160) return "green";
-  if (rating <= 200) return "orange";
-  return "red";
-}
+// 洛谷风格难度配置
+const difficultyStats = [
+  { key: "solved_entry", label: "入门", color: "text-red-500", bg: "bg-red-500" },
+  { key: "solved_popular_minus", label: "普及-", color: "text-orange-500", bg: "bg-orange-500" },
+  { key: "solved_popular", label: "普及/提高-", color: "text-yellow-500", bg: "bg-yellow-500" },
+  { key: "solved_popular_plus", label: "普及+/提高", color: "text-green-500", bg: "bg-green-500" },
+  { key: "solved_improve_plus", label: "提高+/省选-", color: "text-blue-500", bg: "bg-blue-500" },
+  { key: "solved_provincial", label: "省选/NOI-", color: "text-purple-500", bg: "bg-purple-500" },
+  { key: "solved_noi", label: "NOI/NOI+/CTSC", color: "text-gray-800", bg: "bg-gray-800" },
+];
 
 export default function ProfilePage() {
   const params = useParams();
@@ -81,22 +75,14 @@ export default function ProfilePage() {
       try {
         const userId = params.id;
         
-        console.log("Fetching profile for user:", userId);
-        
         const [profileRes, userRes] = await Promise.all([
           fetch(`/api/users/${userId}`),
           fetch("/api/auth/me"),
         ]);
-
-        console.log("Profile response status:", profileRes.status);
         
         if (profileRes.ok) {
           const data = await profileRes.json();
-          console.log("Profile data:", data);
           setProfile(data.user);
-        } else {
-          const errorData = await profileRes.json();
-          console.error("Profile fetch error:", errorData);
         }
 
         if (userRes.ok) {
@@ -143,6 +129,19 @@ export default function ProfilePage() {
       month: "long",
       day: "numeric",
     });
+  };
+
+  const getTotalSolved = () => {
+    if (!profile) return 0;
+    return (
+      (profile.solved_entry || 0) +
+      (profile.solved_popular_minus || 0) +
+      (profile.solved_popular || 0) +
+      (profile.solved_popular_plus || 0) +
+      (profile.solved_improve_plus || 0) +
+      (profile.solved_provincial || 0) +
+      (profile.solved_noi || 0)
+    );
   };
 
   if (isLoading) {
@@ -280,24 +279,21 @@ export default function ProfilePage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">入门题</span>
-                <span className="font-bold text-green-500">{profile.solved_easy} 题</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">普及题</span>
-                <span className="font-bold text-yellow-500">{profile.solved_medium} 题</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">提高题</span>
-                <span className="font-bold text-red-500">{profile.solved_hard} 题</span>
-              </div>
-              <div className="border-t pt-4 flex items-center justify-between">
+            <div className="space-y-3">
+              {difficultyStats.map((diff) => (
+                <div key={diff.key} className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className={`w-2 h-2 rounded-full ${diff.bg}`} />
+                    <span className="text-muted-foreground">{diff.label}</span>
+                  </div>
+                  <span className={`font-bold ${diff.color}`}>
+                    {(profile as any)[diff.key] || 0} 题
+                  </span>
+                </div>
+              ))}
+              <div className="border-t pt-3 flex items-center justify-between">
                 <span className="font-medium">总计</span>
-                <span className="font-bold text-lg">
-                  {profile.solved_easy + profile.solved_medium + profile.solved_hard} 题
-                </span>
+                <span className="font-bold text-lg">{getTotalSolved()} 题</span>
               </div>
             </div>
           </CardContent>

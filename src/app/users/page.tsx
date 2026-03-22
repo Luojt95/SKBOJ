@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Users, Trophy, Code, User } from "lucide-react";
-import { nameColorConfig, getNameColorByRating } from "@/lib/constants";
+import { nameColorConfig } from "@/lib/constants";
 
 interface UserData {
   id: number;
@@ -15,9 +15,7 @@ interface UserData {
   role: string;
   name_color: string;
   total_rating: number;
-  solved_easy: number;
-  solved_medium: number;
-  solved_hard: number;
+  solved_total: number;
   created_at: string;
 }
 
@@ -70,16 +68,11 @@ export default function UsersPage() {
   };
 
   const getNameColor = (user: UserData) => {
-    // 管理员显示紫色
     if (user.role === "admin" || user.role === "super_admin") {
       return "text-purple-500";
     }
     const colorConfig = nameColorConfig[user.name_color] || nameColorConfig.gray;
     return colorConfig.color;
-  };
-
-  const getTotalSolved = (user: UserData) => {
-    return (user.solved_easy || 0) + (user.solved_medium || 0) + (user.solved_hard || 0);
   };
 
   const formatDate = (dateString: string) => {
@@ -161,7 +154,7 @@ export default function UsersPage() {
                       <Link href={`/profile/${user.id}`}>
                         <div className="flex items-center gap-2">
                           <Avatar className="h-8 w-8">
-                            <AvatarFallback className={`bg-gradient-to-br from-blue-500 to-purple-600 text-white text-xs`}>
+                            <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white text-xs">
                               {user.username[0].toUpperCase()}
                             </AvatarFallback>
                           </Avatar>
@@ -177,10 +170,7 @@ export default function UsersPage() {
                       </span>
                     </TableCell>
                     <TableCell>
-                      <span className="font-medium">{getTotalSolved(user)}</span>
-                      <span className="text-muted-foreground text-xs ml-1">
-                        ({user.solved_easy || 0}/{user.solved_medium || 0}/{user.solved_hard || 0})
-                      </span>
+                      <span className="font-medium">{user.solved_total || 0}</span>
                     </TableCell>
                     <TableCell>{getRoleBadge(user.role)}</TableCell>
                     <TableCell>{formatDate(user.created_at)}</TableCell>

@@ -13,7 +13,14 @@ export async function GET(
 
     const { data: user, error } = await client
       .from("users")
-      .select("id, username, role, credit_rating, problem_rating, contest_rating, total_rating, name_color, solved_easy, solved_medium, solved_hard, created_at")
+      .select(`
+        id, username, role, 
+        credit_rating, problem_rating, contest_rating, total_rating, 
+        name_color,
+        solved_entry, solved_popular_minus, solved_popular, 
+        solved_popular_plus, solved_improve_plus, solved_provincial, solved_noi,
+        created_at
+      `)
       .eq("id", parseInt(id))
       .single();
 
