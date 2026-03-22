@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
     // 构建查询
     let query = client
       .from("problems")
-      .select("id, title, difficulty, tags, author_id, is_visible, created_at")
+      .select("id, title, difficulty, category, tags, author_id, is_visible, created_at")
       .order("id", { ascending: true });
 
     // 如果不是管理员/站长，只显示公开的题目
@@ -71,7 +71,8 @@ export async function POST(request: NextRequest) {
         output_format: body.outputFormat,
         samples: body.samples || [],
         hint: body.hint,
-        difficulty: body.difficulty || "medium",
+        category: body.category || "P",
+        difficulty: body.difficulty || "popular",
         time_limit: body.timeLimit || 1000,
         memory_limit: body.memoryLimit || 256,
         is_visible: body.isVisible ?? true,

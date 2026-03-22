@@ -1,7 +1,100 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { getSupabaseClient } from "@/storage/database/supabase-client";
+import { roleLevel } from "@/lib/constants";
 
+// 检查权限
+function canEditContent(user: { id: number; role: string }, authorId: number, authorRole: string): boolean {
+  if (user.id === authorId) return true;
+  const userLevel = roleLevel[user.role] || 0;
+  const authorLevel = roleLevel[authorRole] || 0;
+  return userLevel >= authorLevel;
+}
+
+// 获取讨论详情
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+    const client = getSupabaseClient();
+
+    const { data: discussion, error } = await client
+      .from("discussions")
+      .select("*, users!discussions_author_id_fkey(id, username, role, name_color, total_rating)")
+      .eq("id", parseInt(id))
+      .single();
+
+    if (error || !discussion) {
+      return NextResponse.json({ error: "讨论不存在" }, { status: 404 });
+    }
+
+    return NextResponse.json({ discussion });
+  } catch (error) {
+    console.error("Get discussion error:", error);
+    return NextResponse.json({ error: "获取失败" }, { status: 500 });
+  }
+}
+
+// 更新讨论
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+    const cookieStore = await cookies();
+    const userCookie = cookieStore.get("user");
+
+    if (!userCookie) {
+      return NextResponse.json({ error: "请先登录" }, { status: 401 });
+    }
+
+    const user = JSON.parse(userCookie.value);
+    const client = getSupabaseClient();
+    const body = await request.json();
+
+    // 获取讨论和作者信息
+    const { data: discussion } = await client
+      .from("discussions")
+      .select("id, author_id, users!discussions_author_id_fkey(id, role)")
+      .eq("id", parseInt(id))
+      .single();
+
+    if (!discussion) {
+      return NextResponse.json({ error: "讨论不存在" }, { status: 404 });
+    }
+
+    // 检查权限
+    const authorRole = (discussion.users as any)?.role || "user";
+    if (!canEditContent(user, discussion.author_id, authorRole)) {
+      return NextResponse.json({ error: "没有权限修改此讨论" }, { status: 403 });
+    }
+
+    const { data: updatedDiscussion, error } = await client
+      .from("discussions")
+      .update({
+        title: body.title,
+        content: body.content,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", parseInt(id))
+      .select()
+      .single();
+
+    if (error) {
+      return NextResponse.json({ error: "更新失败" }, { status: 500 });
+    }
+
+    return NextResponse.json({ discussion: updatedDiscussion });
+  } catch (error) {
+    console.error("Update discussion error:", error);
+    return NextResponse.json({ error: "更新失败" }, { status: 500 });
+  }
+}
+
+// 删除讨论
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -18,10 +111,10 @@ export async function DELETE(
     const user = JSON.parse(userCookie.value);
     const client = getSupabaseClient();
 
-    // 获取讨论信息
+    // 获取讨论和作者信息
     const { data: discussion } = await client
       .from("discussions")
-      .select("author_id")
+      .select("id, author_id, users!discussions_author_id_fkey(id, role)")
       .eq("id", parseInt(id))
       .single();
 
@@ -30,12 +123,9 @@ export async function DELETE(
     }
 
     // 检查权限
-    if (
-      discussion.author_id !== user.id &&
-      user.role !== "admin" &&
-      user.role !== "super_admin"
-    ) {
-      return NextResponse.json({ error: "没有权限删除" }, { status: 403 });
+    const authorRole = (discussion.users as any)?.role || "user";
+    if (!canEditContent(user, discussion.author_id, authorRole)) {
+      return NextResponse.json({ error: "没有权限删除此讨论" }, { status: 403 });
     }
 
     const { error } = await client

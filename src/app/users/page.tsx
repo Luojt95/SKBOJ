@@ -1,16 +1,23 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Users, Trophy, Code, User } from "lucide-react";
+import { nameColorConfig, getNameColorByRating } from "@/lib/constants";
 
 interface UserData {
   id: number;
   username: string;
   role: string;
+  name_color: string;
+  total_rating: number;
+  solved_easy: number;
+  solved_medium: number;
+  solved_hard: number;
   created_at: string;
 }
 
@@ -60,6 +67,19 @@ export default function UsersPage() {
       default:
         return <Badge variant="secondary">普通用户</Badge>;
     }
+  };
+
+  const getNameColor = (user: UserData) => {
+    // 管理员显示紫色
+    if (user.role === "admin" || user.role === "super_admin") {
+      return "text-purple-500";
+    }
+    const colorConfig = nameColorConfig[user.name_color] || nameColorConfig.gray;
+    return colorConfig.color;
+  };
+
+  const getTotalSolved = (user: UserData) => {
+    return (user.solved_easy || 0) + (user.solved_medium || 0) + (user.solved_hard || 0);
   };
 
   const formatDate = (dateString: string) => {
@@ -127,23 +147,40 @@ export default function UsersPage() {
                 <TableRow>
                   <TableHead className="w-12">#</TableHead>
                   <TableHead>用户名</TableHead>
+                  <TableHead>Rating</TableHead>
+                  <TableHead>做题数</TableHead>
                   <TableHead>权限</TableHead>
                   <TableHead>注册时间</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {users.map((user, index) => (
-                  <TableRow key={user.id}>
+                  <TableRow key={user.id} className="cursor-pointer hover:bg-muted/50">
                     <TableCell className="font-mono">{index + 1}</TableCell>
                     <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Avatar className="h-8 w-8">
-                          <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white text-xs">
-                            {user.username[0].toUpperCase()}
-                          </AvatarFallback>
-                        </Avatar>
-                        <span className="font-medium">{user.username}</span>
-                      </div>
+                      <Link href={`/profile/${user.id}`}>
+                        <div className="flex items-center gap-2">
+                          <Avatar className="h-8 w-8">
+                            <AvatarFallback className={`bg-gradient-to-br from-blue-500 to-purple-600 text-white text-xs`}>
+                              {user.username[0].toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span className={`font-medium ${getNameColor(user)}`}>
+                            {user.username}
+                          </span>
+                        </div>
+                      </Link>
+                    </TableCell>
+                    <TableCell>
+                      <span className={`font-bold ${getNameColor(user)}`}>
+                        {user.total_rating || 100}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <span className="font-medium">{getTotalSolved(user)}</span>
+                      <span className="text-muted-foreground text-xs ml-1">
+                        ({user.solved_easy || 0}/{user.solved_medium || 0}/{user.solved_hard || 0})
+                      </span>
                     </TableCell>
                     <TableCell>{getRoleBadge(user.role)}</TableCell>
                     <TableCell>{formatDate(user.created_at)}</TableCell>

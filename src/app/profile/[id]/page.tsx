@@ -81,14 +81,22 @@ export default function ProfilePage() {
       try {
         const userId = params.id;
         
+        console.log("Fetching profile for user:", userId);
+        
         const [profileRes, userRes] = await Promise.all([
           fetch(`/api/users/${userId}`),
           fetch("/api/auth/me"),
         ]);
 
+        console.log("Profile response status:", profileRes.status);
+        
         if (profileRes.ok) {
           const data = await profileRes.json();
+          console.log("Profile data:", data);
           setProfile(data.user);
+        } else {
+          const errorData = await profileRes.json();
+          console.error("Profile fetch error:", errorData);
         }
 
         if (userRes.ok) {

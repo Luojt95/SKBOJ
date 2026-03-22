@@ -21,6 +21,7 @@ import { toast } from "sonner";
 import { Plus, X, Save, Eye, Edit } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { difficultyConfig, categoryConfig } from "@/lib/constants";
 
 interface Sample {
   input: string;
@@ -32,16 +33,6 @@ interface TestCase {
   output: string;
 }
 
-// 洛谷风格难度配置
-const difficultyConfig: Record<string, { color: string; bg: string; label: string }> = {
-  entry: { color: "text-gray-600", bg: "bg-gray-400", label: "入门" },
-  popular: { color: "text-green-600", bg: "bg-green-500", label: "普及" },
-  improve: { color: "text-blue-600", bg: "bg-blue-500", label: "提高" },
-  provincial: { color: "text-purple-600", bg: "bg-purple-500", label: "省选" },
-  noi: { color: "text-orange-600", bg: "bg-orange-500", label: "NOI" },
-  noip: { color: "text-red-600", bg: "bg-red-500", label: "NOI+" },
-};
-
 export default function CreateProblemPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
@@ -51,6 +42,7 @@ export default function CreateProblemPage() {
     inputFormat: "",
     outputFormat: "",
     hint: "",
+    category: "P",
     difficulty: "popular",
     timeLimit: 1000,
     memoryLimit: 256,
@@ -206,6 +198,7 @@ export default function CreateProblemPage() {
   }
 
   const currentDiff = difficultyConfig[formData.difficulty] || difficultyConfig.popular;
+  const currentCat = categoryConfig[formData.category] || categoryConfig.P;
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-5xl">
@@ -389,6 +382,30 @@ export default function CreateProblemPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
+                <Label>题库分类</Label>
+                <Select
+                  value={formData.category}
+                  onValueChange={(value) =>
+                    setFormData({ ...formData, category: value })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(categoryConfig).map(([key, config]) => (
+                      <SelectItem key={key} value={key}>
+                        <div className="flex flex-col">
+                          <span className={config.color}>{config.label}</span>
+                          <span className="text-xs text-muted-foreground">{config.description}</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
                 <Label>难度</Label>
                 <Select
                   value={formData.difficulty}
@@ -400,42 +417,14 @@ export default function CreateProblemPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="entry">
-                      <div className="flex items-center gap-2">
-                        <div className="w-3 h-3 rounded bg-gray-400" />
-                        入门
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="popular">
-                      <div className="flex items-center gap-2">
-                        <div className="w-3 h-3 rounded bg-green-500" />
-                        普及
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="improve">
-                      <div className="flex items-center gap-2">
-                        <div className="w-3 h-3 rounded bg-blue-500" />
-                        提高
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="provincial">
-                      <div className="flex items-center gap-2">
-                        <div className="w-3 h-3 rounded bg-purple-500" />
-                        省选
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="noi">
-                      <div className="flex items-center gap-2">
-                        <div className="w-3 h-3 rounded bg-orange-500" />
-                        NOI
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="noip">
-                      <div className="flex items-center gap-2">
-                        <div className="w-3 h-3 rounded bg-red-500" />
-                        NOI+
-                      </div>
-                    </SelectItem>
+                    {Object.entries(difficultyConfig).filter(([key]) => !['unknown', 'easy', 'medium', 'hard'].includes(key)).map(([key, config]) => (
+                      <SelectItem key={key} value={key}>
+                        <div className="flex items-center gap-2">
+                          <div className={`w-3 h-3 rounded ${config.bg}`} />
+                          {config.label}
+                        </div>
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -522,11 +511,14 @@ export default function CreateProblemPage() {
             <CardContent>
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
+                  <span className={`font-mono ${currentCat.color}`}>
+                    {formData.category}{String(1).padStart(4, '0')}
+                  </span>
                   <h3 className="font-semibold">{formData.title || "题目标题"}</h3>
-                  <Badge className={`${currentDiff.bg} text-white text-xs`}>
-                    {currentDiff.label}
-                  </Badge>
                 </div>
+                <Badge className={`${currentDiff.bg} text-white text-xs`}>
+                  {currentDiff.label}
+                </Badge>
                 <div className="text-sm text-muted-foreground flex gap-4">
                   <span>{formData.timeLimit}ms</span>
                   <span>{formData.memoryLimit}MB</span>

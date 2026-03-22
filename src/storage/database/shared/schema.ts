@@ -35,13 +35,15 @@ export const problems = pgTable(
   "problems",
   {
     id: serial().primaryKey(),
+    // 题库分类: P题库(题目), B题库(入门), M题库(比赛), F题库(专题)
+    category: varchar("category", { length: 1 }).notNull().default("P"),
     title: varchar("title", { length: 200 }).notNull(),
     description: text("description").notNull(),
     inputFormat: text("input_format"),
     outputFormat: text("output_format"),
     samples: jsonb("samples").$type<Array<{ input: string; output: string }>>().default([]),
     hint: text("hint"),
-    // 洛谷风格难度: entry(入门), popular(普及), improve(提高), provincial(省选), noi(NOI), noip(NOI+), unknown(未知)
+    // 洛谷风格难度: entry(入门红), popular_minus(普及-橙), popular(普及/提高-黄), popular_plus(普及+/提高绿), improve_plus(提高+/省选-蓝), provincial(省选/NOI-紫), noi(NOI/NOI+/CTSC黑)
     difficulty: varchar("difficulty", { length: 20 }).notNull().default("popular"),
     timeLimit: integer("time_limit").default(1000), // ms
     memoryLimit: integer("memory_limit").default(256), // MB
@@ -53,6 +55,7 @@ export const problems = pgTable(
     updatedAt: timestamp("updated_at", { withTimezone: true }),
   },
   (table) => [
+    index("problems_category_idx").on(table.category),
     index("problems_difficulty_idx").on(table.difficulty),
     index("problems_author_idx").on(table.authorId),
     index("problems_visible_idx").on(table.isVisible),
