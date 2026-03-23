@@ -32,15 +32,26 @@ export async function GET(
       }
     }
 
+    // 先获取题目
     const { data: problem, error } = await client
       .from("problems")
-      .select("*, users!problems_author_id_fkey(id, username, role)")
+      .select("*")
       .eq("id", parseInt(id))
       .single();
 
     if (error || !problem) {
+      console.error("Get problem error:", error);
       return NextResponse.json({ error: "题目不存在" }, { status: 404 });
     }
+
+    // 获取作者信息
+    const { data: author } = await client
+      .from("users")
+      .select("id, username, role")
+      .eq("id", problem.author_id)
+      .single();
+
+    problem.author = author;
 
     // 检查权限：如果题目不可见，只有作者和管理员可以查看
     if (!problem.is_visible) {
@@ -79,10 +90,10 @@ export async function PUT(
     const client = getSupabaseClient();
     const body = await request.json();
 
-    // 获取题目和作者信息
+    // 获取题目
     const { data: problem } = await client
       .from("problems")
-      .select("id, author_id, users!problems_author_id_fkey(id, role)")
+      .select("id, author_id")
       .eq("id", parseInt(id))
       .single();
 
@@ -90,8 +101,15 @@ export async function PUT(
       return NextResponse.json({ error: "题目不存在" }, { status: 404 });
     }
 
+    // 获取作者信息
+    const { data: author } = await client
+      .from("users")
+      .select("role")
+      .eq("id", problem.author_id)
+      .single();
+
     // 检查权限
-    const authorRole = (problem.users as any)?.role || "user";
+    const authorRole = author?.role || "user";
     if (!canEditContent(user, problem.author_id, authorRole)) {
       return NextResponse.json({ error: "没有权限修改此题目" }, { status: 403 });
     }
@@ -147,10 +165,10 @@ export async function DELETE(
     const user = JSON.parse(userCookie.value);
     const client = getSupabaseClient();
 
-    // 获取题目和作者信息
+    // 获取题目
     const { data: problem } = await client
       .from("problems")
-      .select("id, author_id, users!problems_author_id_fkey(id, role)")
+      .select("id, author_id")
       .eq("id", parseInt(id))
       .single();
 
@@ -158,8 +176,15 @@ export async function DELETE(
       return NextResponse.json({ error: "题目不存在" }, { status: 404 });
     }
 
+    // 获取作者信息
+    const { data: author } = await client
+      .from("users")
+      .select("role")
+      .eq("id", problem.author_id)
+      .single();
+
     // 检查权限
-    const authorRole = (problem.users as any)?.role || "user";
+    const authorRole = author?.role || "user";
     if (!canEditContent(user, problem.author_id, authorRole)) {
       return NextResponse.json({ error: "没有权限删除此题目" }, { status: 403 });
     }

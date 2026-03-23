@@ -22,6 +22,7 @@ import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
 import "katex/dist/katex.min.css";
+import { difficultyConfig, categoryConfig } from "@/lib/constants";
 
 interface Problem {
   id: number;
@@ -32,6 +33,7 @@ interface Problem {
   samples: Array<{ input: string; output: string }>;
   hint: string;
   difficulty: string;
+  category: string;
   time_limit: number;
   memory_limit: number;
   tags: string[];
@@ -44,18 +46,6 @@ interface User {
   username: string;
   role: string;
 }
-
-const difficultyColors: Record<string, string> = {
-  easy: "bg-green-500",
-  medium: "bg-yellow-500",
-  hard: "bg-red-500",
-};
-
-const difficultyLabels: Record<string, string> = {
-  easy: "简单",
-  medium: "中等",
-  hard: "困难",
-};
 
 const defaultCodes: Record<string, string> = {
   cpp: `#include <iostream>
@@ -217,6 +207,9 @@ export default function ProblemDetailPage() {
     );
   }
 
+  const diffConfig = difficultyConfig[problem.difficulty] || difficultyConfig.popular;
+  const catConfig = categoryConfig[problem.category] || categoryConfig.P;
+
   return (
     <div className="container mx-auto px-4 py-8">
       <Button variant="ghost" className="mb-4" asChild>
@@ -232,9 +225,12 @@ export default function ProblemDetailPage() {
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
-                <CardTitle className="text-2xl">{problem.title}</CardTitle>
-                <Badge className={`${difficultyColors[problem.difficulty]} text-white`}>
-                  {difficultyLabels[problem.difficulty]}
+                <div className="flex items-center gap-2">
+                  <span className={catConfig.color}>{catConfig.label}{problem.id}</span>
+                  <CardTitle className="text-2xl">{problem.title}</CardTitle>
+                </div>
+                <Badge className={`${diffConfig.bg} text-white`}>
+                  {diffConfig.label}
                 </Badge>
               </div>
               <div className="flex flex-wrap gap-2 mt-2">
