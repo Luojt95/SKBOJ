@@ -54,7 +54,7 @@ export const problems = pgTable(
     isVisible: boolean("is_visible").default(true).notNull(),
     authorId: integer("author_id").notNull(),
     tags: jsonb("tags").$type<string[]>().default([]),
-    testCases: jsonb("test_cases").$type<Array<{ input: string; output: string }>>().default([]),
+    testCases: jsonb("test_cases").$type<Array<{ input: string; output: string; inputKey?: string; outputKey?: string }>>().default([]),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true }),
   },

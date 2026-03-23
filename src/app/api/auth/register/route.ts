@@ -2,14 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseClient } from "@/storage/database/supabase-client";
 import bcrypt from "bcryptjs";
 
-// 邀请码配置
-const SUPER_ADMIN_CODE = "qwertyuiop11451454188";
-const ADMIN_CODE = "321414524";
-
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { username, password, adminCode, superAdminCode } = body;
+    const { username, password } = body;
 
     if (!username || !password) {
       return NextResponse.json(
@@ -48,29 +44,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 确定用户角色
-    let role = "user";
-    let nameColor = "gray";
-    
-    if (superAdminCode === SUPER_ADMIN_CODE) {
-      role = "super_admin";
-      nameColor = "purple";
-    } else if (adminCode === ADMIN_CODE) {
-      role = "admin";
-      nameColor = "purple";
-    }
-
     // 加密密码
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // 创建用户（包含所有默认值）
+    // 创建用户（默认为普通用户）
     const { data: user, error } = await client
       .from("users")
       .insert({
         username,
         password: hashedPassword,
-        role,
-        name_color: nameColor,
+        role: "user",
+        name_color: "gray",
         credit_rating: 100,
         problem_rating: 0,
         contest_rating: 0,

@@ -6,8 +6,16 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Users, Trophy, Code, User } from "lucide-react";
 import { nameColorConfig } from "@/lib/constants";
+import { toast } from "sonner";
 
 interface UserData {
   id: number;
@@ -33,19 +41,29 @@ export default function UsersPage() {
     totalSubmissions: 0,
   });
   const [isLoading, setIsLoading] = useState(true);
+  const [currentUser, setCurrentUser] = useState<{ id: number; role: string } | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const res = await fetch("/api/users");
-        if (res.ok) {
-          const data = await res.json();
+        const [usersRes, meRes] = await Promise.all([
+          fetch("/api/users"),
+          fetch("/api/auth/me"),
+        ]);
+        
+        if (usersRes.ok) {
+          const data = await usersRes.json();
           setUsers(data.users || []);
           setStats({
             totalUsers: data.stats?.totalUsers || 0,
             totalProblems: data.stats?.totalProblems || 0,
             totalSubmissions: data.stats?.totalSubmissions || 0,
           });
+        }
+
+        if (meRes.ok) {
+          const meData = await meRes.json();
+          setCurrentUser(meData.user);
         }
       } catch (error) {
         console.error("Failed to fetch data:", error);
@@ -77,6 +95,30 @@ export default function UsersPage() {
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("zh-CN");
+  };
+
+  const handleRoleChange = async (userId: number, newRole: string) => {
+    try {
+      const res = await fetch(`/api/users/${userId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ role: newRole }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        toast.success("权限修改成功");
+        // 更新本地用户列表
+        setUsers(users.map(u => 
+          u.id === userId ? { ...u, role: newRole, name_color: newRole === "admin" ? "purple" : u.name_color } : u
+        ));
+      } else {
+        toast.error(data.error || "修改失败");
+      }
+    } catch {
+      toast.error("修改失败，请重试");
+    }
   };
 
   if (isLoading) {
@@ -172,7 +214,28 @@ export default function UsersPage() {
                     <TableCell>
                       <span className="font-medium">{user.solved_total || 0}</span>
                     </TableCell>
-                    <TableCell>{getRoleBadge(user.role)}</TableCell>
+                    <TableCell>
+                      {currentUser?.role === "super_admin" && currentUser.id !== user.id ? (
+                        <Select
+                          value={user.role}
+                          onValueChange={(value) => handleRoleChange(user.id, value)}
+                        >
+                          <SelectTrigger className="w-28 h-8">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="user">
+                              <Badge variant="secondary" className="text-xs">普通用户</Badge>
+                            </SelectItem>
+                            <SelectItem value="admin">
+                              <Badge className="bg-orange-500 text-white text-xs">管理员</Badge>
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        getRoleBadge(user.role)
+                      )}
+                    </TableCell>
                     <TableCell>{formatDate(user.created_at)}</TableCell>
                   </TableRow>
                 ))}

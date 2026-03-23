@@ -35,7 +35,7 @@ export async function GET(
   }
 }
 
-// 更新用户信息（管理员设置颜色）
+// 更新用户信息（站长可修改角色和颜色，管理员只能修改颜色）
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -50,19 +50,49 @@ export async function PATCH(
     }
 
     const currentUser = JSON.parse(userCookie.value);
-
-    if (currentUser.role !== "admin" && currentUser.role !== "super_admin") {
-      return NextResponse.json({ error: "没有权限" }, { status: 403 });
-    }
-
     const body = await request.json();
     const client = getSupabaseClient();
 
+    // 获取目标用户信息
+    const { data: targetUser } = await client
+      .from("users")
+      .select("id, role")
+      .eq("id", parseInt(id))
+      .single();
+
+    if (!targetUser) {
+      return NextResponse.json({ error: "用户不存在" }, { status: 404 });
+    }
+
+    // 构建更新数据
+    const updateData: Record<string, any> = {};
+
+    // 站长可以修改角色
+    if (body.role !== undefined && currentUser.role === "super_admin") {
+      // 不能修改自己的角色
+      if (currentUser.id === targetUser.id) {
+        return NextResponse.json({ error: "不能修改自己的权限" }, { status: 403 });
+      }
+      // 只能设置为 user 或 admin
+      if (["user", "admin"].includes(body.role)) {
+        updateData.role = body.role;
+        // 管理员自动设置为紫色
+        updateData.name_color = body.role === "admin" ? "purple" : "gray";
+      }
+    }
+
+    // 管理员和站长可以修改颜色
+    if (body.name_color !== undefined && (currentUser.role === "admin" || currentUser.role === "super_admin")) {
+      updateData.name_color = body.name_color;
+    }
+
+    if (Object.keys(updateData).length === 0) {
+      return NextResponse.json({ error: "没有可更新的内容" }, { status: 400 });
+    }
+
     const { data: user, error } = await client
       .from("users")
-      .update({
-        name_color: body.name_color,
-      })
+      .update(updateData)
       .eq("id", parseInt(id))
       .select()
       .single();

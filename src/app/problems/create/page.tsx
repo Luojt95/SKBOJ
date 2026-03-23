@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,7 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Plus, X, Save, Eye } from "lucide-react";
+import { Plus, X, Save, Upload, FileArchive, CheckCircle2, Loader2 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { difficultyConfig, categoryConfig } from "@/lib/constants";
@@ -30,6 +30,8 @@ interface Sample {
 interface TestCase {
   input: string;
   output: string;
+  inputKey?: string;
+  outputKey?: string;
 }
 
 // Markdown 编辑器组件 - 左右分栏实时预览
@@ -108,6 +110,8 @@ export default function CreateProblemPage() {
   const [samples, setSamples] = useState<Sample[]>([{ input: "", output: "" }]);
   const [testCases, setTestCases] = useState<TestCase[]>([]);
   const [user, setUser] = useState<{ id: number; role: string } | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -164,6 +168,43 @@ export default function CreateProblemPage() {
     const newTestCases = [...testCases];
     newTestCases[index][field] = value;
     setTestCases(newTestCases);
+  };
+
+  const handleZipUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.name.endsWith(".zip")) {
+      toast.error("请上传ZIP文件");
+      return;
+    }
+
+    setIsUploading(true);
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      const res = await fetch("/api/testdata/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        toast.success(data.message);
+        setTestCases(data.testCases);
+      } else {
+        toast.error(data.error || "上传失败");
+      }
+    } catch {
+      toast.error("上传失败，请重试");
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -455,23 +496,58 @@ export default function CreateProblemPage() {
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
               测试数据
-              <Button type="button" variant="outline" size="sm" onClick={handleAddTestCase}>
-                <Plus className="h-4 w-4 mr-2" />
-                添加测试点
-              </Button>
+              <div className="flex gap-2">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".zip"
+                  onChange={handleZipUpload}
+                  className="hidden"
+                  id="zip-upload"
+                />
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploading}
+                >
+                  {isUploading ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <FileArchive className="h-4 w-4 mr-2" />
+                  )}
+                  {isUploading ? "上传中..." : "上传ZIP"}
+                </Button>
+                <Button type="button" variant="outline" size="sm" onClick={handleAddTestCase}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  手动添加
+                </Button>
+              </div>
             </CardTitle>
           </CardHeader>
           <CardContent>
             {testCases.length === 0 ? (
-              <p className="text-center text-muted-foreground py-8">
-                点击"添加测试点"添加测试数据
-              </p>
+              <div className="text-center text-muted-foreground py-12 border-2 border-dashed rounded-lg">
+                <FileArchive className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p className="mb-2">上传ZIP文件快速导入测试数据</p>
+                <p className="text-xs mb-4">ZIP文件需包含成对的 .in 和 .out 文件</p>
+                <p className="text-xs text-muted-foreground">或点击"手动添加"逐个添加测试点</p>
+              </div>
             ) : (
               <div className="space-y-4">
                 {testCases.map((testCase, index) => (
                   <div key={index} className="border rounded-lg p-4 bg-muted/30">
                     <div className="flex items-center justify-between mb-3">
-                      <span className="font-medium text-sm">测试点 {index + 1}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-sm">测试点 {index + 1}</span>
+                        {testCase.inputKey && testCase.outputKey && (
+                          <Badge variant="outline" className="text-xs bg-green-500/10 text-green-600 border-green-200">
+                            <CheckCircle2 className="h-3 w-3 mr-1" />
+                            已存储
+                          </Badge>
+                        )}
+                      </div>
                       <Button
                         type="button"
                         variant="ghost"

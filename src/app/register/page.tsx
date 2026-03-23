@@ -18,20 +18,13 @@ export default function RegisterPage() {
     username: "",
     password: "",
     confirmPassword: "",
-    adminCode: "",
-    superAdminCode: "",
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (formData.password !== formData.confirmPassword) {
-      toast.error("两次输入的密码不一致");
-      return;
-    }
-
-    if (formData.password.length < 6) {
-      toast.error("密码至少需要6个字符");
+      toast.error("两次密码输入不一致");
       return;
     }
 
@@ -44,8 +37,6 @@ export default function RegisterPage() {
         body: JSON.stringify({
           username: formData.username,
           password: formData.password,
-          adminCode: formData.adminCode || undefined,
-          superAdminCode: formData.superAdminCode || undefined,
         }),
       });
 
@@ -77,26 +68,27 @@ export default function RegisterPage() {
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="username">用户名 *</Label>
+              <Label htmlFor="username">用户名</Label>
               <Input
                 id="username"
                 type="text"
-                placeholder="请输入用户名（至少3个字符）"
+                placeholder="3-50个字符"
                 value={formData.username}
                 onChange={(e) =>
                   setFormData({ ...formData, username: e.target.value })
                 }
                 required
                 minLength={3}
+                maxLength={50}
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">密码 *</Label>
+              <Label htmlFor="password">密码</Label>
               <div className="relative">
                 <Input
                   id="password"
                   type={showPassword ? "text" : "password"}
-                  placeholder="请输入密码（至少6个字符）"
+                  placeholder="至少6个字符"
                   value={formData.password}
                   onChange={(e) =>
                     setFormData({ ...formData, password: e.target.value })
@@ -120,40 +112,16 @@ export default function RegisterPage() {
               </div>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="confirmPassword">确认密码 *</Label>
+              <Label htmlFor="confirmPassword">确认密码</Label>
               <Input
                 id="confirmPassword"
                 type="password"
-                placeholder="请再次输入密码"
+                placeholder="再次输入密码"
                 value={formData.confirmPassword}
                 onChange={(e) =>
                   setFormData({ ...formData, confirmPassword: e.target.value })
                 }
                 required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="adminCode">管理员邀请码（选填）</Label>
-              <Input
-                id="adminCode"
-                type="text"
-                placeholder="如有邀请码请填写"
-                value={formData.adminCode}
-                onChange={(e) =>
-                  setFormData({ ...formData, adminCode: e.target.value })
-                }
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="superAdminCode">站长邀请码（选填）</Label>
-              <Input
-                id="superAdminCode"
-                type="text"
-                placeholder="如有邀请码请填写"
-                value={formData.superAdminCode}
-                onChange={(e) =>
-                  setFormData({ ...formData, superAdminCode: e.target.value })
-                }
               />
             </div>
             <Button
