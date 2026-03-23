@@ -32,6 +32,7 @@ interface TestCase {
   output: string;
   inputKey?: string;
   outputKey?: string;
+  score: number;
 }
 
 // Markdown 编辑器组件 - 左右分栏实时预览
@@ -157,16 +158,16 @@ export default function CreateProblemPage() {
   };
 
   const handleAddTestCase = () => {
-    setTestCases([...testCases, { input: "", output: "" }]);
+    setTestCases([...testCases, { input: "", output: "", score: 10 }]);
   };
 
   const handleRemoveTestCase = (index: number) => {
     setTestCases(testCases.filter((_, i) => i !== index));
   };
 
-  const handleUpdateTestCase = (index: number, field: "input" | "output", value: string) => {
+  const handleUpdateTestCase = (index: number, field: keyof TestCase, value: string | number) => {
     const newTestCases = [...testCases];
-    newTestCases[index][field] = value;
+    (newTestCases[index] as any)[field] = value;
     setTestCases(newTestCases);
   };
 
@@ -535,55 +536,56 @@ export default function CreateProblemPage() {
                 <p className="text-xs text-muted-foreground">或点击"手动添加"逐个添加测试点</p>
               </div>
             ) : (
-              <div className="space-y-4">
-                {testCases.map((testCase, index) => (
-                  <div key={index} className="border rounded-lg p-4 bg-muted/30">
-                    <div className="flex items-center justify-between mb-3">
+              <>
+                {/* 分数总计 */}
+                <div className="flex items-center justify-between mb-4 p-3 bg-blue-500/10 rounded-lg border border-blue-200">
+                  <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
+                    测试点总数: {testCases.length}
+                  </span>
+                  <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
+                    分数总计: {testCases.reduce((sum, tc) => sum + (tc.score || 0), 0)} 分
+                  </span>
+                </div>
+                
+                {/* 测试点列表 */}
+                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                  {testCases.map((testCase, index) => (
+                    <div 
+                      key={index} 
+                      className="border rounded-lg p-3 bg-muted/30 hover:bg-muted/50 transition-colors"
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="font-medium text-sm">#{index + 1}</span>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6"
+                          onClick={() => handleRemoveTestCase(index)}
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </div>
                       <div className="flex items-center gap-2">
-                        <span className="font-medium text-sm">测试点 {index + 1}</span>
                         {testCase.inputKey && testCase.outputKey && (
-                          <Badge variant="outline" className="text-xs bg-green-500/10 text-green-600 border-green-200">
-                            <CheckCircle2 className="h-3 w-3 mr-1" />
-                            已存储
-                          </Badge>
+                          <CheckCircle2 className="h-3 w-3 text-green-500" />
                         )}
-                      </div>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleRemoveTestCase(index)}
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-1">
-                        <Label className="text-xs">输入</Label>
-                        <Textarea
-                          value={testCase.input}
+                        <Input
+                          type="number"
+                          value={testCase.score}
                           onChange={(e) =>
-                            handleUpdateTestCase(index, "input", e.target.value)
+                            handleUpdateTestCase(index, "score", parseInt(e.target.value) || 0)
                           }
-                          rows={3}
-                          className="font-mono text-sm"
+                          className="h-8 text-center font-mono"
+                          min={0}
+                          max={100}
                         />
-                      </div>
-                      <div className="space-y-1">
-                        <Label className="text-xs">输出</Label>
-                        <Textarea
-                          value={testCase.output}
-                          onChange={(e) =>
-                            handleUpdateTestCase(index, "output", e.target.value)
-                          }
-                          rows={3}
-                          className="font-mono text-sm"
-                        />
+                        <span className="text-xs text-muted-foreground">分</span>
                       </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              </>
             )}
           </CardContent>
         </Card>

@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
     const zip = new AdmZip(buffer);
     const entries = zip.getEntries();
 
-    const testCases: Array<{ input: string; output: string; inputKey: string; outputKey: string }> = [];
+    const testCases: Array<{ input: string; output: string; inputKey: string; outputKey: string; score: number }> = [];
     const inputFiles: Map<string, AdmZip.IZipEntry> = new Map();
     const outputFiles: Map<string, AdmZip.IZipEntry> = new Map();
 
@@ -76,6 +76,7 @@ export async function POST(request: NextRequest) {
         output: outputData,
         inputKey,
         outputKey,
+        score: 10, // 默认每个测试点10分
       });
     }
 
