@@ -13,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, Plus, Code } from "lucide-react";
+import { Search, Plus, Code, CheckCircle, XCircle, Clock, MinusCircle } from "lucide-react";
 import { difficultyConfig, categoryConfig } from "@/lib/constants";
 
 interface Problem {
@@ -33,9 +33,25 @@ interface User {
   role: string;
 }
 
+interface ProblemStatus {
+  status: string;
+  bestScore: number;
+}
+
+const statusConfig: Record<string, { label: string; color: string; icon: any }> = {
+  ac: { label: "AC", color: "text-green-500", icon: CheckCircle },
+  wa: { label: "WA", color: "text-red-500", icon: XCircle },
+  tle: { label: "TLE", color: "text-yellow-500", icon: Clock },
+  mle: { label: "MLE", color: "text-orange-500", icon: Clock },
+  re: { label: "RE", color: "text-purple-500", icon: XCircle },
+  ce: { label: "CE", color: "text-gray-500", icon: XCircle },
+  pac: { label: "PAC", color: "text-blue-500", icon: CheckCircle },
+};
+
 export default function ProblemsPage() {
   const [problems, setProblems] = useState<Problem[]>([]);
   const [user, setUser] = useState<User | null>(null);
+  const [problemStatus, setProblemStatus] = useState<Record<number, ProblemStatus>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [difficulty, setDifficulty] = useState("all");
@@ -49,6 +65,15 @@ export default function ProblemsPage() {
         if (userRes.ok) {
           const userData = await userRes.json();
           setUser(userData.user);
+
+          // 获取用户提交状态
+          if (userData.user) {
+            const statusRes = await fetch("/api/submissions/status");
+            if (statusRes.ok) {
+              const statusData = await statusRes.json();
+              setProblemStatus(statusData.status || {});
+            }
+          }
         }
 
         // 获取题目列表
@@ -161,12 +186,20 @@ export default function ProblemsPage() {
           filteredProblems.map((problem) => {
             const diffConfig = difficultyConfig[problem.difficulty] || difficultyConfig.unknown;
             const catConfig = categoryConfig[problem.category] || categoryConfig.P;
+            const status = problemStatus[problem.id];
+            const statusInfo = status ? statusConfig[status.status] : null;
+            const StatusIcon = statusInfo?.icon || MinusCircle;
+
             return (
               <Link key={problem.id} href={`/problems/${problem.id}`}>
                 <Card className="hover:shadow-md transition-shadow cursor-pointer">
                   <CardContent className="py-4">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-4">
+                        {/* 状态图标 */}
+                        <div className={`w-6 ${statusInfo ? statusInfo.color : "text-gray-300"}`}>
+                          <StatusIcon className="h-5 w-5" />
+                        </div>
                         <span className={`text-lg font-mono w-20 ${catConfig.color}`}>
                           {getProblemNumber(problem)}
                         </span>
@@ -184,9 +217,14 @@ export default function ProblemsPage() {
                           </div>
                         </div>
                       </div>
-                      {!problem.is_visible && (
-                        <Badge variant="secondary">隐藏</Badge>
-                      )}
+                      <div className="flex items-center gap-2">
+                        {status && status.bestScore > 0 && status.bestScore < 100 && (
+                          <span className="text-sm text-blue-500 font-medium">{status.bestScore}分</span>
+                        )}
+                        {!problem.is_visible && (
+                          <Badge variant="secondary">隐藏</Badge>
+                        )}
+                      </div>
                     </div>
                   </CardContent>
                 </Card>

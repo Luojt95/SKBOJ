@@ -9,18 +9,33 @@ export async function GET() {
 
     const { data: shares, error } = await client
       .from("code_shares")
-      .select("*, users(username)")
+      .select("*")
       .order("created_at", { ascending: false })
       .limit(50);
 
     if (error) {
-      return NextResponse.json({ error: "获取失败" }, { status: 500 });
+      console.error("Get shares error:", error);
+      return NextResponse.json({ shares: [] });
     }
 
-    return NextResponse.json({ shares });
+    // 获取作者信息
+    const authorIds = [...new Set(shares?.map(s => s.author_id) || [])];
+    const { data: users } = await client
+      .from("users")
+      .select("id, username")
+      .in("id", authorIds);
+
+    const userMap = new Map(users?.map(u => [u.id, u.username]) || []);
+
+    const sharesWithAuthor = shares?.map(s => ({
+      ...s,
+      users: { username: userMap.get(s.author_id) || `用户${s.author_id}` }
+    })) || [];
+
+    return NextResponse.json({ shares: sharesWithAuthor });
   } catch (error) {
     console.error("Get shares error:", error);
-    return NextResponse.json({ error: "获取失败" }, { status: 500 });
+    return NextResponse.json({ shares: [] });
   }
 }
 
@@ -46,12 +61,14 @@ export async function POST(request: NextRequest) {
         language: body.language,
         author_id: user.id,
         description: body.description,
+        views: 0,
       })
-      .select("*, users(username)")
+      .select()
       .single();
 
     if (error) {
-      return NextResponse.json({ error: "分享失败" }, { status: 500 });
+      console.error("Create share error:", error);
+      return NextResponse.json({ error: "分享失败: " + error.message }, { status: 500 });
     }
 
     return NextResponse.json({ share });

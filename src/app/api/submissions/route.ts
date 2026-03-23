@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { getSupabaseClient } from "@/storage/database/supabase-client";
+import { spawn } from "child_process";
+import * as fs from "fs";
+import * as path from "path";
 
 // 提交代码
 export async function POST(request: NextRequest) {
@@ -25,7 +28,7 @@ export async function POST(request: NextRequest) {
     // 获取题目信息和测试数据
     const { data: problem, error: problemError } = await client
       .from("problems")
-      .select("test_cases, time_limit, memory_limit")
+      .select("test_cases, samples, time_limit, memory_limit")
       .eq("id", problemId)
       .single();
 
@@ -33,8 +36,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "题目不存在" }, { status: 404 });
     }
 
-    // 模拟评测（实际应该使用沙箱环境）
-    const result = simulateJudge(code, language, problem.test_cases || []);
+    // 使用测试数据，如果没有则使用样例
+    let testCases = problem.test_cases || [];
+    if (testCases.length === 0 && problem.samples) {
+      testCases = problem.samples.map((s: any, idx: number) => ({
+        input: s.input || "",
+        output: s.output || "",
+        score: Math.floor(100 / problem.samples.length),
+      }));
+    }
+
+    // 真正评测代码
+    const result = await judgeCode(code, language, testCases, problem.time_limit || 1000);
 
     // 保存提交记录
     const { data: submission, error } = await client
@@ -84,7 +97,7 @@ export async function GET(request: NextRequest) {
 
     let query = client
       .from("submissions")
-      .select("*, problems(title)")
+      .select("*")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
       .limit(50);
@@ -96,61 +109,295 @@ export async function GET(request: NextRequest) {
     const { data: submissions, error } = await query;
 
     if (error) {
-      return NextResponse.json({ error: "获取记录失败" }, { status: 500 });
+      console.error("Get submissions error:", error);
+      return NextResponse.json({ submissions: [] });
     }
 
-    return NextResponse.json({ submissions });
+    // 获取题目信息
+    const problemIds = [...new Set(submissions?.map(s => s.problem_id) || [])];
+    const { data: problems } = await client
+      .from("problems")
+      .select("id, title")
+      .in("id", problemIds);
+
+    const problemMap = new Map(problems?.map(p => [p.id, p.title]) || []);
+
+    const submissionsWithProblem = submissions?.map(s => ({
+      ...s,
+      problems: { title: problemMap.get(s.problem_id) || `题目${s.problem_id}` }
+    })) || [];
+
+    return NextResponse.json({ submissions: submissionsWithProblem });
   } catch (error) {
     console.error("Get submissions error:", error);
-    return NextResponse.json({ error: "获取记录失败" }, { status: 500 });
+    return NextResponse.json({ submissions: [] });
   }
 }
 
-// 模拟评测函数
-function simulateJudge(
+// 真正的评测函数
+async function judgeCode(
   code: string,
   language: string,
-  testCases: Array<{ input: string; output: string }>
-): {
+  testCases: Array<{ input: string; output: string; score?: number }>,
+  timeLimit: number
+): Promise<{
   status: string;
   score: number;
   timeUsed: number;
   memoryUsed: number;
   errorMessage?: string;
-} {
-  // 简单模拟 - 实际应该使用沙箱评测
-  const hasError = code.includes("error") || code.length < 10;
+}> {
+  if (!testCases || testCases.length === 0) {
+    return {
+      status: "wa",
+      score: 0,
+      timeUsed: 0,
+      memoryUsed: 0,
+      errorMessage: "没有测试数据",
+    };
+  }
 
-  if (hasError) {
+  let totalScore = 0;
+  let maxTime = 0;
+  let maxMemory = 0;
+  let allPassed = true;
+  let compileError = false;
+  let compileMessage = "";
+
+  try {
+    for (const testCase of testCases) {
+      const result = await runTestCase(code, language, testCase.input, testCase.output, timeLimit);
+      
+      if (result.status === "ce") {
+        compileError = true;
+        compileMessage = result.error || "编译错误";
+        break;
+      }
+      
+      if (result.status === "ac") {
+        totalScore += testCase.score || Math.floor(100 / testCases.length);
+      } else {
+        allPassed = false;
+      }
+      
+      maxTime = Math.max(maxTime, result.timeUsed);
+      maxMemory = Math.max(maxMemory, result.memoryUsed);
+    }
+  } catch (error) {
+    return {
+      status: "re",
+      score: 0,
+      timeUsed: maxTime,
+      memoryUsed: maxMemory,
+      errorMessage: (error as Error).message,
+    };
+  }
+
+  if (compileError) {
     return {
       status: "ce",
       score: 0,
       timeUsed: 0,
       memoryUsed: 0,
-      errorMessage: "编译错误",
+      errorMessage: compileMessage,
     };
   }
 
-  // 随机生成结果
-  const random = Math.random();
-  let status = "ac";
-  let score = 100;
+  return {
+    status: allPassed ? "ac" : (totalScore > 0 ? "pac" : "wa"),
+    score: totalScore,
+    timeUsed: maxTime,
+    memoryUsed: maxMemory,
+  };
+}
 
-  if (random < 0.3) {
-    status = "wa";
-    score = 0;
-  } else if (random < 0.4) {
-    status = "tle";
-    score = 50;
-  } else if (random < 0.45) {
-    status = "re";
-    score = 30;
+// 运行单个测试点
+async function runTestCase(
+  code: string,
+  language: string,
+  input: string,
+  expectedOutput: string,
+  timeLimit: number
+): Promise<{ status: string; timeUsed: number; memoryUsed: number; error?: string }> {
+  const tmpDir = "/tmp/judge";
+  if (!fs.existsSync(tmpDir)) {
+    fs.mkdirSync(tmpDir, { recursive: true });
   }
 
-  return {
-    status,
-    score,
-    timeUsed: Math.floor(Math.random() * 500) + 10,
-    memoryUsed: Math.floor(Math.random() * 10000) + 1000,
-  };
+  const timestamp = Date.now();
+  const inputFile = path.join(tmpDir, `input_${timestamp}.txt`);
+
+  try {
+    // 写入输入文件
+    fs.writeFileSync(inputFile, input);
+
+    if (language === "cpp") {
+      return await runCpp(code, inputFile, expectedOutput, timeLimit, tmpDir, timestamp);
+    } else if (language === "python") {
+      return await runPython(code, inputFile, expectedOutput, timeLimit, tmpDir, timestamp);
+    } else {
+      return { status: "ce", timeUsed: 0, memoryUsed: 0, error: "不支持的语言" };
+    }
+  } finally {
+    // 清理临时文件
+    try {
+      if (fs.existsSync(inputFile)) fs.unlinkSync(inputFile);
+    } catch {}
+  }
+}
+
+// 运行C++代码
+async function runCpp(
+  code: string,
+  inputFile: string,
+  expectedOutput: string,
+  timeLimit: number,
+  tmpDir: string,
+  timestamp: number
+): Promise<{ status: string; timeUsed: number; memoryUsed: number; error?: string }> {
+  const sourceFile = path.join(tmpDir, `code_${timestamp}.cpp`);
+  const execFile = path.join(tmpDir, `code_${timestamp}`);
+
+  try {
+    // 写入源代码
+    fs.writeFileSync(sourceFile, code);
+
+    // 编译
+    const compileResult = await new Promise<{ success: boolean; error: string }>((resolve) => {
+      const compile = spawn("g++", ["-o", execFile, sourceFile, "-std=c++17", "-O2"]);
+      let error = "";
+      compile.stderr.on("data", (data) => { error += data.toString(); });
+      compile.on("close", (code) => {
+        resolve({ success: code === 0, error });
+      });
+    });
+
+    if (!compileResult.success) {
+      return { status: "ce", timeUsed: 0, memoryUsed: 0, error: compileResult.error };
+    }
+
+    // 运行
+    const startTime = Date.now();
+    const runResult = await new Promise<{ output: string; error: string; timedOut: boolean }>((resolve) => {
+      const proc = spawn(execFile, [], { timeout: timeLimit });
+      let output = "";
+      let error = "";
+      let timedOut = false;
+
+      proc.stdin.write(fs.readFileSync(inputFile));
+      proc.stdin.end();
+
+      proc.stdout.on("data", (data) => { output += data.toString(); });
+      proc.stderr.on("data", (data) => { error += data.toString(); });
+      
+      proc.on("close", () => {
+        resolve({ output, error, timedOut });
+      });
+
+      proc.on("error", (err) => {
+        if (err.message.includes("ETIMEDOUT")) {
+          timedOut = true;
+          resolve({ output, error, timedOut: true });
+        } else {
+          resolve({ output, error: err.message, timedOut: false });
+        }
+      });
+    });
+
+    const timeUsed = Date.now() - startTime;
+
+    if (runResult.timedOut) {
+      return { status: "tle", timeUsed, memoryUsed: 0 };
+    }
+
+    if (runResult.error) {
+      return { status: "re", timeUsed, memoryUsed: 0, error: runResult.error };
+    }
+
+    // 比较输出
+    const actualOutput = runResult.output.trim();
+    const expected = expectedOutput.trim();
+
+    if (actualOutput === expected) {
+      return { status: "ac", timeUsed, memoryUsed: 0 };
+    } else {
+      return { status: "wa", timeUsed, memoryUsed: 0 };
+    }
+  } finally {
+    // 清理
+    try {
+      if (fs.existsSync(sourceFile)) fs.unlinkSync(sourceFile);
+      if (fs.existsSync(execFile)) fs.unlinkSync(execFile);
+    } catch {}
+  }
+}
+
+// 运行Python代码
+async function runPython(
+  code: string,
+  inputFile: string,
+  expectedOutput: string,
+  timeLimit: number,
+  tmpDir: string,
+  timestamp: number
+): Promise<{ status: string; timeUsed: number; memoryUsed: number; error?: string }> {
+  const sourceFile = path.join(tmpDir, `code_${timestamp}.py`);
+
+  try {
+    // 写入源代码
+    fs.writeFileSync(sourceFile, code);
+
+    // 运行
+    const startTime = Date.now();
+    const runResult = await new Promise<{ output: string; error: string; timedOut: boolean }>((resolve) => {
+      const proc = spawn("python3", [sourceFile], { timeout: timeLimit });
+      let output = "";
+      let error = "";
+      let timedOut = false;
+
+      proc.stdin.write(fs.readFileSync(inputFile));
+      proc.stdin.end();
+
+      proc.stdout.on("data", (data) => { output += data.toString(); });
+      proc.stderr.on("data", (data) => { error += data.toString(); });
+      
+      proc.on("close", () => {
+        resolve({ output, error, timedOut });
+      });
+
+      proc.on("error", (err) => {
+        if (err.message.includes("ETIMEDOUT")) {
+          timedOut = true;
+          resolve({ output, error, timedOut: true });
+        } else {
+          resolve({ output, error: err.message, timedOut: false });
+        }
+      });
+    });
+
+    const timeUsed = Date.now() - startTime;
+
+    if (runResult.timedOut) {
+      return { status: "tle", timeUsed, memoryUsed: 0 };
+    }
+
+    if (runResult.error) {
+      return { status: "re", timeUsed, memoryUsed: 0, error: runResult.error };
+    }
+
+    // 比较输出
+    const actualOutput = runResult.output.trim();
+    const expected = expectedOutput.trim();
+
+    if (actualOutput === expected) {
+      return { status: "ac", timeUsed, memoryUsed: 0 };
+    } else {
+      return { status: "wa", timeUsed, memoryUsed: 0 };
+    }
+  } finally {
+    // 清理
+    try {
+      if (fs.existsSync(sourceFile)) fs.unlinkSync(sourceFile);
+    } catch {}
+  }
 }
