@@ -30,12 +30,14 @@ export async function PATCH(
         status: body.status,
         reply: body.reply || null,
         handler_id: user.id,
+        updated_at: new Date().toISOString(),
       })
       .eq("id", parseInt(id))
-      .select("*, users(username)")
+      .select()
       .single();
 
     if (error) {
+      console.error("Update ticket error:", error);
       return NextResponse.json({ error: "处理失败" }, { status: 500 });
     }
 
