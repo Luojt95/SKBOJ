@@ -1,0 +1,12 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "pnpm run build",
+  "devCommand": "pnpm run dev",
+  "installCommand": "pnpm install",
+  "framework": "nextjs",
+  "regions": ["hkg1"],
+  "env": {
+    "COZE_SUPABASE_URL": "@coze_supabase_url",
+    "COZE_SUPABASE_ANON_KEY": "@coze_supabase_anon_key"
+  }
+}
