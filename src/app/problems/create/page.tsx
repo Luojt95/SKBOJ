@@ -9,7 +9,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
   SelectContent,
@@ -18,7 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Plus, X, Save, Eye, Edit } from "lucide-react";
+import { Plus, X, Save, Eye } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { difficultyConfig, categoryConfig } from "@/lib/constants";
@@ -31,6 +30,62 @@ interface Sample {
 interface TestCase {
   input: string;
   output: string;
+}
+
+// Markdown 编辑器组件 - 左右分栏实时预览
+function MarkdownEditor({ 
+  value, 
+  onChange, 
+  label, 
+  placeholder,
+  rows = 8
+}: { 
+  value: string; 
+  onChange: (value: string) => void; 
+  label: string;
+  placeholder?: string;
+  rows?: number;
+}) {
+  return (
+    <div className="space-y-2">
+      <Label className="flex items-center gap-2">
+        {label}
+        <span className="text-xs text-muted-foreground">(支持Markdown)</span>
+      </Label>
+      <div className="grid grid-cols-2 gap-4 border rounded-lg p-4 bg-muted/30">
+        {/* 左侧：输入框 */}
+        <div className="space-y-1">
+          <div className="text-xs text-muted-foreground font-medium flex items-center gap-1">
+            <span className="w-2 h-2 rounded-full bg-blue-500" />
+            编辑
+          </div>
+          <Textarea
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder={placeholder}
+            rows={rows}
+            className="font-mono text-sm resize-none border-0 bg-background shadow-sm focus-visible:ring-1"
+          />
+        </div>
+        {/* 右侧：预览 */}
+        <div className="space-y-1">
+          <div className="text-xs text-muted-foreground font-medium flex items-center gap-1">
+            <span className="w-2 h-2 rounded-full bg-green-500" />
+            预览
+          </div>
+          <div className={`prose prose-sm dark:prose-invert max-w-none bg-background rounded-md p-3 min-h-[${rows * 24}px] overflow-auto border shadow-sm`}>
+            {value ? (
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                {value}
+              </ReactMarkdown>
+            ) : (
+              <span className="text-muted-foreground text-sm">预览区域</span>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export default function CreateProblemPage() {
@@ -142,55 +197,6 @@ export default function CreateProblemPage() {
     }
   };
 
-  // Markdown 编辑器组件
-  const MarkdownEditor = ({ 
-    value, 
-    onChange, 
-    label, 
-    placeholder 
-  }: { 
-    value: string; 
-    onChange: (value: string) => void; 
-    label: string;
-    placeholder?: string;
-  }) => (
-    <div className="space-y-2">
-      <Label>{label}</Label>
-      <Tabs defaultValue="edit" className="w-full">
-        <TabsList className="mb-2">
-          <TabsTrigger value="edit" className="flex items-center gap-1">
-            <Edit className="h-3 w-3" />
-            编辑
-          </TabsTrigger>
-          <TabsTrigger value="preview" className="flex items-center gap-1">
-            <Eye className="h-3 w-3" />
-            预览
-          </TabsTrigger>
-        </TabsList>
-        <TabsContent value="edit">
-          <Textarea
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            placeholder={placeholder}
-            rows={6}
-            className="font-mono"
-          />
-        </TabsContent>
-        <TabsContent value="preview">
-          <div className="border rounded-lg p-4 min-h-[150px] prose prose-sm dark:prose-invert max-w-none">
-            {value ? (
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                {value}
-              </ReactMarkdown>
-            ) : (
-              <span className="text-muted-foreground">暂无内容</span>
-            )}
-          </div>
-        </TabsContent>
-      </Tabs>
-    </div>
-  );
-
   if (!user) {
     return (
       <div className="container mx-auto px-4 py-8 text-center">加载中...</div>
@@ -201,19 +207,18 @@ export default function CreateProblemPage() {
   const currentCat = categoryConfig[formData.category] || categoryConfig.P;
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-5xl">
+    <div className="container mx-auto px-4 py-8 max-w-6xl">
       <h1 className="text-3xl font-bold mb-8">创建题目</h1>
 
-      <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* 左侧：编辑区 */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* 基本信息 */}
-          <Card>
-            <CardHeader>
-              <CardTitle>基本信息</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {/* 基本信息 */}
+        <Card>
+          <CardHeader>
+            <CardTitle>基本信息</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="md:col-span-3 space-y-2">
                 <Label htmlFor="title">题目标题 *</Label>
                 <Input
                   id="title"
@@ -225,164 +230,8 @@ export default function CreateProblemPage() {
                   required
                 />
               </div>
-
-              <MarkdownEditor
-                label="题目描述 *"
-                value={formData.description}
-                onChange={(v) => setFormData({ ...formData, description: v })}
-                placeholder="支持 Markdown 语法，例如：**粗体**、*斜体*、`代码`等"
-              />
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <MarkdownEditor
-                  label="输入格式"
-                  value={formData.inputFormat}
-                  onChange={(v) => setFormData({ ...formData, inputFormat: v })}
-                  placeholder="描述输入格式..."
-                />
-                <MarkdownEditor
-                  label="输出格式"
-                  value={formData.outputFormat}
-                  onChange={(v) => setFormData({ ...formData, outputFormat: v })}
-                  placeholder="描述输出格式..."
-                />
-              </div>
-
-              <MarkdownEditor
-                label="提示"
-                value={formData.hint}
-                onChange={(v) => setFormData({ ...formData, hint: v })}
-                placeholder="给选手的提示信息..."
-              />
-            </CardContent>
-          </Card>
-
-          {/* 样例 */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                样例
-                <Button type="button" variant="outline" size="sm" onClick={handleAddSample}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  添加样例
-                </Button>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {samples.map((sample, index) => (
-                <div key={index} className="border rounded-lg p-4 space-y-4">
-                  <div className="flex items-center justify-between">
-                    <span className="font-medium">样例 {index + 1}</span>
-                    {samples.length > 1 && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleRemoveSample(index)}
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>输入</Label>
-                      <Textarea
-                        value={sample.input}
-                        onChange={(e) =>
-                          handleUpdateSample(index, "input", e.target.value)
-                        }
-                        rows={3}
-                        className="font-mono text-sm"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>输出</Label>
-                      <Textarea
-                        value={sample.output}
-                        onChange={(e) =>
-                          handleUpdateSample(index, "output", e.target.value)
-                        }
-                        rows={3}
-                        className="font-mono text-sm"
-                      />
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-
-          {/* 测试数据 */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                测试数据
-                <Button type="button" variant="outline" size="sm" onClick={handleAddTestCase}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  添加测试点
-                </Button>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {testCases.map((testCase, index) => (
-                <div key={index} className="border rounded-lg p-4 space-y-4">
-                  <div className="flex items-center justify-between">
-                    <span className="font-medium">测试点 {index + 1}</span>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleRemoveTestCase(index)}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>输入</Label>
-                      <Textarea
-                        value={testCase.input}
-                        onChange={(e) =>
-                          handleUpdateTestCase(index, "input", e.target.value)
-                        }
-                        rows={3}
-                        className="font-mono text-sm"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>输出</Label>
-                      <Textarea
-                        value={testCase.output}
-                        onChange={(e) =>
-                          handleUpdateTestCase(index, "output", e.target.value)
-                        }
-                        rows={3}
-                        className="font-mono text-sm"
-                      />
-                    </div>
-                  </div>
-                </div>
-              ))}
-              {testCases.length === 0 && (
-                <p className="text-center text-muted-foreground py-4">
-                  点击"添加测试点"添加测试数据
-                </p>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* 右侧：设置和预览 */}
-        <div className="space-y-6">
-          {/* 题目设置 */}
-          <Card>
-            <CardHeader>
-              <CardTitle>题目设置</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label>题库分类</Label>
+                <Label>题库</Label>
                 <Select
                   value={formData.category}
                   onValueChange={(value) =>
@@ -395,16 +244,56 @@ export default function CreateProblemPage() {
                   <SelectContent>
                     {Object.entries(categoryConfig).map(([key, config]) => (
                       <SelectItem key={key} value={key}>
-                        <div className="flex flex-col">
-                          <span className={config.color}>{config.label}</span>
-                          <span className="text-xs text-muted-foreground">{config.description}</span>
-                        </div>
+                        <span className={config.color}>{config.label}</span>
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
+            </div>
 
+            <MarkdownEditor
+              label="题目描述 *"
+              value={formData.description}
+              onChange={(v) => setFormData({ ...formData, description: v })}
+              placeholder="描述题目背景和要求...&#10;&#10;支持 **粗体**、*斜体*、`代码`、列表等Markdown语法"
+              rows={10}
+            />
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <MarkdownEditor
+                label="输入格式"
+                value={formData.inputFormat}
+                onChange={(v) => setFormData({ ...formData, inputFormat: v })}
+                placeholder="描述输入格式..."
+                rows={6}
+              />
+              <MarkdownEditor
+                label="输出格式"
+                value={formData.outputFormat}
+                onChange={(v) => setFormData({ ...formData, outputFormat: v })}
+                placeholder="描述输出格式..."
+                rows={6}
+              />
+            </div>
+
+            <MarkdownEditor
+              label="提示"
+              value={formData.hint}
+              onChange={(v) => setFormData({ ...formData, hint: v })}
+              placeholder="给选手的提示信息..."
+              rows={4}
+            />
+          </CardContent>
+        </Card>
+
+        {/* 题目设置 */}
+        <Card>
+          <CardHeader>
+            <CardTitle>题目设置</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
               <div className="space-y-2">
                 <Label>难度</Label>
                 <Select
@@ -420,7 +309,7 @@ export default function CreateProblemPage() {
                     {Object.entries(difficultyConfig).filter(([key]) => !['unknown', 'easy', 'medium', 'hard'].includes(key)).map(([key, config]) => (
                       <SelectItem key={key} value={key}>
                         <div className="flex items-center gap-2">
-                          <div className={`w-3 h-3 rounded ${config.bg}`} />
+                          <div className={`w-2 h-2 rounded ${config.bg}`} />
                           {config.label}
                         </div>
                       </SelectItem>
@@ -428,124 +317,212 @@ export default function CreateProblemPage() {
                   </SelectContent>
                 </Select>
               </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="timeLimit">时间 (ms)</Label>
-                  <Input
-                    id="timeLimit"
-                    type="number"
-                    value={formData.timeLimit}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        timeLimit: parseInt(e.target.value) || 1000,
-                      })
-                    }
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="memoryLimit">内存 (MB)</Label>
-                  <Input
-                    id="memoryLimit"
-                    type="number"
-                    value={formData.memoryLimit}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        memoryLimit: parseInt(e.target.value) || 256,
-                      })
-                    }
-                  />
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="timeLimit">时间限制 (ms)</Label>
+                <Input
+                  id="timeLimit"
+                  type="number"
+                  value={formData.timeLimit}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      timeLimit: parseInt(e.target.value) || 1000,
+                    })
+                  }
+                />
               </div>
-
+              <div className="space-y-2">
+                <Label htmlFor="memoryLimit">内存限制 (MB)</Label>
+                <Input
+                  id="memoryLimit"
+                  type="number"
+                  value={formData.memoryLimit}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      memoryLimit: parseInt(e.target.value) || 256,
+                    })
+                  }
+                />
+              </div>
               <div className="space-y-2">
                 <Label>标签</Label>
-                <div className="flex gap-2">
+                <div className="flex gap-1">
                   <Input
                     value={tagInput}
                     onChange={(e) => setTagInput(e.target.value)}
-                    placeholder="输入标签"
+                    placeholder="添加标签"
                     onKeyDown={(e) => {
                       if (e.key === "Enter") {
                         e.preventDefault();
                         handleAddTag();
                       }
                     }}
+                    className="text-sm"
                   />
-                  <Button type="button" size="icon" onClick={handleAddTag}>
+                  <Button type="button" size="icon" variant="outline" onClick={handleAddTag}>
                     <Plus className="h-4 w-4" />
                   </Button>
                 </div>
-                <div className="flex flex-wrap gap-1 mt-2">
-                  {tags.map((tag) => (
-                    <Badge key={tag} variant="secondary" className="gap-1 text-xs">
-                      {tag}
-                      <X
-                        className="h-3 w-3 cursor-pointer"
-                        onClick={() => handleRemoveTag(tag)}
-                      />
-                    </Badge>
-                  ))}
+              </div>
+              <div className="space-y-2">
+                <Label>可见性</Label>
+                <div className="flex items-center h-10">
+                  <Switch
+                    checked={formData.isVisible}
+                    onCheckedChange={(checked) =>
+                      setFormData({ ...formData, isVisible: checked })
+                    }
+                  />
+                  <span className="ml-2 text-sm">{formData.isVisible ? "公开" : "隐藏"}</span>
                 </div>
               </div>
-
-              <div className="flex items-center gap-2">
-                <Switch
-                  checked={formData.isVisible}
-                  onCheckedChange={(checked) =>
-                    setFormData({ ...formData, isVisible: checked })
-                  }
-                />
-                <Label>公开可见</Label>
+            </div>
+            {tags.length > 0 && (
+              <div className="flex flex-wrap gap-1 mt-3">
+                {tags.map((tag) => (
+                  <Badge key={tag} variant="secondary" className="gap-1 text-xs">
+                    {tag}
+                    <X
+                      className="h-3 w-3 cursor-pointer"
+                      onClick={() => handleRemoveTag(tag)}
+                    />
+                  </Badge>
+                ))}
               </div>
-            </CardContent>
-          </Card>
+            )}
+          </CardContent>
+        </Card>
 
-          {/* 题目预览 */}
-          <Card>
-            <CardHeader>
-              <CardTitle>题目预览</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <span className={`font-mono ${currentCat.color}`}>
-                    {formData.category}{String(1).padStart(4, '0')}
-                  </span>
-                  <h3 className="font-semibold">{formData.title || "题目标题"}</h3>
+        {/* 样例 */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center justify-between">
+              样例数据
+              <Button type="button" variant="outline" size="sm" onClick={handleAddSample}>
+                <Plus className="h-4 w-4 mr-2" />
+                添加样例
+              </Button>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {samples.map((sample, index) => (
+              <div key={index} className="border rounded-lg p-4 bg-muted/30">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="font-medium text-sm">样例 {index + 1}</span>
+                  {samples.length > 1 && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleRemoveSample(index)}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  )}
                 </div>
-                <Badge className={`${currentDiff.bg} text-white text-xs`}>
-                  {currentDiff.label}
-                </Badge>
-                <div className="text-sm text-muted-foreground flex gap-4">
-                  <span>{formData.timeLimit}ms</span>
-                  <span>{formData.memoryLimit}MB</span>
-                </div>
-                <div className="flex flex-wrap gap-1">
-                  {tags.map((tag) => (
-                    <Badge key={tag} variant="outline" className="text-xs">
-                      {tag}
-                    </Badge>
-                  ))}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <Label className="text-xs">输入</Label>
+                    <Textarea
+                      value={sample.input}
+                      onChange={(e) =>
+                        handleUpdateSample(index, "input", e.target.value)
+                      }
+                      rows={3}
+                      className="font-mono text-sm"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">输出</Label>
+                    <Textarea
+                      value={sample.output}
+                      onChange={(e) =>
+                        handleUpdateSample(index, "output", e.target.value)
+                      }
+                      rows={3}
+                      className="font-mono text-sm"
+                    />
+                  </div>
                 </div>
               </div>
-            </CardContent>
-          </Card>
+            ))}
+          </CardContent>
+        </Card>
 
-          {/* 提交按钮 */}
-          <div className="flex gap-2">
-            <Button
-              type="submit"
-              className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600"
-              disabled={isLoading}
-            >
-              <Save className="h-4 w-4 mr-2" />
-              {isLoading ? "保存中..." : "保存题目"}
-            </Button>
-          </div>
-          <Button type="button" variant="outline" className="w-full" onClick={() => router.back()}>
+        {/* 测试数据 */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center justify-between">
+              测试数据
+              <Button type="button" variant="outline" size="sm" onClick={handleAddTestCase}>
+                <Plus className="h-4 w-4 mr-2" />
+                添加测试点
+              </Button>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {testCases.length === 0 ? (
+              <p className="text-center text-muted-foreground py-8">
+                点击"添加测试点"添加测试数据
+              </p>
+            ) : (
+              <div className="space-y-4">
+                {testCases.map((testCase, index) => (
+                  <div key={index} className="border rounded-lg p-4 bg-muted/30">
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="font-medium text-sm">测试点 {index + 1}</span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleRemoveTestCase(index)}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-1">
+                        <Label className="text-xs">输入</Label>
+                        <Textarea
+                          value={testCase.input}
+                          onChange={(e) =>
+                            handleUpdateTestCase(index, "input", e.target.value)
+                          }
+                          rows={3}
+                          className="font-mono text-sm"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">输出</Label>
+                        <Textarea
+                          value={testCase.output}
+                          onChange={(e) =>
+                            handleUpdateTestCase(index, "output", e.target.value)
+                          }
+                          rows={3}
+                          className="font-mono text-sm"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* 提交按钮 */}
+        <div className="flex gap-4">
+          <Button
+            type="submit"
+            className="bg-gradient-to-r from-blue-600 to-purple-600"
+            disabled={isLoading}
+          >
+            <Save className="h-4 w-4 mr-2" />
+            {isLoading ? "保存中..." : "保存题目"}
+          </Button>
+          <Button type="button" variant="outline" onClick={() => router.back()}>
             取消
           </Button>
         </div>
