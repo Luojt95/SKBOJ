@@ -554,40 +554,77 @@ export default function CreateProblemPage() {
                 </div>
                 
                 {/* 测试点列表 */}
-                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                <div className="space-y-3">
                   {testCases.map((testCase, index) => (
                     <div 
                       key={index} 
-                      className="border rounded-lg p-3 bg-muted/30 hover:bg-muted/50 transition-colors"
+                      className="border rounded-lg p-4 bg-muted/30"
                     >
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="font-medium text-sm">#{index + 1}</span>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6"
-                          onClick={() => handleRemoveTestCase(index)}
-                        >
-                          <X className="h-3 w-3" />
-                        </Button>
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-3">
+                          <span className="font-medium">测试点 #{index + 1}</span>
+                          {testCase.inputKey && testCase.outputKey && (
+                            <Badge variant="outline" className="text-xs bg-green-500/10 text-green-600 border-green-200">
+                              <CheckCircle2 className="h-3 w-3 mr-1" />
+                              已存储
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-1">
+                            <Input
+                              type="number"
+                              value={testCase.score}
+                              onChange={(e) =>
+                                handleUpdateTestCase(index, "score", parseInt(e.target.value) || 0)
+                              }
+                              className="w-16 h-8 text-center font-mono"
+                              min={0}
+                              max={100}
+                            />
+                            <span className="text-xs text-muted-foreground">分</span>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => handleRemoveTestCase(index)}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        {testCase.inputKey && testCase.outputKey && (
-                          <CheckCircle2 className="h-3 w-3 text-green-500" />
-                        )}
-                        <Input
-                          type="number"
-                          value={testCase.score}
-                          onChange={(e) =>
-                            handleUpdateTestCase(index, "score", parseInt(e.target.value) || 0)
-                          }
-                          className="h-8 text-center font-mono"
-                          min={0}
-                          max={100}
-                        />
-                        <span className="text-xs text-muted-foreground">分</span>
-                      </div>
+                      
+                      {/* 只有手动添加的测试点才显示输入框 */}
+                      {(!testCase.inputKey || !testCase.outputKey) && (
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-1">
+                            <Label className="text-xs">输入</Label>
+                            <Textarea
+                              value={testCase.input}
+                              onChange={(e) =>
+                                handleUpdateTestCase(index, "input", e.target.value)
+                              }
+                              rows={3}
+                              className="font-mono text-sm"
+                              placeholder="输入数据..."
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs">输出</Label>
+                            <Textarea
+                              value={testCase.output}
+                              onChange={(e) =>
+                                handleUpdateTestCase(index, "output", e.target.value)
+                              }
+                              rows={3}
+                              className="font-mono text-sm"
+                              placeholder="期望输出..."
+                            />
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
