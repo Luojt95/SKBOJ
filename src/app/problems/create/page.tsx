@@ -20,6 +20,9 @@ import { toast } from "sonner";
 import { Plus, X, Save, Upload, FileArchive, CheckCircle2, Loader2 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import remarkMath from "remark-math";
+import rehypeKatex from "rehype-katex";
+import "katex/dist/katex.min.css";
 import { difficultyConfig, categoryConfig } from "@/lib/constants";
 
 interface Sample {
@@ -53,7 +56,7 @@ function MarkdownEditor({
     <div className="space-y-2">
       <Label className="flex items-center gap-2">
         {label}
-        <span className="text-xs text-muted-foreground">(支持Markdown)</span>
+        <span className="text-xs text-muted-foreground">(支持Markdown和LaTeX)</span>
       </Label>
       <div className="grid grid-cols-2 gap-4 border rounded-lg p-4 bg-muted/30">
         {/* 左侧：输入框 */}
@@ -78,7 +81,10 @@ function MarkdownEditor({
           </div>
           <div className={`prose prose-sm dark:prose-invert max-w-none bg-background rounded-md p-3 min-h-[${rows * 24}px] overflow-auto border shadow-sm`}>
             {value ? (
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+              <ReactMarkdown
+                remarkPlugins={[remarkGfm, remarkMath]}
+                rehypePlugins={[rehypeKatex]}
+              >
                 {value}
               </ReactMarkdown>
             ) : (

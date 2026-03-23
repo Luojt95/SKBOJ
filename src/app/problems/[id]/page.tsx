@@ -17,6 +17,11 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import { ArrowLeft, Play, Send, BookOpen } from "lucide-react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import remarkMath from "remark-math";
+import rehypeKatex from "rehype-katex";
+import "katex/dist/katex.min.css";
 
 interface Problem {
   id: number;
@@ -256,31 +261,52 @@ export default function ProblemDetailPage() {
                 <CardContent className="pt-6 space-y-4">
                   <div>
                     <h3 className="font-semibold mb-2">题目描述</h3>
-                    <p className="whitespace-pre-wrap">{problem.description}</p>
+                    <div className="prose prose-sm dark:prose-invert max-w-none">
+                      <ReactMarkdown
+                        remarkPlugins={[remarkGfm, remarkMath]}
+                        rehypePlugins={[rehypeKatex]}
+                      >
+                        {problem.description}
+                      </ReactMarkdown>
+                    </div>
                   </div>
 
                   {problem.input_format && (
                     <div>
                       <h3 className="font-semibold mb-2">输入格式</h3>
-                      <p className="whitespace-pre-wrap">{problem.input_format}</p>
+                      <div className="prose prose-sm dark:prose-invert max-w-none">
+                        <ReactMarkdown
+                          remarkPlugins={[remarkGfm, remarkMath]}
+                          rehypePlugins={[rehypeKatex]}
+                        >
+                          {problem.input_format}
+                        </ReactMarkdown>
+                      </div>
                     </div>
                   )}
 
                   {problem.output_format && (
                     <div>
                       <h3 className="font-semibold mb-2">输出格式</h3>
-                      <p className="whitespace-pre-wrap">{problem.output_format}</p>
+                      <div className="prose prose-sm dark:prose-invert max-w-none">
+                        <ReactMarkdown
+                          remarkPlugins={[remarkGfm, remarkMath]}
+                          rehypePlugins={[rehypeKatex]}
+                        >
+                          {problem.output_format}
+                        </ReactMarkdown>
+                      </div>
                     </div>
                   )}
 
                   {problem.samples?.map((sample, index) => (
                     <div key={index}>
                       <h3 className="font-semibold mb-2">样例输入 {index + 1}</h3>
-                      <pre className="bg-muted p-3 rounded-md font-mono text-sm">
+                      <pre className="bg-muted p-3 rounded-md font-mono text-sm overflow-x-auto">
                         {sample.input}
                       </pre>
                       <h3 className="font-semibold mb-2 mt-4">样例输出 {index + 1}</h3>
-                      <pre className="bg-muted p-3 rounded-md font-mono text-sm">
+                      <pre className="bg-muted p-3 rounded-md font-mono text-sm overflow-x-auto">
                         {sample.output}
                       </pre>
                     </div>
@@ -289,7 +315,14 @@ export default function ProblemDetailPage() {
                   {problem.hint && (
                     <div>
                       <h3 className="font-semibold mb-2">提示</h3>
-                      <p className="whitespace-pre-wrap">{problem.hint}</p>
+                      <div className="prose prose-sm dark:prose-invert max-w-none">
+                        <ReactMarkdown
+                          remarkPlugins={[remarkGfm, remarkMath]}
+                          rehypePlugins={[rehypeKatex]}
+                        >
+                          {problem.hint}
+                        </ReactMarkdown>
+                      </div>
                     </div>
                   )}
                 </CardContent>
