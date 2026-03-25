@@ -141,6 +141,10 @@ export default function ContestDetailPage() {
 
   const status = getContestStatus(contest.start_time, contest.end_time);
   const isParticipant = user && participants.some((p) => p.user_id === user.id);
+  
+  // OI赛制下，比赛未结束时不显示分数
+  const isOIContest = contest.type === "oi";
+  const shouldHideScore = isOIContest && status !== "ended";
 
   // 检查是否可以编辑/删除
   const canEdit = user && (
@@ -308,56 +312,64 @@ export default function ContestDetailPage() {
                   暂无参与者
                 </p>
               ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-12">#</TableHead>
-                      <TableHead>用户</TableHead>
-                      <TableHead className="text-right">得分</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {participants
-                      .sort((a, b) => b.score - a.score)
-                      .slice(0, 20)
-                      .map((p, index) => (
-                        <TableRow key={p.id}>
-                          <TableCell className="font-medium">
-                            {index < 3 ? (
-                              <span
-                                className={
-                                  index === 0
-                                    ? "text-yellow-500"
-                                    : index === 1
-                                    ? "text-gray-400"
-                                    : "text-orange-500"
-                                }
-                              >
-                                {index + 1}
-                              </span>
-                            ) : (
-                              index + 1
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            {p.users ? (
-                              <Link 
-                                href={`/profile/${p.users.id}`}
-                                className="text-blue-600 hover:text-blue-800 dark:text-blue-400"
-                              >
-                                {p.users.username}
-                              </Link>
-                            ) : (
-                              `用户${p.user_id}`
-                            )}
-                          </TableCell>
-                          <TableCell className="text-right font-mono">
-                            {p.score}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                  </TableBody>
-                </Table>
+                <>
+                  {shouldHideScore && (
+                    <div className="mb-4 p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg">
+                      <p className="text-sm text-amber-700 dark:text-amber-300 text-center">
+                        🔒 OI赛制：比赛进行中，分数已封榜，比赛结束后显示
+                      </p>
+                    </div>
+                  )}
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-12">#</TableHead>
+                        <TableHead>用户</TableHead>
+                        <TableHead className="text-right">得分</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {participants
+                        .slice(0, 20)
+                        .map((p, index) => (
+                          <TableRow key={p.id}>
+                            <TableCell className="font-medium">
+                              {index < 3 ? (
+                                <span
+                                  className={
+                                    index === 0
+                                      ? "text-yellow-500"
+                                      : index === 1
+                                      ? "text-gray-400"
+                                      : "text-orange-500"
+                                  }
+                                >
+                                  {index + 1}
+                                </span>
+                              ) : (
+                                index + 1
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              {p.users ? (
+                                <Link 
+                                  href={`/profile/${p.users.id}`}
+                                  className="text-blue-600 hover:text-blue-800 dark:text-blue-400"
+                                >
+                                  {p.users.username}
+                                </Link>
+                              ) : (
+                                `用户${p.user_id}`
+                              )}
+                            </TableCell>
+                            <TableCell className="text-right font-mono">
+                              {shouldHideScore ? "***" : p.score}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                    </TableBody>
+                  </Table>
+                </>
               )}
             </CardContent>
           </Card>
