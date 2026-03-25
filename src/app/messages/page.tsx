@@ -198,10 +198,12 @@ export default function MessagesPage() {
     if (!searchUsername.trim()) return;
 
     try {
-      // 查找用户
-      const res = await fetch(`/api/users`);
+      // 搜索用户
+      const res = await fetch(`/api/users/search?username=${encodeURIComponent(searchUsername.trim())}`);
       if (!res.ok) throw new Error("查找失败");
       const data = await res.json();
+      
+      // 精确匹配用户名
       const user = data.users?.find(
         (u: any) => u.username.toLowerCase() === searchUsername.trim().toLowerCase()
       );

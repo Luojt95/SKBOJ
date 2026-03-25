@@ -259,8 +259,10 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
     }
   };
 
-  const formatDate = (dateStr: string) => {
+  const formatDate = (dateStr: string | null | undefined) => {
+    if (!dateStr) return "未知";
     const date = new Date(dateStr);
+    if (isNaN(date.getTime())) return "未知";
     return date.toLocaleDateString("zh-CN", {
       year: "numeric",
       month: "2-digit",
@@ -427,14 +429,11 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
           <div className="flex flex-wrap gap-3">
             {Object.entries(difficultyConfig).map(([key, config]) => {
               const count = user[`solved${key.charAt(0).toUpperCase() + key.slice(1).replace(/_([a-z])/g, (_, c) => c.toUpperCase())}` as keyof UserProfile] as number;
-              if (count > 0) {
-                return (
-                  <Badge key={key} className={`${config.bgColor} ${config.color} hover:${config.bgColor}`}>
-                    {config.label}: {count}
-                  </Badge>
-                );
-              }
-              return null;
+              return (
+                <Badge key={key} className={`${config.bgColor} ${config.color} hover:${config.bgColor}`}>
+                  {config.label}: {count || 0}
+                </Badge>
+              );
             })}
           </div>
         </CardContent>

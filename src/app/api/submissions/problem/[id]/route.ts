@@ -36,24 +36,7 @@ export async function GET(
     // 构建查询
     let query = client
       .from("submissions")
-      .select(`
-        id,
-        user_id,
-        problem_id,
-        language,
-        code,
-        status,
-        score,
-        time_used,
-        memory_used,
-        test_results,
-        created_at,
-        users!submissions_user_id_fkey (
-          id,
-          username,
-          role
-        )
-      `)
+      .select("*")
       .eq("problem_id", problemId)
       .order("created_at", { ascending: false })
       .limit(50);
@@ -70,7 +53,24 @@ export async function GET(
       return NextResponse.json({ submissions: [] });
     }
 
-    return NextResponse.json({ submissions: submissions || [] });
+    // 获取用户信息
+    let submissionsWithUsers = [];
+    if (submissions && submissions.length > 0) {
+      const userIds = [...new Set(submissions.map(s => s.user_id))];
+      const { data: users } = await client
+        .from("users")
+        .select("id, username, role")
+        .in("id", userIds);
+      
+      const usersMap = new Map((users || []).map(u => [u.id, u]));
+      
+      submissionsWithUsers = submissions.map(s => ({
+        ...s,
+        users: usersMap.get(s.user_id) || null
+      }));
+    }
+
+    return NextResponse.json({ submissions: submissionsWithUsers });
   } catch (error) {
     console.error("Get submissions error:", error);
     return NextResponse.json({ submissions: [] });

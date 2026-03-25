@@ -28,7 +28,27 @@ export async function GET(
       return NextResponse.json({ error: "用户不存在" }, { status: 404 });
     }
 
-    return NextResponse.json({ user });
+    // 转换为驼峰格式
+    const formattedUser = {
+      id: user.id,
+      username: user.username,
+      role: user.role,
+      name_color: user.name_color,
+      creditRating: user.credit_rating,
+      problemRating: user.problem_rating,
+      contestRating: user.contest_rating,
+      totalRating: user.total_rating,
+      solvedEntry: user.solved_entry,
+      solvedPopularMinus: user.solved_popular_minus,
+      solvedPopular: user.solved_popular,
+      solvedPopularPlus: user.solved_popular_plus,
+      solvedImprovePlus: user.solved_improve_plus,
+      solvedProvincial: user.solved_provincial,
+      solvedNoi: user.solved_noi,
+      createdAt: user.created_at,
+    };
+
+    return NextResponse.json({ user: formattedUser });
   } catch (error) {
     console.error("Get user error:", error);
     return NextResponse.json({ error: "获取失败" }, { status: 500 });
