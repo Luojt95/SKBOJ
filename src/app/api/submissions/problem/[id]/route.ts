@@ -21,6 +21,25 @@ export async function GET(
     const currentUser = JSON.parse(userCookie.value);
     const client = getSupabaseClient();
 
+    // 检查题目是否在OI赛制的比赛中
+    const { data: contests } = await client
+      .from("contests")
+      .select("id, type, start_time, end_time, problem_ids")
+      .contains("problem_ids", [problemId]);
+
+    let oiContestInfo: { id: number; isOngoing: boolean } | null = null;
+    if (contests && contests.length > 0) {
+      const relatedContest = contests.find(c => c.problem_ids.includes(problemId));
+      if (relatedContest && relatedContest.type === "oi") {
+        const now = new Date();
+        const endTime = new Date(relatedContest.end_time);
+        oiContestInfo = {
+          id: relatedContest.id,
+          isOngoing: now <= endTime
+        };
+      }
+    }
+
     // 获取题目信息，判断当前用户是否是出题人或管理员
     const { data: problem } = await client
       .from("problems")
@@ -28,10 +47,9 @@ export async function GET(
       .eq("id", problemId)
       .single();
 
-    const isAuthorOrAdmin = 
-      currentUser.role === "super_admin" ||
-      currentUser.role === "admin" ||
-      (problem && problem.author_id === currentUser.id);
+    const isAdmin = currentUser.role === "super_admin" || currentUser.role === "admin";
+    const isAuthor = problem && problem.author_id === currentUser.id;
+    const isAuthorOrAdmin = isAdmin || isAuthor;
 
     // 构建查询
     let query = client
@@ -64,10 +82,30 @@ export async function GET(
       
       const usersMap = new Map((users || []).map(u => [u.id, u]));
       
-      submissionsWithUsers = submissions.map(s => ({
-        ...s,
-        users: usersMap.get(s.user_id) || null
-      }));
+      submissionsWithUsers = submissions.map(s => {
+        // OI赛制处理：比赛进行中隐藏评测结果
+        // 只隐藏非管理员/非出题人的提交
+        const isOIHidden = oiContestInfo?.isOngoing && 
+                          s.contest_id === oiContestInfo.id &&
+                          !isAdmin && !isAuthor;
+        
+        if (isOIHidden) {
+          return {
+            ...s,
+            status: "hidden",
+            display_status: "???",
+            score: null,
+            time_used: null,
+            memory_used: null,
+            users: usersMap.get(s.user_id) || null
+          };
+        }
+        
+        return {
+          ...s,
+          users: usersMap.get(s.user_id) || null
+        };
+      });
     }
 
     return NextResponse.json({ submissions: submissionsWithUsers });

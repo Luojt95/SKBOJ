@@ -25,6 +25,25 @@ export async function POST(request: NextRequest) {
 
     const client = getSupabaseClient();
 
+    // 检查是否是OI赛制的比赛
+    let isOIContest = false;
+    let isContestOngoing = false;
+    
+    if (contestId) {
+      const { data: contest } = await client
+        .from("contests")
+        .select("id, type, start_time, end_time")
+        .eq("id", contestId)
+        .single();
+      
+      if (contest) {
+        isOIContest = contest.type === "oi";
+        const now = new Date();
+        const endTime = new Date(contest.end_time);
+        isContestOngoing = now <= endTime;
+      }
+    }
+
     // 获取题目信息和测试数据
     const { data: problem, error: problemError } = await client
       .from("problems")
@@ -70,6 +89,21 @@ export async function POST(request: NextRequest) {
     if (error) {
       console.error("Create submission error:", error);
       return NextResponse.json({ error: "提交失败" }, { status: 500 });
+    }
+
+    // OI赛制且比赛进行中，隐藏评测结果
+    if (isOIContest && isContestOngoing) {
+      return NextResponse.json({ 
+        submission: {
+          ...submission,
+          status: "hidden",
+          score: null,
+          time_used: null,
+          memory_used: null,
+          display_status: "???",
+          message: "OI赛制：比赛结束后显示评测结果"
+        }
+      });
     }
 
     return NextResponse.json({ submission });

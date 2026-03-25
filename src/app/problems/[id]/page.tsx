@@ -227,6 +227,7 @@ export default function ProblemDetailPage() {
           problemId: problem?.id,
           language,
           code,
+          contestId: contestId ? parseInt(contestId) : undefined,
         }),
       });
 
@@ -235,9 +236,16 @@ export default function ProblemDetailPage() {
       if (res.ok) {
         toast.success("提交成功");
         if (data.submission) {
-          setOutput(
-            `状态: ${data.submission.status}\n得分: ${data.submission.score}\n用时: ${data.submission.time_used}ms\n内存: ${data.submission.memory_used}KB`
-          );
+          // OI赛制隐藏状态
+          if (data.submission.status === "hidden") {
+            setOutput(
+              `状态: ???\n得分: ???\n用时: ???\n内存: ???\n\n${data.submission.message || "比赛结束后显示评测结果"}`
+            );
+          } else {
+            setOutput(
+              `状态: ${data.submission.status}\n得分: ${data.submission.score}\n用时: ${data.submission.time_used}ms\n内存: ${data.submission.memory_used}KB`
+            );
+          }
         }
         // 刷新提交记录
         fetchSubmissions();
@@ -468,7 +476,11 @@ export default function ProblemDetailPage() {
                   ) : (
                     <div className="space-y-3">
                       {submissions.map((sub) => {
-                        const statusInfo = statusConfig[sub.status] || statusConfig.wa;
+                        // OI赛制隐藏状态处理
+                        const isHidden = sub.status === "hidden";
+                        const statusInfo = isHidden 
+                          ? { label: "???", bgClass: "bg-gray-500 text-white" }
+                          : (statusConfig[sub.status] || statusConfig.wa);
                         return (
                           <div 
                             key={sub.id} 
@@ -479,24 +491,36 @@ export default function ProblemDetailPage() {
                                 {statusInfo.label}
                               </span>
                               <div className="flex items-center gap-2">
-                                <Link 
-                                  href={`/profile/${sub.users.id}`}
-                                  className="text-sm font-medium text-blue-600 hover:text-blue-800 dark:text-blue-400"
-                                >
-                                  {sub.users.username}
-                                </Link>
+                                {sub.users && (
+                                  <Link 
+                                    href={`/profile/${sub.users.id}`}
+                                    className="text-sm font-medium text-blue-600 hover:text-blue-800 dark:text-blue-400"
+                                  >
+                                    {sub.users.username}
+                                  </Link>
+                                )}
                                 <span className="text-xs text-muted-foreground">{sub.language}</span>
                               </div>
                             </div>
                             <div className="flex items-center gap-4 text-sm">
-                              {sub.score !== null && (
-                                <span className="font-medium">{sub.score}分</span>
-                              )}
-                              {sub.time_used && (
-                                <span className="text-muted-foreground">{sub.time_used}ms</span>
-                              )}
-                              {sub.memory_used && (
-                                <span className="text-muted-foreground">{sub.memory_used}KB</span>
+                              {isHidden ? (
+                                <>
+                                  <span className="font-medium">???分</span>
+                                  <span className="text-muted-foreground">???ms</span>
+                                  <span className="text-muted-foreground">???KB</span>
+                                </>
+                              ) : (
+                                <>
+                                  {sub.score !== null && (
+                                    <span className="font-medium">{sub.score}分</span>
+                                  )}
+                                  {sub.time_used && (
+                                    <span className="text-muted-foreground">{sub.time_used}ms</span>
+                                  )}
+                                  {sub.memory_used && (
+                                    <span className="text-muted-foreground">{sub.memory_used}KB</span>
+                                  )}
+                                </>
                               )}
                               <span className="text-muted-foreground text-xs">
                                 {new Date(sub.created_at).toLocaleString("zh-CN")}
