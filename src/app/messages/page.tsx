@@ -85,22 +85,29 @@ export default function MessagesPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // 获取当前用户
+    // 获取当前用户并检查登录状态
     const fetchCurrentUser = async () => {
       try {
         const res = await fetch("/api/auth/me");
         if (res.ok) {
           const data = await res.json();
           setCurrentUser(data.user);
+        } else {
+          // 未登录，重定向到登录页
+          router.push("/login");
         }
-      } catch {}
+      } catch {
+        router.push("/login");
+      }
     };
     fetchCurrentUser();
-  }, []);
+  }, [router]);
 
   useEffect(() => {
+    // 只有在用户已登录时才获取会话列表
+    if (!currentUser) return;
     fetchConversations();
-  }, []);
+  }, [currentUser]);
 
   useEffect(() => {
     if (messagesEndRef.current) {
