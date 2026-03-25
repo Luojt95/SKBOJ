@@ -1,0 +1,359 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
+import { ArrowLeft, ThumbsUp, MessageSquare, Trash2, Edit } from "lucide-react";
+import { toast } from "sonner";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import remarkMath from "remark-math";
+import rehypeKatex from "rehype-katex";
+import "katex/dist/katex.min.css";
+
+interface Discussion {
+  id: number;
+  title: string;
+  content: string;
+  author_id: number;
+  problem_id: number | null;
+  parent_id: number | null;
+  likes: number;
+  created_at: string;
+  updated_at: string | null;
+  users?: {
+    id: number;
+    username: string;
+    role: string;
+  };
+}
+
+interface Reply {
+  id: number;
+  title: string;
+  content: string;
+  author_id: number;
+  parent_id: number;
+  likes: number;
+  created_at: string;
+  users?: {
+    id: number;
+    username: string;
+    role: string;
+  };
+}
+
+interface User {
+  id: number;
+  username: string;
+  role: string;
+}
+
+function formatDate(dateString: string): string {
+  return new Date(dateString).toLocaleString("zh-CN");
+}
+
+export default function DiscussionDetailPage() {
+  const params = useParams();
+  const router = useRouter();
+  const [discussion, setDiscussion] = useState<Discussion | null>(null);
+  const [replies, setReplies] = useState<Reply[]>([]);
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [replyContent, setReplyContent] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [discussionRes, userRes] = await Promise.all([
+          fetch(`/api/discussions/${params.id}`),
+          fetch("/api/auth/me"),
+        ]);
+
+        if (discussionRes.ok) {
+          const data = await discussionRes.json();
+          setDiscussion(data.discussion);
+          
+          // 获取回复
+          if (data.discussion) {
+            const repliesRes = await fetch(`/api/discussions/${params.id}/replies`);
+            if (repliesRes.ok) {
+              const repliesData = await repliesRes.json();
+              setReplies(repliesData.replies || []);
+            }
+          }
+        }
+
+        if (userRes.ok) {
+          const userData = await userRes.json();
+          setUser(userData.user);
+        }
+      } catch (error) {
+        console.error("Failed to fetch data:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchData();
+  }, [params.id]);
+
+  const handleReply = async () => {
+    if (!user) {
+      toast.error("请先登录");
+      router.push("/login");
+      return;
+    }
+
+    if (!replyContent.trim()) {
+      toast.error("请输入回复内容");
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const res = await fetch("/api/discussions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: `回复: ${discussion?.title}`,
+          content: replyContent,
+          parentId: discussion?.id,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        toast.success("回复成功");
+        setReplies([data.discussion, ...replies]);
+        setReplyContent("");
+      } else {
+        toast.error(data.error || "回复失败");
+      }
+    } catch {
+      toast.error("回复失败");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!confirm("确定要删除这条讨论吗？")) return;
+
+    try {
+      const res = await fetch(`/api/discussions/${params.id}`, {
+        method: "DELETE",
+      });
+
+      if (res.ok) {
+        toast.success("删除成功");
+        router.push("/discussions");
+      } else {
+        const data = await res.json();
+        toast.error(data.error || "删除失败");
+      }
+    } catch {
+      toast.error("删除失败");
+    }
+  };
+
+  const handleDeleteReply = async (replyId: number) => {
+    if (!confirm("确定要删除这条回复吗？")) return;
+
+    try {
+      const res = await fetch(`/api/discussions/${replyId}`, {
+        method: "DELETE",
+      });
+
+      if (res.ok) {
+        toast.success("删除成功");
+        setReplies(replies.filter((r) => r.id !== replyId));
+      } else {
+        const data = await res.json();
+        toast.error(data.error || "删除失败");
+      }
+    } catch {
+      toast.error("删除失败");
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="container mx-auto px-4 py-8 text-center">加载中...</div>
+    );
+  }
+
+  if (!discussion) {
+    return (
+      <div className="container mx-auto px-4 py-8 text-center">
+        <p>讨论不存在</p>
+        <Button className="mt-4" asChild>
+          <Link href="/discussions">返回讨论列表</Link>
+        </Button>
+      </div>
+    );
+  }
+
+  const canDelete = user && (
+    user.role === "super_admin" ||
+    (user.role === "admin" && discussion.users?.role !== "super_admin") ||
+    user.id === discussion.author_id
+  );
+
+  return (
+    <div className="container mx-auto px-4 py-8 max-w-4xl">
+      <Button variant="ghost" className="mb-4" asChild>
+        <Link href="/discussions">
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          返回讨论列表
+        </Link>
+      </Button>
+
+      {/* 主讨论 */}
+      <Card className="mb-6">
+        <CardHeader>
+          <div className="flex items-start justify-between">
+            <CardTitle className="text-2xl">{discussion.title}</CardTitle>
+            {canDelete && (
+              <div className="flex gap-2">
+                <Button variant="destructive" size="sm" onClick={handleDelete}>
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  删除
+                </Button>
+              </div>
+            )}
+          </div>
+          <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
+            <span>
+              作者：
+              {discussion.users ? (
+                <Link
+                  href={`/profile/${discussion.users.id}`}
+                  className="text-blue-600 hover:text-blue-800 dark:text-blue-400"
+                >
+                  {discussion.users.username}
+                </Link>
+              ) : (
+                `用户${discussion.author_id}`
+              )}
+            </span>
+            <span>{formatDate(discussion.created_at)}</span>
+            <span className="flex items-center gap-1">
+              <ThumbsUp className="h-4 w-4" />
+              {discussion.likes}
+            </span>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="prose prose-sm dark:prose-invert max-w-none">
+            <ReactMarkdown
+              remarkPlugins={[remarkGfm, remarkMath]}
+              rehypePlugins={[rehypeKatex]}
+            >
+              {discussion.content}
+            </ReactMarkdown>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* 回复区域 */}
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <MessageSquare className="h-5 w-5" />
+            发表回复
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {user ? (
+            <div className="space-y-4">
+              <Textarea
+                value={replyContent}
+                onChange={(e) => setReplyContent(e.target.value)}
+                className="min-h-[120px]"
+                placeholder="支持 Markdown 格式..."
+              />
+              <div className="flex justify-end">
+                <Button
+                  onClick={handleReply}
+                  disabled={isSubmitting}
+                  className="bg-gradient-to-r from-blue-600 to-purple-600"
+                >
+                  {isSubmitting ? "发送中..." : "发送回复"}
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="text-center text-muted-foreground py-4">
+              <p>请先登录后再回复</p>
+              <Button className="mt-2" asChild>
+                <Link href="/login">登录</Link>
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* 回复列表 */}
+      <div className="space-y-4">
+        <h3 className="font-semibold text-lg">全部回复 ({replies.length})</h3>
+        {replies.length === 0 ? (
+          <Card>
+            <CardContent className="py-8 text-center text-muted-foreground">
+              <MessageSquare className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <p>暂无回复</p>
+            </CardContent>
+          </Card>
+        ) : (
+          replies.map((reply) => (
+            <Card key={reply.id}>
+              <CardContent className="py-4">
+                <div className="flex items-start justify-between mb-2">
+                  <div className="flex items-center gap-2 text-sm">
+                    {reply.users ? (
+                      <Link
+                        href={`/profile/${reply.users.id}`}
+                        className="font-medium text-blue-600 hover:text-blue-800 dark:text-blue-400"
+                      >
+                        {reply.users.username}
+                      </Link>
+                    ) : (
+                      <span className="font-medium">用户{reply.author_id}</span>
+                    )}
+                    <span className="text-muted-foreground">
+                      {formatDate(reply.created_at)}
+                    </span>
+                  </div>
+                  {user && (user.id === reply.author_id || user.role === "admin" || user.role === "super_admin") && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleDeleteReply(reply.id)}
+                      className="text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+                <div className="prose prose-sm dark:prose-invert max-w-none">
+                  <ReactMarkdown
+                    remarkPlugins={[remarkGfm, remarkMath]}
+                    rehypePlugins={[rehypeKatex]}
+                  >
+                    {reply.content}
+                  </ReactMarkdown>
+                </div>
+              </CardContent>
+            </Card>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}

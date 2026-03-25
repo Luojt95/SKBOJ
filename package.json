@@ -41,6 +41,7 @@
     "@radix-ui/react-toggle-group": "^1.1.11",
     "@radix-ui/react-tooltip": "^1.2.8",
     "@supabase/supabase-js": "2.95.3",
+    "@tailwindcss/typography": "^0.5.19",
     "adm-zip": "^0.5.16",
     "bcryptjs": "^3.0.3",
     "class-variance-authority": "^0.7.1",

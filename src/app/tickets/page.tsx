@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -244,62 +245,36 @@ export default function TicketsPage() {
           </Card>
         ) : (
           tickets.map((ticket) => (
-            <Card key={ticket.id}>
-              <CardContent className="py-4">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-2">
-                      <h3 className="font-semibold text-lg">{ticket.title}</h3>
-                      <Badge variant="outline">{typeLabels[ticket.type]}</Badge>
-                      <Badge className={`${statusColors[ticket.status]} text-white`}>
-                        {statusLabels[ticket.status]}
-                      </Badge>
-                    </div>
-                    <p className="text-muted-foreground mb-2">{ticket.content}</p>
-                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                      <span>
-                        提交者：{(ticket as any).users?.username || `用户${ticket.author_id}`}
-                      </span>
-                      <span>{formatDate(ticket.created_at)}</span>
-                    </div>
-                    {ticket.reply && (
-                      <div className="mt-3 p-3 bg-muted rounded-md">
-                        <p className="text-sm font-medium">管理员回复：</p>
-                        <p className="text-sm text-muted-foreground">{ticket.reply}</p>
+            <Link key={ticket.id} href={`/tickets/${ticket.id}`}>
+              <Card className="hover:shadow-md transition-shadow cursor-pointer">
+                <CardContent className="py-4">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <h3 className="font-semibold text-lg">{ticket.title}</h3>
+                        <Badge variant="outline">{typeLabels[ticket.type]}</Badge>
+                        <Badge className={`${statusColors[ticket.status]} text-white`}>
+                          {statusLabels[ticket.status]}
+                        </Badge>
                       </div>
-                    )}
-                  </div>
-                  {canHandle && ticket.status === "pending" && (
-                    <div className="flex gap-2 ml-4">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="text-green-600"
-                        onClick={() => {
-                          const reply = prompt("请输入回复（可选）：");
-                          handleUpdateStatus(ticket.id, "accepted", reply || undefined);
-                        }}
-                      >
-                        <Check className="h-4 w-4 mr-1" />
-                        接受
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="text-red-600"
-                        onClick={() => {
-                          const reply = prompt("请输入拒绝原因：");
-                          handleUpdateStatus(ticket.id, "rejected", reply || undefined);
-                        }}
-                      >
-                        <X className="h-4 w-4 mr-1" />
-                        拒绝
-                      </Button>
+                      <p className="text-muted-foreground mb-2 line-clamp-2">{ticket.content}</p>
+                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                        <span>
+                          提交者：{(ticket as any).users ? (
+                            <span className="text-blue-600 dark:text-blue-400">
+                              {(ticket as any).users.username}
+                            </span>
+                          ) : (
+                            `用户${ticket.author_id}`
+                          )}
+                        </span>
+                        <span>{formatDate(ticket.created_at)}</span>
+                      </div>
                     </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
           ))
         )}
       </div>
