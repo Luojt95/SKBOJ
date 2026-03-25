@@ -76,11 +76,7 @@ export async function GET(request: NextRequest) {
         likes,
         created_at,
         updated_at,
-        users!solutions_user_id_fkey (
-          id,
-          username,
-          role
-        )
+        user_id
       `)
       .order("created_at", { ascending: false });
 
@@ -95,7 +91,23 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ solutions: [] });
     }
 
-    return NextResponse.json({ solutions: solutions || [] });
+    // 获取用户信息
+    let solutionsWithUsers: any[] = [];
+    if (solutions && solutions.length > 0) {
+      const userIds = [...new Set(solutions.map(s => s.user_id))];
+      const { data: users } = await client
+        .from("users")
+        .select("id, username, role")
+        .in("id", userIds);
+      
+      const usersMap = new Map((users || []).map(u => [u.id, u]));
+      solutionsWithUsers = solutions.map(s => ({
+        ...s,
+        users: usersMap.get(s.user_id) || null
+      }));
+    }
+
+    return NextResponse.json({ solutions: solutionsWithUsers });
   } catch (error) {
     console.error("Get solutions error:", error);
     return NextResponse.json({ solutions: [] });

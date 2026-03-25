@@ -36,6 +36,10 @@ export default function CreateSolutionPage() {
         if (res.ok) {
           const data = await res.json();
           setProblem(data.problem);
+          // 设置默认标题：【题目名】题解
+          if (data.problem?.title) {
+            setTitle(`【${data.problem.title}】题解`);
+          }
         }
       } catch (error) {
         console.error("Failed to fetch problem:", error);

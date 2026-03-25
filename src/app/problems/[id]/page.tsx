@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -66,6 +66,20 @@ interface Submission {
   };
 }
 
+interface Solution {
+  id: number;
+  problem_id: number;
+  title: string;
+  content: string;
+  likes: number;
+  created_at: string;
+  users: {
+    id: number;
+    username: string;
+    role: string;
+  };
+}
+
 const defaultCodes: Record<string, string> = {
   cpp: `#include <iostream>
 using namespace std;
@@ -105,9 +119,12 @@ const statusConfig: Record<string, { label: string; bgClass: string }> = {
 export default function ProblemDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const contestId = searchParams.get("contest");
   const [problem, setProblem] = useState<Problem | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [submissions, setSubmissions] = useState<Submission[]>([]);
+  const [solutions, setSolutions] = useState<Solution[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [language, setLanguage] = useState("cpp");
   const [code, setCode] = useState(defaultCodes.cpp);
@@ -119,10 +136,11 @@ export default function ProblemDetailPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [problemRes, userRes, submissionsRes] = await Promise.all([
+        const [problemRes, userRes, submissionsRes, solutionsRes] = await Promise.all([
           fetch(`/api/problems/${params.id}`),
           fetch("/api/auth/me"),
           fetch(`/api/submissions/problem/${params.id}`),
+          fetch(`/api/solutions?problem_id=${params.id}`),
         ]);
 
         if (problemRes.ok) {
@@ -142,6 +160,11 @@ export default function ProblemDetailPage() {
         if (submissionsRes.ok) {
           const submissionsData = await submissionsRes.json();
           setSubmissions(submissionsData.submissions || []);
+        }
+
+        if (solutionsRes.ok) {
+          const solutionsData = await solutionsRes.json();
+          setSolutions(solutionsData.solutions || []);
         }
       } catch (error) {
         console.error("Failed to fetch data:", error);
@@ -291,9 +314,9 @@ export default function ProblemDetailPage() {
     <div className="container mx-auto px-4 py-8">
       <div className="flex items-center justify-between mb-4">
         <Button variant="ghost" asChild>
-          <Link href="/problems">
+          <Link href={contestId ? `/contests/${contestId}` : "/problems"}>
             <ArrowLeft className="h-4 w-4 mr-2" />
-            返回题目列表
+            {contestId ? "返回比赛题目列表" : "返回题目列表"}
           </Link>
         </Button>
         {canEdit && (
@@ -490,17 +513,63 @@ export default function ProblemDetailPage() {
             <TabsContent value="solutions">
               <Card>
                 <CardContent className="pt-6">
-                  <div className="text-center text-muted-foreground">
-                    <BookOpen className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                    <p>暂无题解</p>
-                    {user && (
-                      <Button asChild className="mt-4" variant="outline">
-                        <Link href={`/problems/${problem.id}/solutions/create`}>
-                          撰写题解
-                        </Link>
-                      </Button>
-                    )}
-                  </div>
+                  {solutions.length === 0 ? (
+                    <div className="text-center text-muted-foreground">
+                      <BookOpen className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                      <p>暂无题解</p>
+                      {user && (
+                        <Button asChild className="mt-4" variant="outline">
+                          <Link href={`/problems/${problem.id}/solutions/create`}>
+                            撰写题解
+                          </Link>
+                        </Button>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {solutions.map((solution) => (
+                        <div 
+                          key={solution.id} 
+                          className="p-4 border rounded-lg hover:bg-muted/50 transition-colors"
+                        >
+                          <div className="flex items-center justify-between mb-2">
+                            <h4 className="font-semibold">{solution.title}</h4>
+                            <span className="text-sm text-muted-foreground">
+                              {new Date(solution.created_at).toLocaleString("zh-CN")}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-4 text-sm">
+                            {solution.users && (
+                              <Link 
+                                href={`/profile/${solution.users.id}`}
+                                className="text-blue-600 hover:text-blue-800 dark:text-blue-400"
+                              >
+                                {solution.users.username}
+                              </Link>
+                            )}
+                            <span className="text-muted-foreground">👍 {solution.likes}</span>
+                          </div>
+                          <div className="mt-3 prose prose-sm dark:prose-invert max-w-none line-clamp-3">
+                            <ReactMarkdown
+                              remarkPlugins={[remarkGfm, remarkMath]}
+                              rehypePlugins={[rehypeKatex]}
+                            >
+                              {solution.content}
+                            </ReactMarkdown>
+                          </div>
+                        </div>
+                      ))}
+                      {user && (
+                        <div className="text-center pt-4">
+                          <Button asChild variant="outline">
+                            <Link href={`/problems/${problem.id}/solutions/create`}>
+                              撰写题解
+                            </Link>
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>

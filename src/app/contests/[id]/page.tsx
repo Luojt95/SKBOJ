@@ -283,11 +283,9 @@ export default function ContestDetailPage() {
                           </span>
                           <span className="font-medium">{problem.title}</span>
                         </div>
-                        {status === "ongoing" && isParticipant && (
-                          <Button size="sm" variant="outline">
-                            开始作答
-                          </Button>
-                        )}
+                        <Button size="sm" variant="outline">
+                          {status === "ongoing" && isParticipant ? "开始作答" : "查看题目"}
+                        </Button>
                       </div>
                     </Link>
                   ))}
