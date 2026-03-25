@@ -210,6 +210,81 @@ export const tickets = pgTable(
   ]
 );
 
+// ==================== 犇犇表（动态/说说） ====================
+export const benbens = pgTable(
+  "benbens",
+  {
+    id: serial().primaryKey(),
+    content: text("content").notNull(),
+    authorId: integer("author_id").notNull(),
+    likes: integer("likes").default(0),
+    replyCount: integer("reply_count").default(0),
+    parentId: integer("parent_id"), // 回复的犇犇ID（空则为主题）
+    replyToId: integer("reply_to_id"), // 回复的评论ID
+    replyToUserId: integer("reply_to_user_id"), // 被回复的用户ID
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index("benbens_author_idx").on(table.authorId),
+    index("benbens_parent_idx").on(table.parentId),
+    index("benbens_created_idx").on(table.createdAt),
+  ]
+);
+
+// ==================== 用户关注表 ====================
+export const userFollows = pgTable(
+  "user_follows",
+  {
+    id: serial().primaryKey(),
+    followerId: integer("follower_id").notNull(), // 关注者
+    followingId: integer("following_id").notNull(), // 被关注者
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index("user_follows_follower_idx").on(table.followerId),
+    index("user_follows_following_idx").on(table.followingId),
+  ]
+);
+
+// ==================== 消息通知表 ====================
+export const notifications = pgTable(
+  "notifications",
+  {
+    id: serial().primaryKey(),
+    userId: integer("user_id").notNull(), // 接收通知的用户
+    type: varchar("type", { length: 30 }).notNull(), // ticket_reply, benben_mention, follow, like, system
+    title: varchar("title", { length: 200 }).notNull(),
+    content: text("content"),
+    relatedId: integer("related_id"), // 关联对象ID（工单ID、犇犇ID等）
+    relatedType: varchar("related_type", { length: 30 }), // ticket, benben, user等
+    isRead: boolean("is_read").default(false).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index("notifications_user_idx").on(table.userId),
+    index("notifications_is_read_idx").on(table.isRead),
+    index("notifications_type_idx").on(table.type),
+  ]
+);
+
+// ==================== 私信表 ====================
+export const privateMessages = pgTable(
+  "private_messages",
+  {
+    id: serial().primaryKey(),
+    senderId: integer("sender_id").notNull(),
+    receiverId: integer("receiver_id").notNull(),
+    content: text("content").notNull(),
+    isRead: boolean("is_read").default(false).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index("private_messages_sender_idx").on(table.senderId),
+    index("private_messages_receiver_idx").on(table.receiverId),
+    index("private_messages_created_idx").on(table.createdAt),
+  ]
+);
+
 // ==================== 系统健康检查表 ====================
 export const healthCheck = pgTable("health_check", {
   id: serial().notNull(),
@@ -275,6 +350,21 @@ export const insertTicketSchema = createInsertSchema(tickets).omit({
   updatedAt: true,
 });
 
+export const insertBenbenSchema = createInsertSchema(benbens).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertNotificationSchema = createInsertSchema(notifications).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertPrivateMessageSchema = createInsertSchema(privateMessages).omit({
+  id: true,
+  createdAt: true,
+});
+
 // ==================== TypeScript Types ====================
 export type User = typeof users.$inferSelect;
 export type Problem = typeof problems.$inferSelect;
@@ -284,6 +374,10 @@ export type Contest = typeof contests.$inferSelect;
 export type Discussion = typeof discussions.$inferSelect;
 export type CodeShare = typeof codeShares.$inferSelect;
 export type Ticket = typeof tickets.$inferSelect;
+export type Benben = typeof benbens.$inferSelect;
+export type UserFollow = typeof userFollows.$inferSelect;
+export type Notification = typeof notifications.$inferSelect;
+export type PrivateMessage = typeof privateMessages.$inferSelect;
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type LoginUser = z.infer<typeof loginUserSchema>;
@@ -295,3 +389,6 @@ export type InsertContest = z.infer<typeof insertContestSchema>;
 export type InsertDiscussion = z.infer<typeof insertDiscussionSchema>;
 export type InsertCodeShare = z.infer<typeof insertCodeShareSchema>;
 export type InsertTicket = z.infer<typeof insertTicketSchema>;
+export type InsertBenben = z.infer<typeof insertBenbenSchema>;
+export type InsertNotification = z.infer<typeof insertNotificationSchema>;
+export type InsertPrivateMessage = z.infer<typeof insertPrivateMessageSchema>;

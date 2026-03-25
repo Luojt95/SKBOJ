@@ -13,7 +13,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Menu, X, Code, Trophy, Users, Bug, MessageSquare, Share2, Ticket, Home } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Menu, X, Code, Trophy, Users, Bug, MessageSquare, Share2, Ticket, Home, Bell, Mail } from "lucide-react";
 
 interface User {
   id: number;
@@ -58,6 +59,8 @@ export function Navbar() {
   const pathname = usePathname();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [user, setUser] = useState<User | null>(null);
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
+  const [unreadMessages, setUnreadMessages] = useState(0);
 
   useEffect(() => {
     // 检查登录状态
@@ -74,6 +77,40 @@ export function Navbar() {
     };
     checkAuth();
   }, []);
+
+  // 获取未读消息数量
+  useEffect(() => {
+    if (!user) return;
+
+    const fetchUnreadCounts = async () => {
+      try {
+        // 获取通知未读数
+        const notifRes = await fetch("/api/notifications?unread=true&limit=0");
+        if (notifRes.ok) {
+          const data = await notifRes.json();
+          setUnreadNotifications(data.unreadCount || 0);
+        }
+
+        // 获取私信未读数（简化处理，通过会话列表获取）
+        const msgRes = await fetch("/api/messages");
+        if (msgRes.ok) {
+          const data = await msgRes.json();
+          const totalUnread = (data.conversations || []).reduce(
+            (sum: number, conv: { unreadCount: number }) => sum + conv.unreadCount,
+            0
+          );
+          setUnreadMessages(totalUnread);
+        }
+      } catch (error) {
+        console.error("Failed to fetch unread counts:", error);
+      }
+    };
+
+    fetchUnreadCounts();
+    // 每30秒刷新一次
+    const interval = setInterval(fetchUnreadCounts, 30000);
+    return () => clearInterval(interval);
+  }, [user]);
 
   const handleLogout = async () => {
     await fetch("/api/auth/logout", { method: "POST" });
@@ -135,28 +172,60 @@ export function Navbar() {
           {/* Auth Buttons */}
           <div className="hidden md:flex items-center space-x-2">
             {user ? (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="flex items-center space-x-2">
-                    <Avatar className="h-8 w-8">
-                      <AvatarFallback className={`${userBgStyle} text-white`}>
-                        {user.username[0].toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                    <span className={`font-medium ${userColorStyle}`}>{user.username}</span>
-                    {getRoleBadge(user.role)}
+              <>
+                {/* 通知按钮 */}
+                <Link href="/notifications">
+                  <Button variant="ghost" size="icon" className="relative">
+                    <Bell className="h-5 w-5" />
+                    {unreadNotifications > 0 && (
+                      <Badge 
+                        variant="destructive" 
+                        className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs"
+                      >
+                        {unreadNotifications > 99 ? "99+" : unreadNotifications}
+                      </Badge>
+                    )}
                   </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48">
-                  <DropdownMenuItem asChild>
-                    <Link href={`/profile/${user.id}`}>个人中心</Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={handleLogout} className="text-red-600">
-                    退出登录
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+                </Link>
+
+                {/* 私信按钮 */}
+                <Link href="/messages">
+                  <Button variant="ghost" size="icon" className="relative">
+                    <Mail className="h-5 w-5" />
+                    {unreadMessages > 0 && (
+                      <Badge 
+                        variant="destructive" 
+                        className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs"
+                      >
+                        {unreadMessages > 99 ? "99+" : unreadMessages}
+                      </Badge>
+                    )}
+                  </Button>
+                </Link>
+
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" className="flex items-center space-x-2">
+                      <Avatar className="h-8 w-8">
+                        <AvatarFallback className={`${userBgStyle} text-white`}>
+                          {user.username[0].toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className={`font-medium ${userColorStyle}`}>{user.username}</span>
+                      {getRoleBadge(user.role)}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-48">
+                    <DropdownMenuItem asChild>
+                      <Link href={`/profile/${user.id}`}>个人中心</Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={handleLogout} className="text-red-600">
+                      退出登录
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </>
             ) : (
               <>
                 <Button variant="ghost" asChild>
@@ -217,7 +286,31 @@ export function Navbar() {
                       {getRoleBadge(user.role)}
                     </div>
                     <Button variant="ghost" asChild className="justify-start">
-                      <Link href={`/profile/${user.id}`}>个人中心</Link>
+                      <Link href="/notifications" onClick={() => setIsMenuOpen(false)}>
+                        <Bell className="h-4 w-4 mr-2" />
+                        通知
+                        {unreadNotifications > 0 && (
+                          <Badge variant="destructive" className="ml-2">
+                            {unreadNotifications}
+                          </Badge>
+                        )}
+                      </Link>
+                    </Button>
+                    <Button variant="ghost" asChild className="justify-start">
+                      <Link href="/messages" onClick={() => setIsMenuOpen(false)}>
+                        <Mail className="h-4 w-4 mr-2" />
+                        私信
+                        {unreadMessages > 0 && (
+                          <Badge variant="destructive" className="ml-2">
+                            {unreadMessages}
+                          </Badge>
+                        )}
+                      </Link>
+                    </Button>
+                    <Button variant="ghost" asChild className="justify-start">
+                      <Link href={`/profile/${user.id}`} onClick={() => setIsMenuOpen(false)}>
+                        个人中心
+                      </Link>
                     </Button>
                     <Button
                       variant="ghost"

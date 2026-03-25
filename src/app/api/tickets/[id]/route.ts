@@ -87,6 +87,13 @@ export async function PATCH(
     const body = await request.json();
     const client = getSupabaseClient();
 
+    // 获取工单原信息
+    const { data: originalTicket } = await client
+      .from("tickets")
+      .select("id, title, author_id")
+      .eq("id", parseInt(id))
+      .single();
+
     const { data: ticket, error } = await client
       .from("tickets")
       .update({
@@ -102,6 +109,19 @@ export async function PATCH(
     if (error) {
       console.error("Update ticket error:", error);
       return NextResponse.json({ error: "处理失败" }, { status: 500 });
+    }
+
+    // 发送通知给工单作者
+    if (originalTicket && originalTicket.author_id !== user.id) {
+      const statusText = body.status === "accepted" ? "已受理" : "已拒绝";
+      await client.from("notifications").insert({
+        user_id: originalTicket.author_id,
+        type: "ticket_reply",
+        title: `你的工单"${originalTicket.title}"${statusText}`,
+        content: body.reply || undefined,
+        related_id: parseInt(id),
+        related_type: "ticket",
+      });
     }
 
     return NextResponse.json({ ticket });
