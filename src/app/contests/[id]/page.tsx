@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ArrowLeft, Trophy, Clock, Play, Users } from "lucide-react";
+import { ArrowLeft, Trophy, Clock, Play, Users, Edit, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 
 interface Contest {
   id: number;
@@ -18,6 +19,11 @@ interface Contest {
   type: string;
   problem_ids: number[];
   author_id: number;
+  users?: {
+    id: number;
+    username: string;
+    role: string;
+  };
 }
 
 interface Problem {
@@ -30,7 +36,7 @@ interface Participant {
   id: number;
   user_id: number;
   score: number;
-  users: { username: string };
+  users: { id: number; username: string; role: string };
 }
 
 interface User {
@@ -136,14 +142,57 @@ export default function ContestDetailPage() {
   const status = getContestStatus(contest.start_time, contest.end_time);
   const isParticipant = user && participants.some((p) => p.user_id === user.id);
 
+  // 检查是否可以编辑/删除
+  const canEdit = user && (
+    user.role === "super_admin" || 
+    (user.role === "admin" && contest.users?.role !== "super_admin") ||
+    user.id === contest.author_id
+  );
+
+  const handleDelete = async () => {
+    if (!confirm("确定要删除这场比赛吗？此操作不可恢复。")) return;
+
+    try {
+      const res = await fetch(`/api/contests/${contest.id}`, {
+        method: "DELETE",
+      });
+
+      if (res.ok) {
+        toast.success("比赛已删除");
+        router.push("/contests");
+      } else {
+        const data = await res.json();
+        toast.error(data.error || "删除失败");
+      }
+    } catch {
+      toast.error("删除失败");
+    }
+  };
+
   return (
     <div className="container mx-auto px-4 py-8">
-      <Button variant="ghost" className="mb-4" asChild>
-        <Link href="/contests">
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          返回比赛列表
-        </Link>
-      </Button>
+      <div className="flex items-center justify-between mb-4">
+        <Button variant="ghost" asChild>
+          <Link href="/contests">
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            返回比赛列表
+          </Link>
+        </Button>
+        {canEdit && (
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" asChild>
+              <Link href={`/contests/${contest.id}/edit`}>
+                <Edit className="h-4 w-4 mr-2" />
+                编辑
+              </Link>
+            </Button>
+            <Button variant="destructive" size="sm" onClick={handleDelete}>
+              <Trash2 className="h-4 w-4 mr-2" />
+              删除
+            </Button>
+          </div>
+        )}
+      </div>
 
       {/* 比赛信息 */}
       <Card className="mb-6">
@@ -178,6 +227,17 @@ export default function ContestDetailPage() {
               <Users className="h-4 w-4" />
               {participants.length} 人参与
             </span>
+            {contest.users && (
+              <span className="flex items-center gap-1">
+                创建者：
+                <Link 
+                  href={`/profile/${contest.users.id}`}
+                  className="text-blue-600 hover:text-blue-800 dark:text-blue-400"
+                >
+                  {contest.users.username}
+                </Link>
+              </span>
+            )}
           </div>
         </CardHeader>
         <CardContent>
@@ -280,7 +340,16 @@ export default function ContestDetailPage() {
                             )}
                           </TableCell>
                           <TableCell>
-                            {(p as any).users?.username || `用户${p.user_id}`}
+                            {p.users ? (
+                              <Link 
+                                href={`/profile/${p.users.id}`}
+                                className="text-blue-600 hover:text-blue-800 dark:text-blue-400"
+                              >
+                                {p.users.username}
+                              </Link>
+                            ) : (
+                              `用户${p.user_id}`
+                            )}
                           </TableCell>
                           <TableCell className="text-right font-mono">
                             {p.score}

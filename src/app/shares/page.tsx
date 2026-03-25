@@ -161,7 +161,16 @@ export default function SharesPage() {
                       </p>
                       <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
                         <span>
-                          {(share as any).users?.username || `用户${share.author_id}`}
+                          {(share as any).users ? (
+                            <Link 
+                              href={`/profile/${(share as any).users.id}`}
+                              className="text-blue-600 hover:text-blue-800 dark:text-blue-400"
+                            >
+                              {(share as any).users.username}
+                            </Link>
+                          ) : (
+                            `用户${share.author_id}`
+                          )}
                         </span>
                         <span className="flex items-center gap-1">
                           <Eye className="h-3 w-3" />

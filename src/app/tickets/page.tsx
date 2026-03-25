@@ -60,7 +60,6 @@ const statusLabels: Record<string, string> = {
 
 const typeLabels: Record<string, string> = {
   suggestion: "建议",
-  problem_request: "题目公开申请",
 };
 
 export default function TicketsPage() {
@@ -199,7 +198,6 @@ export default function TicketsPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="suggestion">建议</SelectItem>
-                    <SelectItem value="problem_request">题目公开申请</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

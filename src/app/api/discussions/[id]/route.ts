@@ -22,7 +22,7 @@ export async function GET(
 
     const { data: discussion, error } = await client
       .from("discussions")
-      .select("*, users!discussions_author_id_fkey(id, username, role, name_color, total_rating)")
+      .select("*")
       .eq("id", parseInt(id))
       .single();
 
@@ -30,7 +30,23 @@ export async function GET(
       return NextResponse.json({ error: "讨论不存在" }, { status: 404 });
     }
 
-    return NextResponse.json({ discussion });
+    // 获取作者信息
+    let author = null;
+    if (discussion.author_id) {
+      const { data: authorData } = await client
+        .from("users")
+        .select("id, username, role, name_color, total_rating")
+        .eq("id", discussion.author_id)
+        .single();
+      author = authorData;
+    }
+
+    return NextResponse.json({ 
+      discussion: {
+        ...discussion,
+        users: author
+      }
+    });
   } catch (error) {
     console.error("Get discussion error:", error);
     return NextResponse.json({ error: "获取失败" }, { status: 500 });
@@ -55,10 +71,10 @@ export async function PUT(
     const client = getSupabaseClient();
     const body = await request.json();
 
-    // 获取讨论和作者信息
+    // 获取讨论信息
     const { data: discussion } = await client
       .from("discussions")
-      .select("id, author_id, users!discussions_author_id_fkey(id, role)")
+      .select("id, author_id")
       .eq("id", parseInt(id))
       .single();
 
@@ -66,8 +82,15 @@ export async function PUT(
       return NextResponse.json({ error: "讨论不存在" }, { status: 404 });
     }
 
+    // 获取作者信息
+    const { data: authorData } = await client
+      .from("users")
+      .select("id, role")
+      .eq("id", discussion.author_id)
+      .single();
+
     // 检查权限
-    const authorRole = (discussion.users as any)?.role || "user";
+    const authorRole = authorData?.role || "user";
     if (!canEditContent(user, discussion.author_id, authorRole)) {
       return NextResponse.json({ error: "没有权限修改此讨论" }, { status: 403 });
     }
@@ -111,10 +134,10 @@ export async function DELETE(
     const user = JSON.parse(userCookie.value);
     const client = getSupabaseClient();
 
-    // 获取讨论和作者信息
+    // 获取讨论信息
     const { data: discussion } = await client
       .from("discussions")
-      .select("id, author_id, users!discussions_author_id_fkey(id, role)")
+      .select("id, author_id")
       .eq("id", parseInt(id))
       .single();
 
@@ -122,8 +145,15 @@ export async function DELETE(
       return NextResponse.json({ error: "讨论不存在" }, { status: 404 });
     }
 
+    // 获取作者信息
+    const { data: authorData } = await client
+      .from("users")
+      .select("id, role")
+      .eq("id", discussion.author_id)
+      .single();
+
     // 检查权限
-    const authorRole = (discussion.users as any)?.role || "user";
+    const authorRole = authorData?.role || "user";
     if (!canEditContent(user, discussion.author_id, authorRole)) {
       return NextResponse.json({ error: "没有权限删除此讨论" }, { status: 403 });
     }

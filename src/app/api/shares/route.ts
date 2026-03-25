@@ -22,14 +22,14 @@ export async function GET() {
     const authorIds = [...new Set(shares?.map(s => s.author_id) || [])];
     const { data: users } = await client
       .from("users")
-      .select("id, username")
+      .select("id, username, role")
       .in("id", authorIds);
 
-    const userMap = new Map(users?.map(u => [u.id, u.username]) || []);
+    const userMap = new Map(users?.map(u => [u.id, u]) || []);
 
     const sharesWithAuthor = shares?.map(s => ({
       ...s,
-      users: { username: userMap.get(s.author_id) || `用户${s.author_id}` }
+      users: userMap.get(s.author_id) || null
     })) || [];
 
     return NextResponse.json({ shares: sharesWithAuthor });

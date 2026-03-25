@@ -17,17 +17,39 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
+    const contestId = parseInt(id);
+    
+    if (isNaN(contestId)) {
+      return NextResponse.json({ error: "无效的比赛ID" }, { status: 400 });
+    }
+
     const client = getSupabaseClient();
 
     // 获取比赛信息
     const { data: contest, error: contestError } = await client
       .from("contests")
-      .select("*, users!contests_author_id_fkey(id, username, role)")
-      .eq("id", parseInt(id))
+      .select("*")
+      .eq("id", contestId)
       .single();
 
-    if (contestError || !contest) {
+    if (contestError) {
+      console.error("Get contest error:", contestError);
+      return NextResponse.json({ error: "比赛不存在", details: contestError.message }, { status: 404 });
+    }
+
+    if (!contest) {
       return NextResponse.json({ error: "比赛不存在" }, { status: 404 });
+    }
+
+    // 获取作者信息
+    let author = null;
+    if (contest.author_id) {
+      const { data: authorData } = await client
+        .from("users")
+        .select("id, username, role")
+        .eq("id", contest.author_id)
+        .single();
+      author = authorData;
     }
 
     // 获取比赛题目
@@ -41,16 +63,43 @@ export async function GET(
     }
 
     // 获取参与者和排行
-    const { data: participants } = await client
+    const { data: participantsData, error: participantsError } = await client
       .from("contest_participants")
-      .select("*, users(username, name_color, total_rating)")
-      .eq("contest_id", parseInt(id))
+      .select(`
+        id,
+        user_id,
+        score
+      `)
+      .eq("contest_id", contestId)
       .order("score", { ascending: false });
 
+    if (participantsError) {
+      console.error("Get participants error:", participantsError);
+    }
+
+    // 获取参与者用户信息
+    let participants: any[] = [];
+    if (participantsData && participantsData.length > 0) {
+      const userIds = participantsData.map(p => p.user_id);
+      const { data: participantsUsers } = await client
+        .from("users")
+        .select("id, username, role, name_color, total_rating")
+        .in("id", userIds);
+      
+      const usersMap = new Map((participantsUsers || []).map(u => [u.id, u]));
+      participants = participantsData.map(p => ({
+        ...p,
+        users: usersMap.get(p.user_id) || null
+      }));
+    }
+
     return NextResponse.json({
-      contest,
+      contest: {
+        ...contest,
+        users: author
+      },
       problems,
-      participants: participants || [],
+      participants,
     });
   } catch (error) {
     console.error("Get contest error:", error);

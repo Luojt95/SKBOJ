@@ -16,7 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { ArrowLeft, Play, Send, BookOpen } from "lucide-react";
+import { ArrowLeft, Play, Send, BookOpen, Edit, Trash2, History } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
@@ -38,6 +38,7 @@ interface Problem {
   memory_limit: number;
   tags: string[];
   author_id: number;
+  author?: { id: number; username: string; role: string };
   is_visible: boolean;
 }
 
@@ -45,6 +46,24 @@ interface User {
   id: number;
   username: string;
   role: string;
+}
+
+interface Submission {
+  id: number;
+  user_id: number;
+  problem_id: number;
+  language: string;
+  status: string;
+  score: number;
+  time_used: number;
+  memory_used: number;
+  test_results: string;
+  created_at: string;
+  users: {
+    id: number;
+    username: string;
+    role: string;
+  };
 }
 
 const defaultCodes: Record<string, string> = {
@@ -73,11 +92,22 @@ if __name__ == "__main__":
 </html>`,
 };
 
+const statusConfig: Record<string, { label: string; bgClass: string }> = {
+  ac: { label: "AC", bgClass: "bg-green-500 text-white" },
+  wa: { label: "WA", bgClass: "bg-red-500 text-white" },
+  tle: { label: "TLE", bgClass: "bg-yellow-500 text-white" },
+  mle: { label: "MLE", bgClass: "bg-orange-500 text-white" },
+  re: { label: "RE", bgClass: "bg-purple-500 text-white" },
+  ce: { label: "CE", bgClass: "bg-gray-500 text-white" },
+  pac: { label: "PAC", bgClass: "bg-blue-500 text-white" },
+};
+
 export default function ProblemDetailPage() {
   const params = useParams();
   const router = useRouter();
   const [problem, setProblem] = useState<Problem | null>(null);
   const [user, setUser] = useState<User | null>(null);
+  const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [language, setLanguage] = useState("cpp");
   const [code, setCode] = useState(defaultCodes.cpp);
@@ -89,9 +119,10 @@ export default function ProblemDetailPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [problemRes, userRes] = await Promise.all([
+        const [problemRes, userRes, submissionsRes] = await Promise.all([
           fetch(`/api/problems/${params.id}`),
           fetch("/api/auth/me"),
+          fetch(`/api/submissions/problem/${params.id}`),
         ]);
 
         if (problemRes.ok) {
@@ -106,6 +137,11 @@ export default function ProblemDetailPage() {
         if (userRes.ok) {
           const userData = await userRes.json();
           setUser(userData.user);
+        }
+
+        if (submissionsRes.ok) {
+          const submissionsData = await submissionsRes.json();
+          setSubmissions(submissionsData.submissions || []);
         }
       } catch (error) {
         console.error("Failed to fetch data:", error);
@@ -180,6 +216,8 @@ export default function ProblemDetailPage() {
             `状态: ${data.submission.status}\n得分: ${data.submission.score}\n用时: ${data.submission.time_used}ms\n内存: ${data.submission.memory_used}KB`
           );
         }
+        // 刷新提交记录
+        fetchSubmissions();
       } else {
         toast.error(data.error || "提交失败");
       }
@@ -187,6 +225,18 @@ export default function ProblemDetailPage() {
       toast.error("提交失败");
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const fetchSubmissions = async () => {
+    try {
+      const res = await fetch(`/api/submissions/problem/${params.id}`);
+      if (res.ok) {
+        const data = await res.json();
+        setSubmissions(data.submissions || []);
+      }
+    } catch (error) {
+      console.error("Failed to fetch submissions:", error);
     }
   };
 
@@ -209,15 +259,58 @@ export default function ProblemDetailPage() {
 
   const diffConfig = difficultyConfig[problem.difficulty] || difficultyConfig.popular;
   const catConfig = categoryConfig[problem.category] || categoryConfig.P;
+  
+  // 检查是否可以编辑/删除
+  const canEdit = user && (
+    user.role === "super_admin" || 
+    (user.role === "admin" && problem.author?.role !== "super_admin") ||
+    user.id === problem.author_id
+  );
+
+  const handleDelete = async () => {
+    if (!confirm("确定要删除这道题目吗？此操作不可恢复。")) return;
+
+    try {
+      const res = await fetch(`/api/problems/${problem.id}`, {
+        method: "DELETE",
+      });
+
+      if (res.ok) {
+        toast.success("题目已删除");
+        router.push("/problems");
+      } else {
+        const data = await res.json();
+        toast.error(data.error || "删除失败");
+      }
+    } catch {
+      toast.error("删除失败");
+    }
+  };
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <Button variant="ghost" className="mb-4" asChild>
-        <Link href="/problems">
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          返回题目列表
-        </Link>
-      </Button>
+      <div className="flex items-center justify-between mb-4">
+        <Button variant="ghost" asChild>
+          <Link href="/problems">
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            返回题目列表
+          </Link>
+        </Button>
+        {canEdit && (
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" asChild>
+              <Link href={`/problems/${problem.id}/edit`}>
+                <Edit className="h-4 w-4 mr-2" />
+                编辑
+              </Link>
+            </Button>
+            <Button variant="destructive" size="sm" onClick={handleDelete}>
+              <Trash2 className="h-4 w-4 mr-2" />
+              删除
+            </Button>
+          </div>
+        )}
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* 左侧：题目信息 */}
@@ -248,8 +341,12 @@ export default function ProblemDetailPage() {
           </Card>
 
           <Tabs defaultValue="description">
-            <TabsList>
+            <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="description">题目描述</TabsTrigger>
+              <TabsTrigger value="submissions">
+                <History className="h-4 w-4 mr-1" />
+                提交记录
+              </TabsTrigger>
               <TabsTrigger value="solutions">题解</TabsTrigger>
             </TabsList>
             <TabsContent value="description">
@@ -321,6 +418,72 @@ export default function ProblemDetailPage() {
                       </div>
                     </div>
                   )}
+
+                  {/* 作者信息 */}
+                  {problem.author && (
+                    <div className="pt-4 border-t">
+                      <span className="text-sm text-muted-foreground">出题人： </span>
+                      <Link 
+                        href={`/profile/${problem.author.id}`}
+                        className="text-sm font-medium text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+                      >
+                        {problem.author.username}
+                      </Link>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+            <TabsContent value="submissions">
+              <Card>
+                <CardContent className="pt-6">
+                  {submissions.length === 0 ? (
+                    <div className="text-center text-muted-foreground py-8">
+                      <History className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                      <p>暂无提交记录</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {submissions.map((sub) => {
+                        const statusInfo = statusConfig[sub.status] || statusConfig.wa;
+                        return (
+                          <div 
+                            key={sub.id} 
+                            className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"
+                          >
+                            <div className="flex items-center gap-4">
+                              <span className={`px-2 py-1 rounded text-xs font-bold ${statusInfo.bgClass}`}>
+                                {statusInfo.label}
+                              </span>
+                              <div className="flex items-center gap-2">
+                                <Link 
+                                  href={`/profile/${sub.users.id}`}
+                                  className="text-sm font-medium text-blue-600 hover:text-blue-800 dark:text-blue-400"
+                                >
+                                  {sub.users.username}
+                                </Link>
+                                <span className="text-xs text-muted-foreground">{sub.language}</span>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-4 text-sm">
+                              {sub.score !== null && (
+                                <span className="font-medium">{sub.score}分</span>
+                              )}
+                              {sub.time_used && (
+                                <span className="text-muted-foreground">{sub.time_used}ms</span>
+                              )}
+                              {sub.memory_used && (
+                                <span className="text-muted-foreground">{sub.memory_used}KB</span>
+                              )}
+                              <span className="text-muted-foreground text-xs">
+                                {new Date(sub.created_at).toLocaleString("zh-CN")}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>
@@ -331,8 +494,10 @@ export default function ProblemDetailPage() {
                     <BookOpen className="h-12 w-12 mx-auto mb-4 opacity-50" />
                     <p>暂无题解</p>
                     {user && (
-                      <Button className="mt-4" variant="outline">
-                        撰写题解
+                      <Button asChild className="mt-4" variant="outline">
+                        <Link href={`/problems/${problem.id}/solutions/create`}>
+                          撰写题解
+                        </Link>
                       </Button>
                     )}
                   </div>

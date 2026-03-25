@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -13,7 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Users, Trophy, Code, User } from "lucide-react";
+import { Users, Trophy, Code, User, UserX } from "lucide-react";
 import { nameColorConfig } from "@/lib/constants";
 import { toast } from "sonner";
 
@@ -121,6 +122,27 @@ export default function UsersPage() {
     }
   };
 
+  const handleDeleteUser = async (userId: number) => {
+    if (!confirm("确定要注销该用户吗？此操作不可恢复！")) return;
+
+    try {
+      const res = await fetch(`/api/users/${userId}`, {
+        method: "DELETE",
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        toast.success("用户已注销");
+        setUsers(users.filter(u => u.id !== userId));
+      } else {
+        toast.error(data.error || "注销失败");
+      }
+    } catch {
+      toast.error("注销失败，请重试");
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="container mx-auto px-4 py-8 text-center">加载中...</div>
@@ -186,6 +208,7 @@ export default function UsersPage() {
                   <TableHead>做题数</TableHead>
                   <TableHead>权限</TableHead>
                   <TableHead>注册时间</TableHead>
+                  {currentUser?.role === "super_admin" && <TableHead className="w-20">操作</TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -237,6 +260,19 @@ export default function UsersPage() {
                       )}
                     </TableCell>
                     <TableCell>{formatDate(user.created_at)}</TableCell>
+                    {currentUser?.role === "super_admin" && (
+                      <TableCell>
+                        {currentUser.id !== user.id && user.role !== "super_admin" && (
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => handleDeleteUser(user.id)}
+                          >
+                            注销
+                          </Button>
+                        )}
+                      </TableCell>
+                    )}
                   </TableRow>
                 ))}
               </TableBody>

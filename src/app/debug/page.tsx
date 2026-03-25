@@ -60,6 +60,8 @@ export default function DebugPage() {
   const [output, setOutput] = useState("");
   const [isRunning, setIsRunning] = useState(false);
   const [htmlPreview, setHtmlPreview] = useState("");
+  const [runTime, setRunTime] = useState<number | null>(null);
+  const [runMemory, setRunMemory] = useState<number | null>(null);
 
   const handleLanguageChange = (lang: string) => {
     setLanguage(lang);
@@ -76,6 +78,8 @@ export default function DebugPage() {
 
     setIsRunning(true);
     setOutput("运行中...");
+    setRunTime(null);
+    setRunMemory(null);
 
     try {
       const res = await fetch("/api/run", {
@@ -91,6 +95,8 @@ export default function DebugPage() {
         setOutput("HTML 已渲染到预览区域");
       } else {
         setOutput(data.output || data.error || "运行完成");
+        setRunTime(data.time || null);
+        setRunMemory(data.memory || null);
       }
     } catch (error) {
       setOutput("运行失败");
@@ -217,9 +223,19 @@ export default function DebugPage() {
         {/* 输出/预览区 */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">
-              {language === "html" ? "预览" : "输出"}
-            </CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-lg">
+                {language === "html" ? "预览" : "输出"}
+              </CardTitle>
+              {runTime !== null && (
+                <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                  <span>运行时间: <span className="font-mono font-medium text-foreground">{runTime}ms</span></span>
+                  {runMemory !== null && runMemory > 0 && (
+                    <span>内存: <span className="font-mono font-medium text-foreground">{runMemory}KB</span></span>
+                  )}
+                </div>
+              )}
+            </div>
           </CardHeader>
           <CardContent>
             {language === "html" && htmlPreview ? (

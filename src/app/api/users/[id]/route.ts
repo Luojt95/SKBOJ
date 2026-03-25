@@ -107,3 +107,64 @@ export async function PATCH(
     return NextResponse.json({ error: "更新失败" }, { status: 500 });
   }
 }
+
+// 删除用户（仅站长可用）
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+    const cookieStore = await cookies();
+    const userCookie = cookieStore.get("user");
+
+    if (!userCookie) {
+      return NextResponse.json({ error: "请先登录" }, { status: 401 });
+    }
+
+    const currentUser = JSON.parse(userCookie.value);
+
+    // 只有站长可以注销用户
+    if (currentUser.role !== "super_admin") {
+      return NextResponse.json({ error: "没有权限" }, { status: 403 });
+    }
+
+    // 不能注销自己
+    if (currentUser.id === parseInt(id)) {
+      return NextResponse.json({ error: "不能注销自己" }, { status: 400 });
+    }
+
+    const client = getSupabaseClient();
+
+    // 获取目标用户信息
+    const { data: targetUser } = await client
+      .from("users")
+      .select("id, role")
+      .eq("id", parseInt(id))
+      .single();
+
+    if (!targetUser) {
+      return NextResponse.json({ error: "用户不存在" }, { status: 404 });
+    }
+
+    // 不能注销其他站长
+    if (targetUser.role === "super_admin") {
+      return NextResponse.json({ error: "不能注销其他站长" }, { status: 403 });
+    }
+
+    // 删除用户
+    const { error } = await client
+      .from("users")
+      .delete()
+      .eq("id", parseInt(id));
+
+    if (error) {
+      return NextResponse.json({ error: "注销失败" }, { status: 500 });
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("Delete user error:", error);
+    return NextResponse.json({ error: "注销失败" }, { status: 500 });
+  }
+}

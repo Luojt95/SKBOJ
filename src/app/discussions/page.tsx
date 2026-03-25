@@ -252,7 +252,16 @@ export default function DiscussionsPage() {
                     <div className="flex items-center gap-4 mt-3 text-sm text-muted-foreground">
                       <span className="flex items-center gap-1">
                         <User className="h-4 w-4" />
-                        {(discussion as any).users?.username || `用户${discussion.author_id}`}
+                        {(discussion as any).users ? (
+                          <Link 
+                            href={`/profile/${(discussion as any).users.id}`}
+                            className="text-blue-600 hover:text-blue-800 dark:text-blue-400"
+                          >
+                            {(discussion as any).users.username}
+                          </Link>
+                        ) : (
+                          `用户${discussion.author_id}`
+                        )}
                       </span>
                       <span>{formatDate(discussion.created_at)}</span>
                       {discussion.problem_id && (

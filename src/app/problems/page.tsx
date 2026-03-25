@@ -13,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, Plus, Code, CheckCircle, XCircle, Clock, MinusCircle } from "lucide-react";
+import { Search, Plus, Code, MinusCircle } from "lucide-react";
 import { difficultyConfig, categoryConfig } from "@/lib/constants";
 
 interface Problem {
@@ -38,14 +38,14 @@ interface ProblemStatus {
   bestScore: number;
 }
 
-const statusConfig: Record<string, { label: string; color: string; icon: any }> = {
-  ac: { label: "AC", color: "text-green-500", icon: CheckCircle },
-  wa: { label: "WA", color: "text-red-500", icon: XCircle },
-  tle: { label: "TLE", color: "text-yellow-500", icon: Clock },
-  mle: { label: "MLE", color: "text-orange-500", icon: Clock },
-  re: { label: "RE", color: "text-purple-500", icon: XCircle },
-  ce: { label: "CE", color: "text-gray-500", icon: XCircle },
-  pac: { label: "PAC", color: "text-blue-500", icon: CheckCircle },
+const statusConfig: Record<string, { label: string; bgClass: string }> = {
+  ac: { label: "AC", bgClass: "bg-green-500 text-white" },
+  wa: { label: "WA", bgClass: "bg-red-500 text-white" },
+  tle: { label: "TLE", bgClass: "bg-yellow-500 text-white" },
+  mle: { label: "MLE", bgClass: "bg-orange-500 text-white" },
+  re: { label: "RE", bgClass: "bg-purple-500 text-white" },
+  ce: { label: "CE", bgClass: "bg-gray-500 text-white" },
+  pac: { label: "PAC", bgClass: "bg-blue-500 text-white" },
 };
 
 export default function ProblemsPage() {
@@ -188,7 +188,6 @@ export default function ProblemsPage() {
             const catConfig = categoryConfig[problem.category] || categoryConfig.P;
             const status = problemStatus[problem.id];
             const statusInfo = status ? statusConfig[status.status] : null;
-            const StatusIcon = statusInfo?.icon || MinusCircle;
 
             return (
               <Link key={problem.id} href={`/problems/${problem.id}`}>
@@ -196,9 +195,15 @@ export default function ProblemsPage() {
                   <CardContent className="py-4">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-4">
-                        {/* 状态图标 */}
-                        <div className={`w-6 ${statusInfo ? statusInfo.color : "text-gray-300"}`}>
-                          <StatusIcon className="h-5 w-5" />
+                        {/* 状态标签 */}
+                        <div className="w-12 flex justify-center">
+                          {statusInfo ? (
+                            <span className={`px-2 py-0.5 rounded text-xs font-bold ${statusInfo.bgClass}`}>
+                              {statusInfo.label}
+                            </span>
+                          ) : (
+                            <MinusCircle className="h-5 w-5 text-gray-300" />
+                          )}
                         </div>
                         <span className={`text-lg font-mono w-20 ${catConfig.color}`}>
                           {getProblemNumber(problem)}
