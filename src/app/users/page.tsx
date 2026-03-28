@@ -14,7 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Users, Trophy, Code, User, UserX } from "lucide-react";
+import { Users, Trophy, Code, User, UserX, RefreshCw } from "lucide-react";
 import { nameColorConfig } from "@/lib/constants";
 import { toast } from "sonner";
 
@@ -43,6 +43,7 @@ export default function UsersPage() {
   });
   const [isLoading, setIsLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState<{ id: number; role: string } | null>(null);
+  const [isSyncing, setIsSyncing] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -98,6 +99,35 @@ export default function UsersPage() {
     return new Date(dateString).toLocaleDateString("zh-CN");
   };
 
+  const handleSyncStats = async () => {
+    if (!confirm("确定要同步所有用户的做题统计吗？")) return;
+    
+    setIsSyncing(true);
+    try {
+      const res = await fetch("/api/admin/sync-stats", {
+        method: "POST",
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        toast.success(data.message || "同步成功");
+        // 重新获取用户列表
+        const usersRes = await fetch("/api/users");
+        if (usersRes.ok) {
+          const userData = await usersRes.json();
+          setUsers(userData.users || []);
+        }
+      } else {
+        toast.error(data.error || "同步失败");
+      }
+    } catch {
+      toast.error("同步失败，请重试");
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
   const handleRoleChange = async (userId: number, newRole: string) => {
     try {
       const res = await fetch(`/api/users/${userId}`, {
@@ -151,9 +181,21 @@ export default function UsersPage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold">用户列表</h1>
-        <p className="text-muted-foreground mt-1">查看平台用户和统计数据</p>
+      <div className="flex items-center justify-between mb-8">
+        <div>
+          <h1 className="text-3xl font-bold">用户列表</h1>
+          <p className="text-muted-foreground mt-1">查看平台用户和统计数据</p>
+        </div>
+        {currentUser?.role === "admin" || currentUser?.role === "super_admin" ? (
+          <Button
+            variant="outline"
+            onClick={handleSyncStats}
+            disabled={isSyncing}
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${isSyncing ? "animate-spin" : ""}`} />
+            {isSyncing ? "同步中..." : "同步做题数"}
+          </Button>
+        ) : null}
       </div>
 
       {/* 统计卡片 */}
