@@ -14,7 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Users, Trophy, Code, User, UserX, RefreshCw } from "lucide-react";
+import { Users, Trophy, Code, User, UserX, RefreshCw, ChevronLeft, ChevronRight } from "lucide-react";
 import { nameColorConfig } from "@/lib/constants";
 import { toast } from "sonner";
 
@@ -34,6 +34,13 @@ interface Stats {
   totalSubmissions: number;
 }
 
+interface Pagination {
+  page: number;
+  pageSize: number;
+  totalPages: number;
+  total: number;
+}
+
 export default function UsersPage() {
   const [users, setUsers] = useState<UserData[]>([]);
   const [stats, setStats] = useState<Stats>({
@@ -41,40 +48,48 @@ export default function UsersPage() {
     totalProblems: 0,
     totalSubmissions: 0,
   });
+  const [pagination, setPagination] = useState<Pagination>({
+    page: 1,
+    pageSize: 50,
+    totalPages: 1,
+    total: 0,
+  });
   const [isLoading, setIsLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState<{ id: number; role: string } | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [usersRes, meRes] = await Promise.all([
-          fetch("/api/users"),
-          fetch("/api/auth/me"),
-        ]);
-        
-        if (usersRes.ok) {
-          const data = await usersRes.json();
-          setUsers(data.users || []);
-          setStats({
-            totalUsers: data.stats?.totalUsers || 0,
-            totalProblems: data.stats?.totalProblems || 0,
-            totalSubmissions: data.stats?.totalSubmissions || 0,
-          });
-        }
-
-        if (meRes.ok) {
-          const meData = await meRes.json();
-          setCurrentUser(meData.user);
-        }
-      } catch (error) {
-        console.error("Failed to fetch data:", error);
-      } finally {
-        setIsLoading(false);
+  const fetchUsers = async (page: number = 1) => {
+    try {
+      const [usersRes, meRes] = await Promise.all([
+        fetch(`/api/users?page=${page}&pageSize=${pagination.pageSize}`),
+        fetch("/api/auth/me"),
+      ]);
+      
+      if (usersRes.ok) {
+        const data = await usersRes.json();
+        setUsers(data.users || []);
+        setStats({
+          totalUsers: data.stats?.totalUsers || 0,
+          totalProblems: data.stats?.totalProblems || 0,
+          totalSubmissions: data.stats?.totalSubmissions || 0,
+        });
+        setPagination(data.pagination || { page: 1, pageSize: 50, totalPages: 1, total: 0 });
       }
-    };
-    fetchData();
-  }, []);
+
+      if (meRes.ok) {
+        const meData = await meRes.json();
+        setCurrentUser(meData.user);
+      }
+    } catch (error) {
+      console.error("Failed to fetch data:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchUsers(1);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const getRoleBadge = (role: string) => {
     switch (role) {
@@ -113,11 +128,7 @@ export default function UsersPage() {
       if (res.ok) {
         toast.success(data.message || "同步成功");
         // 重新获取用户列表
-        const usersRes = await fetch("/api/users");
-        if (usersRes.ok) {
-          const userData = await usersRes.json();
-          setUsers(userData.users || []);
-        }
+        fetchUsers(pagination.page);
       } else {
         toast.error(data.error || "同步失败");
       }
@@ -256,7 +267,7 @@ export default function UsersPage() {
               <TableBody>
                 {users.map((user, index) => (
                   <TableRow key={user.id} className="cursor-pointer hover:bg-muted/50">
-                    <TableCell className="font-mono">{index + 1}</TableCell>
+                    <TableCell className="font-mono">{(pagination.page - 1) * pagination.pageSize + index + 1}</TableCell>
                     <TableCell>
                       <Link href={`/profile/${user.id}`}>
                         <div className="flex items-center gap-2">
@@ -319,6 +330,60 @@ export default function UsersPage() {
                 ))}
               </TableBody>
             </Table>
+          )}
+
+          {/* 分页 */}
+          {pagination.totalPages > 1 && (
+            <div className="flex items-center justify-between mt-4 pt-4 border-t">
+              <div className="text-sm text-muted-foreground">
+                共 {pagination.total} 名用户，第 {pagination.page} / {pagination.totalPages} 页
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => fetchUsers(pagination.page - 1)}
+                  disabled={pagination.page <= 1}
+                >
+                  <ChevronLeft className="h-4 w-4 mr-1" />
+                  上一页
+                </Button>
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
+                    let pageNum: number;
+                    if (pagination.totalPages <= 5) {
+                      pageNum = i + 1;
+                    } else if (pagination.page <= 3) {
+                      pageNum = i + 1;
+                    } else if (pagination.page >= pagination.totalPages - 2) {
+                      pageNum = pagination.totalPages - 4 + i;
+                    } else {
+                      pageNum = pagination.page - 2 + i;
+                    }
+                    return (
+                      <Button
+                        key={pageNum}
+                        variant={pageNum === pagination.page ? "default" : "outline"}
+                        size="sm"
+                        className="w-9 h-9 p-0"
+                        onClick={() => fetchUsers(pageNum)}
+                      >
+                        {pageNum}
+                      </Button>
+                    );
+                  })}
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => fetchUsers(pagination.page + 1)}
+                  disabled={pagination.page >= pagination.totalPages}
+                >
+                  下一页
+                  <ChevronRight className="h-4 w-4 ml-1" />
+                </Button>
+              </div>
+            </div>
           )}
         </CardContent>
       </Card>

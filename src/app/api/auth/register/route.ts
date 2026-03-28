@@ -1,11 +1,27 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseClient } from "@/storage/database/supabase-client";
 import bcrypt from "bcryptjs";
+import { verifyCaptchaAnswer } from "@/app/api/captcha/route";
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { username, password } = body;
+    const { username, password, captchaToken, captchaAnswer } = body;
+
+    // 验证验证码
+    if (!captchaToken || !captchaAnswer) {
+      return NextResponse.json(
+        { error: "请输入验证码" },
+        { status: 400 }
+      );
+    }
+
+    if (!verifyCaptchaAnswer(captchaToken, captchaAnswer)) {
+      return NextResponse.json(
+        { error: "验证码错误或已过期" },
+        { status: 400 }
+      );
+    }
 
     if (!username || !password) {
       return NextResponse.json(

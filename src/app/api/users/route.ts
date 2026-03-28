@@ -1,11 +1,21 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseClient } from "@/storage/database/supabase-client";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const { searchParams } = new URL(request.url);
+    const page = parseInt(searchParams.get("page") || "1", 10);
+    const pageSize = parseInt(searchParams.get("pageSize") || "50", 10);
+    const offset = (page - 1) * pageSize;
+
     const client = getSupabaseClient();
 
-    // 获取用户列表
+    // 获取总数
+    const { count: totalUsers } = await client
+      .from("users")
+      .select("*", { count: "exact", head: true });
+
+    // 获取用户列表（分页）
     const { data: users, error: usersError } = await client
       .from("users")
       .select(`
@@ -15,7 +25,7 @@ export async function GET() {
         solved_popular_plus, solved_improve_plus, solved_provincial, solved_noi
       `)
       .order("total_rating", { ascending: false })
-      .limit(100);
+      .range(offset, offset + pageSize - 1);
 
     if (usersError) {
       console.error("Users query error:", usersError);
@@ -37,11 +47,7 @@ export async function GET() {
         (u.solved_noi || 0),
     }));
 
-    // 获取统计数据
-    const { count: totalUsers } = await client
-      .from("users")
-      .select("*", { count: "exact", head: true });
-
+    // 获取统计数据（用户总数已经在上面获取过了）
     const { count: totalProblems } = await client
       .from("problems")
       .select("*", { count: "exact", head: true });
@@ -56,6 +62,12 @@ export async function GET() {
         totalUsers: totalUsers || 0,
         totalProblems: totalProblems || 0,
         totalSubmissions: totalSubmissions || 0,
+      },
+      pagination: {
+        page,
+        pageSize,
+        totalPages: Math.ceil((totalUsers || 0) / pageSize),
+        total: totalUsers || 0,
       },
     });
   } catch (error) {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -8,23 +8,62 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Eye, EyeOff, UserPlus } from "lucide-react";
+import { Eye, EyeOff, UserPlus, RefreshCw } from "lucide-react";
+
+interface CaptchaData {
+  token: string;
+  image: string;
+}
 
 export default function RegisterPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [captchaLoading, setCaptchaLoading] = useState(false);
+  const [captcha, setCaptcha] = useState<CaptchaData | null>(null);
   const [formData, setFormData] = useState({
     username: "",
     password: "",
     confirmPassword: "",
+    captchaAnswer: "",
   });
+
+  // 获取验证码
+  const fetchCaptcha = async () => {
+    setCaptchaLoading(true);
+    try {
+      const res = await fetch("/api/captcha");
+      if (res.ok) {
+        const data = await res.json();
+        setCaptcha(data);
+        setFormData(prev => ({ ...prev, captchaAnswer: "" }));
+      }
+    } catch {
+      toast.error("获取验证码失败");
+    } finally {
+      setCaptchaLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchCaptcha();
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (formData.password !== formData.confirmPassword) {
       toast.error("两次密码输入不一致");
+      return;
+    }
+
+    if (!captcha) {
+      toast.error("请先获取验证码");
+      return;
+    }
+
+    if (!formData.captchaAnswer) {
+      toast.error("请输入验证码");
       return;
     }
 
@@ -37,6 +76,8 @@ export default function RegisterPage() {
         body: JSON.stringify({
           username: formData.username,
           password: formData.password,
+          captchaToken: captcha.token,
+          captchaAnswer: formData.captchaAnswer,
         }),
       });
 
@@ -46,6 +87,10 @@ export default function RegisterPage() {
         toast.success("注册成功，请登录");
         router.push("/login");
       } else {
+        // 如果验证码错误，刷新验证码
+        if (data.error?.includes("验证码")) {
+          fetchCaptcha();
+        }
         toast.error(data.error || "注册失败");
       }
     } catch {
@@ -124,6 +169,54 @@ export default function RegisterPage() {
                 required
               />
             </div>
+            
+            {/* 验证码 */}
+            <div className="space-y-2">
+              <Label htmlFor="captcha">验证码</Label>
+              <div className="flex items-center gap-3">
+                <div className="flex-shrink-0">
+                  {captcha ? (
+                    <img
+                      src={captcha.image}
+                      alt="验证码"
+                      className="h-10 rounded border cursor-pointer hover:opacity-80 transition-opacity"
+                      onClick={fetchCaptcha}
+                      title="点击刷新"
+                    />
+                  ) : (
+                    <div className="w-[160px] h-10 bg-muted rounded flex items-center justify-center text-xs text-muted-foreground">
+                      加载中...
+                    </div>
+                  )}
+                </div>
+                <Input
+                  id="captcha"
+                  type="text"
+                  placeholder="输入计算结果"
+                  value={formData.captchaAnswer}
+                  onChange={(e) =>
+                    setFormData({ ...formData, captchaAnswer: e.target.value })
+                  }
+                  required
+                  className="flex-1"
+                  autoComplete="off"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  onClick={fetchCaptcha}
+                  disabled={captchaLoading}
+                  title="刷新验证码"
+                >
+                  <RefreshCw className={`h-4 w-4 ${captchaLoading ? "animate-spin" : ""}`} />
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                请计算图中乘法结果，点击图片可刷新
+              </p>
+            </div>
+            
             <Button
               type="submit"
               className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
