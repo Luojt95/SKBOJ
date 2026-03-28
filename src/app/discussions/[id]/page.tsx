@@ -63,6 +63,7 @@ export default function DiscussionDetailPage() {
   const [discussion, setDiscussion] = useState<Discussion | null>(null);
   const [replies, setReplies] = useState<Reply[]>([]);
   const [user, setUser] = useState<User | null>(null);
+  const [likedDiscussions, setLikedDiscussions] = useState<Set<number>>(new Set());
   const [isLoading, setIsLoading] = useState(true);
   const [replyContent, setReplyContent] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -183,6 +184,55 @@ export default function DiscussionDetailPage() {
     }
   };
 
+  const handleLike = async (targetId: number, isReply: boolean = false) => {
+    if (!user) {
+      toast.error("请先登录");
+      router.push("/login");
+      return;
+    }
+
+    const isLiked = likedDiscussions.has(targetId);
+    const action = isLiked ? "unlike" : "like";
+
+    try {
+      const res = await fetch("/api/likes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          targetType: isReply ? "discussion" : "discussion",
+          targetId,
+          action,
+        }),
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        setLikedDiscussions(prev => {
+          const newSet = new Set(prev);
+          if (data.liked) {
+            newSet.add(targetId);
+          } else {
+            newSet.delete(targetId);
+          }
+          return newSet;
+        });
+        
+        // 更新点赞数
+        if (isReply) {
+          setReplies(prev =>
+            prev.map(r =>
+              r.id === targetId ? { ...r, likes: data.likes } : r
+            )
+          );
+        } else if (discussion) {
+          setDiscussion({ ...discussion, likes: data.likes });
+        }
+      }
+    } catch (error) {
+      toast.error("操作失败");
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="container mx-auto px-4 py-8 text-center">加载中...</div>
@@ -244,10 +294,16 @@ export default function DiscussionDetailPage() {
               )}
             </span>
             <span>{formatDate(discussion.created_at)}</span>
-            <span className="flex items-center gap-1">
-              <ThumbsUp className="h-4 w-4" />
-              {discussion.likes}
-            </span>
+            <button
+              onClick={() => handleLike(discussion.id)}
+              className={`flex items-center gap-1 transition-colors ${
+                likedDiscussions.has(discussion.id) 
+                  ? "text-red-500" 
+                  : "text-muted-foreground hover:text-red-500"
+              }`}
+            >
+              {likedDiscussions.has(discussion.id) ? "❤️" : "🤍"} {discussion.likes}
+            </button>
           </div>
         </CardHeader>
         <CardContent>

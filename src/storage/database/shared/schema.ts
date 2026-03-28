@@ -101,12 +101,14 @@ export const solutions = pgTable(
     title: varchar("title", { length: 200 }).notNull(),
     content: text("content").notNull(),
     likes: integer("likes").default(0),
+    status: varchar("status", { length: 20 }).default("pending").notNull(), // pending, approved, rejected
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true }),
   },
   (table) => [
     index("solutions_problem_idx").on(table.problemId),
     index("solutions_user_idx").on(table.userId),
+    index("solutions_status_idx").on(table.status),
   ]
 );
 
@@ -285,6 +287,22 @@ export const privateMessages = pgTable(
   ]
 );
 
+// ==================== 点赞表 ====================
+export const likes = pgTable(
+  "likes",
+  {
+    id: serial().primaryKey(),
+    userId: integer("user_id").notNull(),
+    targetType: varchar("target_type", { length: 20 }).notNull(), // solution, discussion, benben
+    targetId: integer("target_id").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index("likes_user_idx").on(table.userId),
+    index("likes_target_idx").on(table.targetType, table.targetId),
+  ]
+);
+
 // ==================== 系统健康检查表 ====================
 export const healthCheck = pgTable("health_check", {
   id: serial().notNull(),
@@ -378,6 +396,7 @@ export type Benben = typeof benbens.$inferSelect;
 export type UserFollow = typeof userFollows.$inferSelect;
 export type Notification = typeof notifications.$inferSelect;
 export type PrivateMessage = typeof privateMessages.$inferSelect;
+export type Like = typeof likes.$inferSelect;
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type LoginUser = z.infer<typeof loginUserSchema>;

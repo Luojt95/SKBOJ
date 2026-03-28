@@ -76,7 +76,7 @@ export default function CreateSolutionPage() {
       const data = await res.json();
 
       if (res.ok) {
-        toast.success("题解发布成功");
+        toast.success(data.message || "题解发布成功");
         router.push(`/problems/${params.id}`);
       } else {
         toast.error(data.error || "发布失败");

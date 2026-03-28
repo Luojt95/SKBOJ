@@ -91,6 +91,65 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "提交失败" }, { status: 500 });
     }
 
+    // 如果AC，更新用户做题统计
+    if (result.status === "ac") {
+      // 获取题目难度
+      const { data: problemInfo } = await client
+        .from("problems")
+        .select("difficulty")
+        .eq("id", problemId)
+        .single();
+
+      if (problemInfo) {
+        // 检查是否已解决过此题
+        const { data: existingSubmission } = await client
+          .from("submissions")
+          .select("id")
+          .eq("user_id", user.id)
+          .eq("problem_id", problemId)
+          .eq("status", "ac")
+          .neq("id", submission.id)
+          .limit(1);
+
+        // 如果之前没解决过，更新统计
+        if (!existingSubmission || existingSubmission.length === 0) {
+          const difficulty = problemInfo.difficulty;
+          const fieldMap: Record<string, string> = {
+            "entry": "solved_entry",
+            "popular_minus": "solved_popular_minus",
+            "popular": "solved_popular",
+            "popular_plus": "solved_popular_plus",
+            "improve_plus": "solved_improve_plus",
+            "provincial": "solved_provincial",
+            "noi": "solved_noi",
+          };
+          const field = fieldMap[difficulty] || "solved_popular";
+          
+          // 获取当前值并更新
+          const { data: currentUser } = await client
+            .from("users")
+            .select("*")
+            .eq("id", user.id)
+            .single();
+
+          if (currentUser) {
+            const currentCount = (currentUser as Record<string, any>)[field] || 0;
+            const currentProblemRating = (currentUser as Record<string, any>).problem_rating || 0;
+            const currentTotalRating = (currentUser as Record<string, any>).total_rating || 100;
+            
+            await client
+              .from("users")
+              .update({
+                [field]: currentCount + 1,
+                problem_rating: currentProblemRating + 10,
+                total_rating: currentTotalRating + 10,
+              })
+              .eq("id", user.id);
+          }
+        }
+      }
+    }
+
     // OI赛制且比赛进行中，隐藏评测结果
     if (isOIContest && isContestOngoing) {
       return NextResponse.json({ 

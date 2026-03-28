@@ -198,19 +198,32 @@ export async function DELETE(
     const user = JSON.parse(userCookie.value);
     const client = getSupabaseClient();
 
-    // 获取比赛和作者信息
-    const { data: contest } = await client
+    // 获取比赛信息
+    const { data: contest, error: contestError } = await client
       .from("contests")
-      .select("id, author_id, users!contests_author_id_fkey(id, role)")
+      .select("id, author_id")
       .eq("id", parseInt(id))
       .single();
 
-    if (!contest) {
+    if (contestError || !contest) {
+      console.error("Get contest for delete error:", contestError);
       return NextResponse.json({ error: "比赛不存在" }, { status: 404 });
     }
 
+    // 获取作者信息
+    let authorRole = "user";
+    if (contest.author_id) {
+      const { data: author } = await client
+        .from("users")
+        .select("id, role")
+        .eq("id", contest.author_id)
+        .single();
+      if (author) {
+        authorRole = author.role;
+      }
+    }
+
     // 检查权限
-    const authorRole = (contest.users as any)?.role || "user";
     if (!canEditContent(user, contest.author_id, authorRole)) {
       return NextResponse.json({ error: "没有权限删除此比赛" }, { status: 403 });
     }

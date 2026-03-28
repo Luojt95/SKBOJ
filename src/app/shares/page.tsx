@@ -77,6 +77,26 @@ export default function SharesPage() {
     toast.success("代码已复制到剪贴板");
   };
 
+  const handleSelectShare = async (share: CodeShare) => {
+    setSelectedShare(share);
+    // 调用API增加浏览量
+    try {
+      const res = await fetch(`/api/shares/${share.id}`);
+      if (res.ok) {
+        const data = await res.json();
+        // 更新本地浏览量
+        setShares(prev => 
+          prev.map(s => 
+            s.id === share.id ? { ...s, views: data.share.views } : s
+          )
+        );
+        setSelectedShare(prev => prev ? { ...prev, views: data.share.views } : prev);
+      }
+    } catch (error) {
+      console.error("Failed to update views:", error);
+    }
+  };
+
   const handleDebug = (share: CodeShare) => {
     // 存储代码到 localStorage，跳转到 debug 页面
     localStorage.setItem("debug_code", share.code);
@@ -143,7 +163,7 @@ export default function SharesPage() {
                 className={`cursor-pointer hover:shadow-md transition-shadow ${
                   selectedShare?.id === share.id ? "ring-2 ring-primary" : ""
                 }`}
-                onClick={() => setSelectedShare(share)}
+                onClick={() => handleSelectShare(share)}
               >
                 <CardContent className="py-4">
                   <div className="flex items-start justify-between">

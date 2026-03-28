@@ -125,6 +125,7 @@ export default function ProblemDetailPage() {
   const [user, setUser] = useState<User | null>(null);
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [solutions, setSolutions] = useState<Solution[]>([]);
+  const [likedSolutions, setLikedSolutions] = useState<Set<number>>(new Set());
   const [isLoading, setIsLoading] = useState(true);
   const [language, setLanguage] = useState("cpp");
   const [code, setCode] = useState(defaultCodes.cpp);
@@ -178,6 +179,50 @@ export default function ProblemDetailPage() {
   const handleLanguageChange = (lang: string) => {
     setLanguage(lang);
     setCode(defaultCodes[lang] || "");
+  };
+
+  const handleLikeSolution = async (solutionId: number) => {
+    if (!user) {
+      toast.error("请先登录");
+      router.push("/login");
+      return;
+    }
+
+    const isLiked = likedSolutions.has(solutionId);
+    const action = isLiked ? "unlike" : "like";
+
+    try {
+      const res = await fetch("/api/likes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          targetType: "solution",
+          targetId: solutionId,
+          action,
+        }),
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        setLikedSolutions(prev => {
+          const newSet = new Set(prev);
+          if (data.liked) {
+            newSet.add(solutionId);
+          } else {
+            newSet.delete(solutionId);
+          }
+          return newSet;
+        });
+        // 更新题解的点赞数
+        setSolutions(prev =>
+          prev.map(s =>
+            s.id === solutionId ? { ...s, likes: data.likes } : s
+          )
+        );
+      }
+    } catch (error) {
+      toast.error("操作失败");
+    }
   };
 
   const handleRun = async () => {
@@ -571,7 +616,16 @@ export default function ProblemDetailPage() {
                                 {solution.users.username}
                               </Link>
                             )}
-                            <span className="text-muted-foreground">👍 {solution.likes}</span>
+                            <button
+                              onClick={() => handleLikeSolution(solution.id)}
+                              className={`flex items-center gap-1 transition-colors ${
+                                likedSolutions.has(solution.id) 
+                                  ? "text-red-500" 
+                                  : "text-muted-foreground hover:text-red-500"
+                              }`}
+                            >
+                              {likedSolutions.has(solution.id) ? "❤️" : "🤍"} {solution.likes}
+                            </button>
                           </div>
                           <div className="mt-3 prose prose-sm dark:prose-invert max-w-none line-clamp-3">
                             <ReactMarkdown
