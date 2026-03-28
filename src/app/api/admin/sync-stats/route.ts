@@ -2,20 +2,51 @@ import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { getSupabaseClient } from "@/storage/database/supabase-client";
 
-// 同步用户做题统计（管理员专用）
-export async function POST(request: NextRequest) {
-  try {
-    const cookieStore = await cookies();
-    const userCookie = cookieStore.get("user");
+// 验证权限
+async function checkAuth(request: NextRequest): Promise<boolean> {
+  // 方式1: 通过Authorization Header
+  const authHeader = request.headers.get("authorization");
+  const cronSecret = process.env.CRON_SECRET;
+  
+  if (cronSecret && authHeader === `Bearer ${cronSecret}`) {
+    return true;
+  }
+  
+  // 方式2: 通过URL参数（方便定时任务）
+  const { searchParams } = new URL(request.url);
+  const secret = searchParams.get("secret");
+  if (cronSecret && secret === cronSecret) {
+    return true;
+  }
+  
+  // 方式3: 通过用户登录状态
+  const cookieStore = await cookies();
+  const userCookie = cookieStore.get("user");
 
-    if (!userCookie) {
-      return NextResponse.json({ error: "请先登录" }, { status: 401 });
-    }
-
+  if (userCookie) {
     const user = JSON.parse(userCookie.value);
+    if (user.role === "admin" || user.role === "super_admin") {
+      return true;
+    }
+  }
+  
+  return false;
+}
 
-    // 只有管理员和站长可以调用
-    if (user.role !== "admin" && user.role !== "super_admin") {
+// GET 请求（方便定时任务调用）
+export async function GET(request: NextRequest) {
+  return doSync(request);
+}
+
+// POST 请求
+export async function POST(request: NextRequest) {
+  return doSync(request);
+}
+
+// 执行同步
+async function doSync(request: NextRequest) {
+  try {
+    if (!await checkAuth(request)) {
       return NextResponse.json({ error: "没有权限" }, { status: 403 });
     }
 
