@@ -16,7 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { ArrowLeft, Play, Send, BookOpen, Edit, Trash2, History } from "lucide-react";
+import { ArrowLeft, Play, Send, BookOpen, Edit, Trash2 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
@@ -412,17 +412,15 @@ export default function ProblemDetailPage() {
               <div className="flex gap-4 text-sm text-muted-foreground mt-2">
                 <span>时间限制: {problem.time_limit}ms</span>
                 <span>内存限制: {problem.memory_limit}MB</span>
+                <span>提交: {(problem as any).submission_count || 0}</span>
+                <span>通过: {(problem as any).accepted_count || 0}</span>
               </div>
             </CardHeader>
           </Card>
 
           <Tabs defaultValue="description">
-            <TabsList className="grid w-full grid-cols-3">
+            <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="description">题目描述</TabsTrigger>
-              <TabsTrigger value="submissions">
-                <History className="h-4 w-4 mr-1" />
-                提交记录
-              </TabsTrigger>
               <TabsTrigger value="solutions">题解</TabsTrigger>
             </TabsList>
             <TabsContent value="description">
@@ -505,75 +503,6 @@ export default function ProblemDetailPage() {
                       >
                         {problem.author.username}
                       </Link>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </TabsContent>
-            <TabsContent value="submissions">
-              <Card>
-                <CardContent className="pt-6">
-                  {submissions.length === 0 ? (
-                    <div className="text-center text-muted-foreground py-8">
-                      <History className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                      <p>暂无提交记录</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      {submissions.map((sub) => {
-                        // OI赛制隐藏状态处理
-                        const isHidden = sub.status === "hidden";
-                        const statusInfo = isHidden 
-                          ? { label: "???", bgClass: "bg-gray-500 text-white" }
-                          : (statusConfig[sub.status] || statusConfig.wa);
-                        return (
-                          <div 
-                            key={sub.id} 
-                            className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"
-                          >
-                            <div className="flex items-center gap-4">
-                              <span className={`px-2 py-1 rounded text-xs font-bold ${statusInfo.bgClass}`}>
-                                {statusInfo.label}
-                              </span>
-                              <div className="flex items-center gap-2">
-                                {sub.users && (
-                                  <Link 
-                                    href={`/profile/${sub.users.id}`}
-                                    className="text-sm font-medium text-blue-600 hover:text-blue-800 dark:text-blue-400"
-                                  >
-                                    {sub.users.username}
-                                  </Link>
-                                )}
-                                <span className="text-xs text-muted-foreground">{sub.language}</span>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-4 text-sm">
-                              {isHidden ? (
-                                <>
-                                  <span className="font-medium">???分</span>
-                                  <span className="text-muted-foreground">???ms</span>
-                                  <span className="text-muted-foreground">???KB</span>
-                                </>
-                              ) : (
-                                <>
-                                  {sub.score !== null && (
-                                    <span className="font-medium">{sub.score}分</span>
-                                  )}
-                                  {sub.time_used && (
-                                    <span className="text-muted-foreground">{sub.time_used}ms</span>
-                                  )}
-                                  {sub.memory_used && (
-                                    <span className="text-muted-foreground">{sub.memory_used}KB</span>
-                                  )}
-                                </>
-                              )}
-                              <span className="text-muted-foreground text-xs">
-                                {new Date(sub.created_at).toLocaleString("zh-CN")}
-                              </span>
-                            </div>
-                          </div>
-                        );
-                      })}
                     </div>
                   )}
                 </CardContent>

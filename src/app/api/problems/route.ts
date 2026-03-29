@@ -35,7 +35,35 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "获取题目失败" }, { status: 500 });
     }
 
-    return NextResponse.json({ problems });
+    // 获取所有题目的提交统计
+    const problemIds = (problems || []).map(p => p.id);
+    
+    // 获取每个题目的提交总数
+    const { data: submissionStats } = await client
+      .from("submissions")
+      .select("problem_id, status")
+      .in("problem_id", problemIds);
+
+    // 计算每个题目的提交数和通过数
+    const statsMap: Record<number, { total: number; accepted: number }> = {};
+    (submissionStats || []).forEach(s => {
+      if (!statsMap[s.problem_id]) {
+        statsMap[s.problem_id] = { total: 0, accepted: 0 };
+      }
+      statsMap[s.problem_id].total++;
+      if (s.status === "ac") {
+        statsMap[s.problem_id].accepted++;
+      }
+    });
+
+    // 合并统计信息到题目数据
+    const problemsWithStats = (problems || []).map(p => ({
+      ...p,
+      submission_count: statsMap[p.id]?.total || 0,
+      accepted_count: statsMap[p.id]?.accepted || 0,
+    }));
+
+    return NextResponse.json({ problems: problemsWithStats });
   } catch (error) {
     console.error("Get problems error:", error);
     return NextResponse.json({ error: "获取题目失败" }, { status: 500 });

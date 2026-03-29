@@ -136,6 +136,18 @@ export async function GET(
       delete problem.test_cases;
     }
 
+    // 获取提交统计
+    const { data: submissionStats } = await client
+      .from("submissions")
+      .select("status")
+      .eq("problem_id", parseInt(id));
+
+    const totalSubmissions = submissionStats?.length || 0;
+    const acceptedSubmissions = submissionStats?.filter(s => s.status === "ac").length || 0;
+
+    problem.submission_count = totalSubmissions;
+    problem.accepted_count = acceptedSubmissions;
+
     return NextResponse.json({ problem });
   } catch (error) {
     console.error("Get problem error:", error);

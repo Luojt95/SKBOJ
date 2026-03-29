@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { getSupabaseClient } from "@/storage/database/supabase-client";
+import { checkUserPermission } from "@/lib/warning-check";
 
 // 获取私信列表（会话列表）
 export async function GET(request: NextRequest) {
@@ -142,6 +143,12 @@ export async function POST(request: NextRequest) {
 
     if (receiverId === user.id) {
       return NextResponse.json({ error: "不能给自己发私信" }, { status: 400 });
+    }
+
+    // 检查用户权限
+    const permission = await checkUserPermission(user.id, "messages");
+    if (!permission.allowed) {
+      return NextResponse.json({ error: permission.reason }, { status: 403 });
     }
 
     const client = getSupabaseClient();

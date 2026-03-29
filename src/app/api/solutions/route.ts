@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { getSupabaseClient } from "@/storage/database/supabase-client";
+import { checkUserPermission } from "@/lib/warning-check";
 
 // 创建题解
 export async function POST(request: NextRequest) {
@@ -13,6 +14,13 @@ export async function POST(request: NextRequest) {
     }
 
     const user = JSON.parse(userCookie.value);
+    
+    // 检查用户权限
+    const permission = await checkUserPermission(user.id, "solutions");
+    if (!permission.allowed) {
+      return NextResponse.json({ error: permission.reason }, { status: 403 });
+    }
+    
     const body = await request.json();
     const { problem_id, title, content } = body;
 

@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Share2, Eye, Copy, Code, Plus, Play } from "lucide-react";
+import { Share2, Eye, Copy, Code, Plus, Play, Trash2 } from "lucide-react";
 
 interface CodeShare {
   id: number;
@@ -117,6 +117,42 @@ export default function SharesPage() {
     return new Date(dateString).toLocaleDateString("zh-CN");
   };
 
+  const canDelete = (share: CodeShare) => {
+    if (!user) return false;
+    return (
+      share.author_id === user.id ||
+      user.role === "admin" ||
+      user.role === "super_admin"
+    );
+  };
+
+  const handleDelete = async (share: CodeShare, e?: React.MouseEvent) => {
+    if (e) {
+      e.stopPropagation();
+    }
+    
+    if (!confirm("确定要删除这个分享吗？")) return;
+
+    try {
+      const res = await fetch(`/api/shares/${share.id}`, {
+        method: "DELETE",
+      });
+
+      if (res.ok) {
+        toast.success("删除成功");
+        setShares(shares.filter((s) => s.id !== share.id));
+        if (selectedShare?.id === share.id) {
+          setSelectedShare(null);
+        }
+      } else {
+        const data = await res.json();
+        toast.error(data.error || "删除失败");
+      }
+    } catch {
+      toast.error("删除失败");
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="container mx-auto px-4 py-8 text-center">加载中...</div>
@@ -199,6 +235,16 @@ export default function SharesPage() {
                         <span>{formatDate(share.created_at)}</span>
                       </div>
                     </div>
+                    {canDelete(share) && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="text-muted-foreground hover:text-destructive"
+                        onClick={(e) => handleDelete(share, e)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -215,6 +261,17 @@ export default function SharesPage() {
               </CardTitle>
               {selectedShare && (
                 <div className="flex gap-2">
+                  {canDelete(selectedShare) && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-destructive hover:text-destructive"
+                      onClick={() => handleDelete(selectedShare)}
+                    >
+                      <Trash2 className="h-4 w-4 mr-1" />
+                      删除
+                    </Button>
+                  )}
                   <Button
                     variant="outline"
                     size="sm"
