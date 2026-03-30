@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { getSupabaseClient } from "@/storage/database/supabase-client";
-import { checkUserPermission } from "@/lib/warning-check";
+import { checkUserPoints, deductUserPoints } from "@/lib/warning-check";
 
 // 获取讨论列表
 export async function GET() {
@@ -63,14 +63,14 @@ export async function POST(request: NextRequest) {
     }
 
     const user = JSON.parse(userCookie.value);
+    const body = await request.json();
     
-    // 检查用户权限
-    const permission = await checkUserPermission(user.id, "discussions");
-    if (!permission.allowed) {
-      return NextResponse.json({ error: permission.reason }, { status: 403 });
+    // 检查积分（发布讨论需要20积分）
+    const pointsCheck = await checkUserPoints(user.id, "discussions");
+    if (!pointsCheck.allowed) {
+      return NextResponse.json({ error: pointsCheck.reason }, { status: 403 });
     }
     
-    const body = await request.json();
     const client = getSupabaseClient();
 
     console.log("Creating discussion with:", {
@@ -97,6 +97,14 @@ export async function POST(request: NextRequest) {
       console.error("Create discussion error:", error);
       return NextResponse.json({ error: "发布失败", details: error.message }, { status: 500 });
     }
+
+    // 扣除积分
+    const isReply = body.parentId != null;
+    await deductUserPoints(
+      user.id,
+      isReply ? "discussion_reply" : "discussions",
+      discussion.id
+    );
 
     // 获取用户信息
     const { data: userData } = await client

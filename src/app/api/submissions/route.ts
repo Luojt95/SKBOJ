@@ -28,16 +28,20 @@ export async function POST(request: NextRequest) {
     // 检查是否是OI赛制的比赛
     let isOIContest = false;
     let isContestOngoing = false;
+    let contestFormat = "OI";
+    let adminThreshold = null;
     
     if (contestId) {
       const { data: contest } = await client
         .from("contests")
-        .select("id, type, start_time, end_time")
+        .select("id, type, format, admin_threshold, start_time, end_time")
         .eq("id", contestId)
         .single();
       
       if (contest) {
         isOIContest = contest.type === "oi";
+        contestFormat = contest.format || "OI";
+        adminThreshold = contest.admin_threshold;
         const now = new Date();
         const endTime = new Date(contest.end_time);
         isContestOngoing = now <= endTime;
@@ -146,6 +150,51 @@ export async function POST(request: NextRequest) {
               })
               .eq("id", user.id);
           }
+        }
+      }
+    }
+
+    // CS赛制：检查是否达到管理员门槛
+    if (contestId && contestFormat === "CS" && adminThreshold !== null) {
+      // 计算用户在比赛中的总分
+      const { data: contestSubmissions } = await client
+        .from("submissions")
+        .select("problem_id, score")
+        .eq("user_id", user.id)
+        .eq("contest_id", contestId);
+
+      if (contestSubmissions && contestSubmissions.length > 0) {
+        // 取每道题的最高分
+        const problemScores = new Map<number, number>();
+        for (const sub of contestSubmissions) {
+          const current = problemScores.get(sub.problem_id) || 0;
+          if ((sub.score || 0) > current) {
+            problemScores.set(sub.problem_id, sub.score || 0);
+          }
+        }
+        
+        const totalScore = Array.from(problemScores.values()).reduce((a, b) => a + b, 0);
+        
+        // 如果达到门槛且用户还不是管理员，自动设为管理员
+        if (totalScore >= adminThreshold && user.role === "user") {
+          await client
+            .from("users")
+            .update({ role: "admin" })
+            .eq("id", user.id);
+          
+          // 给用户发送通知
+          await client.from("notifications").insert({
+            user_id: user.id,
+            type: "admin_promotion",
+            title: "恭喜您成为管理员",
+            content: `您在CS赛制比赛中达到 ${totalScore} 分（门槛：${adminThreshold} 分），已被自动设置为管理员！`,
+            related_type: "contest",
+            related_id: contestId,
+          });
+          
+          // 增加积分（成为管理员+50）
+          const { addPoints, POINTS_REWARD } = await import("@/lib/points-system");
+          await addPoints(user.id, POINTS_REWARD.BECOME_ADMIN, "成为管理员");
         }
       }
     }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { getSupabaseClient } from "@/storage/database/supabase-client";
+import { addPoints, POINTS_REWARD } from "@/lib/points-system";
 
 // 审核题解（管理员）
 export async function PATCH(
@@ -35,13 +36,17 @@ export async function PATCH(
     // 检查题解是否存在
     const { data: solution, error: findError } = await client
       .from("solutions")
-      .select("id, status")
+      .select("id, status, user_id")
       .eq("id", parseInt(id))
       .single();
 
     if (findError || !solution) {
       return NextResponse.json({ error: "题解不存在" }, { status: 404 });
     }
+
+    // 检查是否是从pending变为approved
+    const wasPending = solution.status === "pending";
+    const isNowApproved = status === "approved";
 
     // 更新状态
     const { error } = await client
@@ -54,6 +59,17 @@ export async function PATCH(
 
     if (error) {
       return NextResponse.json({ error: "审核失败" }, { status: 500 });
+    }
+
+    // 如果题解通过，给用户增加积分
+    if (wasPending && isNowApproved) {
+      await addPoints(
+        solution.user_id,
+        POINTS_REWARD.SOLUTION_APPROVED,
+        "题解审核通过",
+        "solution",
+        solution.id
+      );
     }
 
     return NextResponse.json({ 

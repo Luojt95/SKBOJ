@@ -20,12 +20,11 @@ export async function GET(request: NextRequest) {
       .from("users")
       .select(`
         id, username, role, created_at, 
-        name_color, total_rating, rating,
-        warning_level, warning_reason, warning_at,
+        name_color, total_rating, points,
         solved_entry, solved_popular_minus, solved_popular, 
         solved_popular_plus, solved_improve_plus, solved_provincial, solved_noi
       `)
-      .order("total_rating", { ascending: false })
+      .order("points", { ascending: false })
       .range(offset, offset + pageSize - 1);
 
     if (usersError) {

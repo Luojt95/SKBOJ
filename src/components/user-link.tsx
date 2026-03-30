@@ -6,61 +6,58 @@ import { cn } from "@/lib/utils";
 interface UserLinkProps {
   id: number;
   username: string;
-  rating?: number | null;
-  warningLevel?: string | null;
+  points?: number | null;
+  role?: string;
   className?: string;
-  showRating?: boolean;
+  showPoints?: boolean;
 }
 
-// Rating颜色配置
-function getRatingColor(rating: number | null | undefined): string {
-  if (rating === null || rating === undefined) return "text-foreground";
+// 根据积分获取颜色
+function getPointsColor(points: number | null | undefined, role?: string): string {
+  // 站长和管理员紫色
+  if (role === "super_admin" || role === "admin") {
+    return "text-purple-500";
+  }
+
+  const p = points || 0;
   
-  if (rating < 1000) return "text-gray-500";
-  if (rating < 1200) return "text-green-500";
-  if (rating < 1400) return "text-blue-500";
-  if (rating < 1600) return "text-cyan-500";
-  if (rating < 1800) return "text-purple-500";
-  if (rating < 2000) return "text-yellow-500";
-  if (rating < 2200) return "text-orange-500";
-  if (rating < 2400) return "text-red-500";
-  if (rating < 2600) return "text-pink-500";
-  return "text-rose-400"; // 2600+
+  if (p <= 0) return "text-gray-500";        // 0积分：灰色
+  if (p <= 10) return "text-sky-400";        // 1-10：浅蓝色
+  if (p <= 20) return "text-blue-600";       // 11-20：深蓝色
+  if (p <= 50) return "text-green-500";      // 21-50：绿色
+  if (p <= 100) return "text-yellow-500";    // 51-100：黄色
+  if (p <= 200) return "text-orange-500";    // 101-200：橙色
+  if (p <= 500) return "text-red-500";       // 201-500：红色
+  return "text-amber-400";                    // 500+：亮金色
 }
 
-// Rating等级名称
-function getRatingTitle(rating: number | null | undefined): string {
-  if (rating === null || rating === undefined) return "未评级";
+// 获取等级名称
+function getPointsTitle(points: number | null | undefined, role?: string): string {
+  if (role === "super_admin") return "站长";
+  if (role === "admin") return "管理员";
   
-  if (rating < 1000) return "Newbie";
-  if (rating < 1200) return "Pupil";
-  if (rating < 1400) return "Specialist";
-  if (rating < 1600) return "Expert";
-  if (rating < 1800) return "Candidate Master";
-  if (rating < 2000) return "Master";
-  if (rating < 2200) return "International Master";
-  if (rating < 2400) return "Grandmaster";
-  if (rating < 2600) return "International Grandmaster";
-  return "Legendary Grandmaster";
+  const p = points || 0;
+  
+  if (p <= 0) return "新手";
+  if (p <= 10) return "入门";
+  if (p <= 20) return "初级";
+  if (p <= 50) return "中级";
+  if (p <= 100) return "高级";
+  if (p <= 200) return "专家";
+  if (p <= 500) return "大师";
+  return "传奇";
 }
 
 export default function UserLink({ 
   id, 
   username, 
-  rating, 
-  warningLevel,
+  points, 
+  role,
   className,
-  showRating = false 
+  showPoints = false 
 }: UserLinkProps) {
-  // 如果用户有提醒，名字显示为灰色
-  const hasWarning = warningLevel && warningLevel !== "";
-  const colorClass = hasWarning 
-    ? "text-gray-400 line-through" 
-    : getRatingColor(rating);
-  
-  const title = hasWarning 
-    ? `该用户已被${warningLevel}级提醒` 
-    : `${username} (${getRatingTitle(rating)})`;
+  const colorClass = getPointsColor(points, role);
+  const title = `${username} (${getPointsTitle(points, role)})`;
 
   return (
     <Link 
@@ -73,8 +70,8 @@ export default function UserLink({
       title={title}
     >
       {username}
-      {showRating && rating !== null && rating !== undefined && !hasWarning && (
-        <span className="ml-1 text-xs opacity-70">({rating})</span>
+      {showPoints && points !== null && points !== undefined && (
+        <span className="ml-1 text-xs opacity-70">({points})</span>
       )}
     </Link>
   );

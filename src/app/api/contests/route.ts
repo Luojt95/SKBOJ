@@ -68,6 +68,8 @@ export async function POST(request: NextRequest) {
         start_time: body.startTime,
         end_time: body.endTime,
         type: body.type || "oi",
+        format: body.format || "OI", // 赛制: OI, IOI, CS
+        admin_threshold: body.format === "CS" ? body.adminThreshold : null, // CS赛制门槛
         problem_ids: body.problemIds || [],
         author_id: user.id,
         is_visible: body.isVisible ?? true,

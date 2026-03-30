@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
     // 加密密码
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // 创建用户（默认为普通用户）
+    // 创建用户（默认为普通用户，初始100积分）
     const { data: user, error } = await client
       .from("users")
       .insert({
@@ -75,6 +75,7 @@ export async function POST(request: NextRequest) {
         problem_rating: 0,
         contest_rating: 0,
         total_rating: 100,
+        points: 100, // 新用户初始100积分
         solved_entry: 0,
         solved_popular_minus: 0,
         solved_popular: 0,
@@ -83,7 +84,7 @@ export async function POST(request: NextRequest) {
         solved_provincial: 0,
         solved_noi: 0,
       })
-      .select("id, username, role, name_color, created_at")
+      .select("id, username, role, name_color, created_at, points")
       .single();
 
     if (error) {

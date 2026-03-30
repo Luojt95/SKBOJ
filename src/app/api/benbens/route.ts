@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { getSupabaseClient } from "@/storage/database/supabase-client";
-import { checkUserPermission } from "@/lib/warning-check";
+import { checkUserPoints, deductUserPoints } from "@/lib/warning-check";
 
 // 获取犇犇列表
 export async function GET(request: NextRequest) {
@@ -106,14 +106,18 @@ export async function POST(request: NextRequest) {
     }
 
     const user = JSON.parse(userCookie.value);
+    const body = await request.json();
     
-    // 检查用户权限
-    const permission = await checkUserPermission(user.id, "benbens");
-    if (!permission.allowed) {
-      return NextResponse.json({ error: permission.reason }, { status: 403 });
+    // 检查积分（发犇犇-3，回复-2）
+    const isReply = body.parentId != null;
+    const pointsCheck = await checkUserPoints(
+      user.id,
+      isReply ? "benben_reply" : "benbens"
+    );
+    if (!pointsCheck.allowed) {
+      return NextResponse.json({ error: pointsCheck.reason }, { status: 403 });
     }
     
-    const body = await request.json();
     const client = getSupabaseClient();
 
     // 解析@提及的用户
@@ -140,6 +144,13 @@ export async function POST(request: NextRequest) {
       console.error("Create benben error:", error);
       return NextResponse.json({ error: "发布失败" }, { status: 500 });
     }
+
+    // 扣除积分
+    await deductUserPoints(
+      user.id,
+      isReply ? "benben_reply" : "benbens",
+      benben.id
+    );
 
     // 更新父犇犇的回复数
     if (body.parentId) {

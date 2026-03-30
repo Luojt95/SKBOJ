@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { getSupabaseClient } from "@/storage/database/supabase-client";
-import { checkUserPermission } from "@/lib/warning-check";
 
 // 创建题解
 export async function POST(request: NextRequest) {
@@ -14,13 +13,6 @@ export async function POST(request: NextRequest) {
     }
 
     const user = JSON.parse(userCookie.value);
-    
-    // 检查用户权限
-    const permission = await checkUserPermission(user.id, "solutions");
-    if (!permission.allowed) {
-      return NextResponse.json({ error: permission.reason }, { status: 403 });
-    }
-    
     const body = await request.json();
     const { problem_id, title, content } = body;
 
@@ -62,6 +54,29 @@ export async function POST(request: NextRequest) {
     if (error) {
       console.error("Create solution error:", error);
       return NextResponse.json({ error: "创建失败" }, { status: 500 });
+    }
+
+    // 如果是普通用户提交，通知所有管理员审核
+    if (!isAdmin) {
+      // 获取所有管理员和站长
+      const { data: admins } = await client
+        .from("users")
+        .select("id")
+        .in("role", ["admin", "super_admin"]);
+
+      if (admins && admins.length > 0) {
+        // 创建通知
+        const notifications = admins.map(admin => ({
+          user_id: admin.id,
+          type: "solution_review",
+          title: "新题解待审核",
+          content: `${user.username} 提交了题目 #${problem_id} 的题解《${title}》，请及时审核`,
+          related_id: solution.id,
+          related_type: "solution",
+        }));
+
+        await client.from("notifications").insert(notifications);
+      }
     }
 
     return NextResponse.json({ 

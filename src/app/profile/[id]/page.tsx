@@ -22,6 +22,8 @@ interface UserProfile {
   username: string;
   role: string;
   name_color?: string;
+  points?: number;
+  lastCheckIn?: string;
   creditRating: number;
   problemRating: number;
   contestRating: number;
@@ -34,9 +36,6 @@ interface UserProfile {
   solvedProvincial: number;
   solvedNoi: number;
   createdAt: string;
-  warning_level?: string;
-  warning_reason?: string;
-  warning_at?: string;
 }
 
 interface Benben {
@@ -108,14 +107,6 @@ const difficultyConfig: Record<string, { label: string; color: string; bgColor: 
   noi: { label: "NOI/NOI+/CTSC", color: "text-gray-800", bgColor: "bg-gray-200" },
 };
 
-// 提醒级别配置
-const warningLevelConfig: Record<string, { label: string; ratingPenalty: number; restrictions: string[]; color: string }> = {
-  C: { label: "C级提醒", ratingPenalty: 10, restrictions: [], color: "bg-gray-500" },
-  B: { label: "B级提醒", ratingPenalty: 30, restrictions: [], color: "bg-blue-500" },
-  A: { label: "A级提醒", ratingPenalty: 50, restrictions: ["题解", "讨论"], color: "bg-orange-500" },
-  S: { label: "S级提醒", ratingPenalty: 100, restrictions: ["题解", "讨论", "犇犇", "私信", "分享"], color: "bg-red-500" },
-};
-
 export default function ProfilePage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
   const [user, setUser] = useState<UserProfile | null>(null);
@@ -128,10 +119,6 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
   const [followersCount, setFollowersCount] = useState(0);
   const [followingCount, setFollowingCount] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [showWarningDialog, setShowWarningDialog] = useState(false);
-  const [warningLevel, setWarningLevel] = useState<string>("C");
-  const [warningReason, setWarningReason] = useState("");
-  const [warningLoading, setWarningLoading] = useState(false);
   const pathname = usePathname();
 
   // Tab状态
@@ -274,74 +261,6 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
     }
   };
 
-  const handleWarning = async () => {
-    if (!warningReason.trim()) {
-      toast.error("请填写提醒原因");
-      return;
-    }
-
-    setWarningLoading(true);
-    try {
-      const res = await fetch(`/api/users/${resolvedParams.id}/warning`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          level: warningLevel,
-          reason: warningReason.trim(),
-        }),
-      });
-
-      const data = await res.json();
-
-      if (res.ok) {
-        toast.success(data.message);
-        setShowWarningDialog(false);
-        setWarningReason("");
-        // 刷新用户信息
-        const userRes = await fetch(`/api/users/${resolvedParams.id}`);
-        if (userRes.ok) {
-          const userData = await userRes.json();
-          setUser(userData.user);
-        }
-      } else {
-        toast.error(data.error || "提醒失败");
-      }
-    } catch {
-      toast.error("提醒失败");
-    } finally {
-      setWarningLoading(false);
-    }
-  };
-
-  const handleCancelWarning = async () => {
-    if (!confirm("确定要取消对该用户的提醒吗？")) return;
-
-    setWarningLoading(true);
-    try {
-      const res = await fetch(`/api/users/${resolvedParams.id}/warning`, {
-        method: "DELETE",
-      });
-
-      const data = await res.json();
-
-      if (res.ok) {
-        toast.success(data.message);
-        // 刷新用户信息
-        const userRes = await fetch(`/api/users/${resolvedParams.id}`);
-        if (userRes.ok) {
-          const userData = await userRes.json();
-          setUser(userData.user);
-        }
-      } else {
-        toast.error(data.error || "取消提醒失败");
-      }
-    } catch {
-      toast.error("取消提醒失败");
-    } finally {
-      setWarningLoading(false);
-    }
-  };
-
   const formatDate = (dateStr: string | null | undefined) => {
     if (!dateStr) return "未知";
     const date = new Date(dateStr);
@@ -464,31 +383,7 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
                 <h1 className={`text-2xl font-bold ${userColorStyle}`}>{user.username}</h1>
                 {user.role === "super_admin" && <Badge variant="destructive">站长</Badge>}
                 {user.role === "admin" && <Badge className="bg-orange-500">管理员</Badge>}
-                {user.warning_level && (
-                  <Badge className={`${warningLevelConfig[user.warning_level]?.color || "bg-gray-500"} text-white`}>
-                    <AlertTriangle className="h-3 w-3 mr-1" />
-                    {warningLevelConfig[user.warning_level]?.label || "已提醒"}
-                  </Badge>
-                )}
               </div>
-              {/* 显示提醒原因 */}
-              {user.warning_level && user.warning_reason && (
-                <div className="mb-4 p-3 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg">
-                  <p className="text-sm text-red-800 dark:text-red-200">
-                    <strong>提醒原因：</strong>{user.warning_reason}
-                  </p>
-                  {user.warning_at && (
-                    <p className="text-xs text-red-600 dark:text-red-400 mt-1">
-                      提醒时间：{formatDateTime(user.warning_at)}
-                    </p>
-                  )}
-                  {warningLevelConfig[user.warning_level]?.restrictions.length > 0 && (
-                    <p className="text-xs text-red-600 dark:text-red-400 mt-1">
-                      限制：不可发布 {warningLevelConfig[user.warning_level].restrictions.join("、")}
-                    </p>
-                  )}
-                </div>
-              )}
               <div className="flex flex-wrap gap-4 text-sm text-muted-foreground mb-4">
                 <div className="flex items-center gap-1">
                   <Calendar className="h-4 w-4" />
@@ -496,7 +391,7 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
                 </div>
                 <div className="flex items-center gap-1">
                   <Award className="h-4 w-4" />
-                  <span>Rating: {user.totalRating}</span>
+                  <span>积分: {user.points ?? 100}</span>
                 </div>
                 <div className="flex items-center gap-1">
                   <TrendingUp className="h-4 w-4" />
@@ -523,30 +418,6 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
                   <Heart className={`h-4 w-4 mr-2 ${isFollowing ? "fill-current text-red-500" : ""}`} />
                   {isFollowing ? "已关注" : "关注"}
                 </Button>
-              </div>
-            )}
-            {/* 站长提醒功能 */}
-            {currentUser?.role === "super_admin" && !isOwnProfile && user.role !== "super_admin" && (
-              <div className="flex gap-2">
-                {user.warning_level ? (
-                  <Button
-                    variant="outline"
-                    className="text-green-600 hover:text-green-700"
-                    onClick={handleCancelWarning}
-                    disabled={warningLoading}
-                  >
-                    取消提醒
-                  </Button>
-                ) : (
-                  <Button
-                    variant="outline"
-                    className="text-orange-600 hover:text-orange-700"
-                    onClick={() => setShowWarningDialog(true)}
-                  >
-                    <AlertTriangle className="h-4 w-4 mr-2" />
-                    提醒用户
-                  </Button>
-                )}
               </div>
             )}
           </div>
@@ -752,69 +623,6 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
           </div>
         </TabsContent>
       </Tabs>
-
-      {/* 提醒用户对话框 */}
-      {showWarningDialog && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <Card className="w-full max-w-md mx-4">
-            <CardHeader>
-              <CardTitle>提醒用户</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">提醒级别</label>
-                <div className="grid grid-cols-4 gap-2">
-                  {Object.entries(warningLevelConfig).map(([level, config]) => (
-                    <Button
-                      key={level}
-                      type="button"
-                      variant={warningLevel === level ? "default" : "outline"}
-                      className={`flex flex-col h-auto py-2 ${warningLevel === level ? config.color : ""}`}
-                      onClick={() => setWarningLevel(level)}
-                    >
-                      <span className="text-lg font-bold">{level}</span>
-                      <span className="text-xs">-{config.ratingPenalty}</span>
-                    </Button>
-                  ))}
-                </div>
-                <p className="text-xs text-muted-foreground mt-2">
-                  {warningLevelConfig[warningLevel]?.label}：-{warningLevelConfig[warningLevel]?.ratingPenalty} Rating
-                  {warningLevelConfig[warningLevel]?.restrictions.length > 0 && 
-                    `，不可发布 ${warningLevelConfig[warningLevel].restrictions.join("、")}`
-                  }
-                </p>
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">提醒原因</label>
-                <textarea
-                  className="w-full min-h-[100px] p-3 border rounded-md resize-none"
-                  placeholder="请输入提醒原因..."
-                  value={warningReason}
-                  onChange={(e) => setWarningReason(e.target.value)}
-                />
-              </div>
-              <div className="flex gap-2 justify-end">
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setShowWarningDialog(false);
-                    setWarningReason("");
-                  }}
-                >
-                  取消
-                </Button>
-                <Button
-                  onClick={handleWarning}
-                  disabled={warningLoading || !warningReason.trim()}
-                  className="bg-orange-500 hover:bg-orange-600"
-                >
-                  {warningLoading ? "处理中..." : "确认提醒"}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
     </div>
   );
 }

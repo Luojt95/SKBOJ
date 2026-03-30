@@ -1,81 +1,94 @@
 import { getSupabaseClient } from "@/storage/database/supabase-client";
+import { checkPoints, deductPoints, POINTS_COST } from "./points-system";
 
-// 提醒级别对应的限制
-const warningRestrictions: Record<string, string[]> = {
-  C: [],
-  B: [],
-  A: ["solutions", "discussions"],
-  S: ["solutions", "discussions", "benbens", "messages", "shares"],
-};
-
-export interface UserWarningInfo {
-  hasWarning: boolean;
-  level: string | null;
-  restrictions: string[];
-}
-
-// 检查用户是否有发布某类内容的权限
-export async function checkUserPermission(
+// 检查用户是否有足够的积分发布内容
+export async function checkUserPoints(
   userId: number,
-  action: "solutions" | "discussions" | "benbens" | "messages" | "shares"
-): Promise<{ allowed: boolean; reason?: string }> {
-  const client = getSupabaseClient();
-
-  const { data: user, error } = await client
-    .from("users")
-    .select("warning_level, role")
-    .eq("id", userId)
-    .single();
-
-  if (error || !user) {
-    return { allowed: false, reason: "用户不存在" };
+  action: "solutions" | "discussions" | "benbens" | "messages" | "benben_reply" | "discussion_reply"
+): Promise<{ allowed: boolean; reason?: string; cost?: number }> {
+  // 获取所需积分
+  let requiredPoints = 0;
+  switch (action) {
+    case "benbens":
+      requiredPoints = Math.abs(POINTS_COST.BENBEN);
+      break;
+    case "messages":
+      requiredPoints = Math.abs(POINTS_COST.MESSAGE);
+      break;
+    case "benben_reply":
+      requiredPoints = Math.abs(POINTS_COST.BENBEN_REPLY);
+      break;
+    case "discussion_reply":
+      requiredPoints = Math.abs(POINTS_COST.DISCUSSION_REPLY);
+      break;
+    case "discussions":
+      requiredPoints = Math.abs(POINTS_COST.DISCUSSION);
+      break;
+    case "solutions":
+      requiredPoints = 0; // 题解不需要积分
+      break;
+    default:
+      requiredPoints = 0;
   }
 
-  // 管理员和站长不受限制
-  if (user.role === "admin" || user.role === "super_admin") {
-    return { allowed: true };
+  // 如果不需要积分，直接返回允许
+  if (requiredPoints === 0) {
+    return { allowed: true, cost: 0 };
   }
 
-  const warningLevel = user.warning_level as string | null;
-
-  if (!warningLevel) {
-    return { allowed: true };
-  }
-
-  const restrictions = warningRestrictions[warningLevel] || [];
-
-  if (restrictions.includes(action)) {
-    const levelLabels: Record<string, string> = {
-      A: "A级提醒",
-      S: "S级提醒",
-    };
+  // 检查积分
+  const result = await checkPoints(userId, requiredPoints);
+  
+  if (!result.sufficient) {
     return {
       allowed: false,
-      reason: `您已被${levelLabels[warningLevel] || "提醒"}，暂时无法发布此类内容`,
+      reason: result.message || `积分不足，需要 ${requiredPoints} 积分`,
+      cost: requiredPoints,
     };
   }
 
-  return { allowed: true };
+  return { allowed: true, cost: requiredPoints };
 }
 
-// 获取用户提醒信息
-export async function getUserWarningInfo(userId: number): Promise<UserWarningInfo> {
-  const client = getSupabaseClient();
+// 扣减用户积分
+export async function deductUserPoints(
+  userId: number,
+  action: "solutions" | "discussions" | "benbens" | "messages" | "benben_reply" | "discussion_reply",
+  relatedId?: number
+): Promise<boolean> {
+  let amount = 0;
+  let reason = "";
+  let relatedType = "";
 
-  const { data: user, error } = await client
-    .from("users")
-    .select("warning_level")
-    .eq("id", userId)
-    .single();
-
-  if (error || !user || !user.warning_level) {
-    return { hasWarning: false, level: null, restrictions: [] };
+  switch (action) {
+    case "benbens":
+      amount = POINTS_COST.BENBEN;
+      reason = "发送犇犇";
+      relatedType = "benben";
+      break;
+    case "messages":
+      amount = POINTS_COST.MESSAGE;
+      reason = "发送私信";
+      relatedType = "message";
+      break;
+    case "benben_reply":
+      amount = POINTS_COST.BENBEN_REPLY;
+      reason = "回复犇犇";
+      relatedType = "benben";
+      break;
+    case "discussion_reply":
+      amount = POINTS_COST.DISCUSSION_REPLY;
+      reason = "回复讨论";
+      relatedType = "discussion";
+      break;
+    case "discussions":
+      amount = POINTS_COST.DISCUSSION;
+      reason = "发布讨论";
+      relatedType = "discussion";
+      break;
+    default:
+      return true;
   }
 
-  const level = user.warning_level as string;
-  return {
-    hasWarning: true,
-    level,
-    restrictions: warningRestrictions[level] || [],
-  };
+  return await deductPoints(userId, amount, reason, relatedType, relatedId);
 }

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { getSupabaseClient } from "@/storage/database/supabase-client";
-import { checkUserPermission } from "@/lib/warning-check";
+import { checkUserPoints, deductUserPoints } from "@/lib/warning-check";
 
 // 获取私信列表（会话列表）
 export async function GET(request: NextRequest) {
@@ -145,10 +145,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "不能给自己发私信" }, { status: 400 });
     }
 
-    // 检查用户权限
-    const permission = await checkUserPermission(user.id, "messages");
-    if (!permission.allowed) {
-      return NextResponse.json({ error: permission.reason }, { status: 403 });
+    // 检查积分
+    const pointsCheck = await checkUserPoints(user.id, "messages");
+    if (!pointsCheck.allowed) {
+      return NextResponse.json({ error: pointsCheck.reason }, { status: 403 });
     }
 
     const client = getSupabaseClient();
@@ -179,6 +179,9 @@ export async function POST(request: NextRequest) {
       console.error("Send message error:", error);
       return NextResponse.json({ error: "发送失败" }, { status: 500 });
     }
+
+    // 扣除积分
+    await deductUserPoints(user.id, "messages", message.id);
 
     // 获取发送者信息
     const { data: sender } = await client
