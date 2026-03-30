@@ -150,6 +150,9 @@ export default function HomePage() {
       setBenbens(prev => [data.benben, ...prev]);
       setNewBenben("");
       toast.success("发布成功");
+      
+      // 触发积分变化事件，让导航栏更新积分显示
+      window.dispatchEvent(new CustomEvent("pointsChanged"));
     } catch (error: any) {
       toast.error(error.message || "发布失败");
     } finally {

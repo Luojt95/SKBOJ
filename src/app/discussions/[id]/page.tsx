@@ -134,6 +134,8 @@ export default function DiscussionDetailPage() {
         toast.success("回复成功");
         setReplies([data.discussion, ...replies]);
         setReplyContent("");
+        // 触发积分变化事件，让导航栏更新积分显示
+        window.dispatchEvent(new CustomEvent("pointsChanged"));
       } else {
         toast.error(data.error || "回复失败");
       }

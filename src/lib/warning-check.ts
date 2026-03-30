@@ -55,7 +55,7 @@ export async function deductUserPoints(
   userId: number,
   action: "solutions" | "discussions" | "benbens" | "messages" | "benben_reply" | "discussion_reply",
   relatedId?: number
-): Promise<boolean> {
+): Promise<{ success: boolean; newPoints?: number }> {
   let amount = 0;
   let reason = "";
   let relatedType = "";
@@ -87,7 +87,7 @@ export async function deductUserPoints(
       relatedType = "discussion";
       break;
     default:
-      return true;
+      return { success: true };
   }
 
   return await deductPoints(userId, amount, reason, relatedType, relatedId);

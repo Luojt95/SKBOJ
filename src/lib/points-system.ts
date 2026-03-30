@@ -68,46 +68,32 @@ export async function deductPoints(
   reason: string,
   relatedType?: string,
   relatedId?: number
-): Promise<boolean> {
+): Promise<{ success: boolean; newPoints?: number }> {
   const client = getSupabaseClient();
 
   // 检查用户是否是站长
   const { data: user } = await client
     .from("users")
-    .select("role")
+    .select("role, points")
     .eq("id", userId)
     .single();
 
-  if (user?.role === "super_admin") {
-    return true; // 站长不扣积分
+  if (!user) return { success: false };
+  
+  if (user.role === "super_admin") {
+    return { success: true, newPoints: Infinity }; // 站长不扣积分
   }
 
-  // 扣减积分
-  const { error: updateError } = await client
-    .rpc("deduct_points", {
-      user_id: userId,
-      amount: Math.abs(amount),
-    });
+  const currentPoints = user.points || 0;
+  const newPoints = Math.max(0, currentPoints - Math.abs(amount));
 
-  if (updateError) {
-    // 如果没有rpc函数，使用普通更新
-    const { data: currentUser } = await client
-      .from("users")
-      .select("points")
-      .eq("id", userId)
-      .single();
+  // 更新积分
+  const { error } = await client
+    .from("users")
+    .update({ points: newPoints })
+    .eq("id", userId);
 
-    if (!currentUser) return false;
-
-    const newPoints = (currentUser.points || 0) - Math.abs(amount);
-
-    const { error } = await client
-      .from("users")
-      .update({ points: Math.max(0, newPoints) })
-      .eq("id", userId);
-
-    if (error) return false;
-  }
+  if (error) return { success: false };
 
   // 记录积分变动历史
   await client.from("points_history").insert({
@@ -118,7 +104,7 @@ export async function deductPoints(
     related_id: relatedId,
   });
 
-  return true;
+  return { success: true, newPoints };
 }
 
 // 增加积分

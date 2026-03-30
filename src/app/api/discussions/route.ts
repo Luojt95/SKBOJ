@@ -98,18 +98,37 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "发布失败", details: error.message }, { status: 500 });
     }
 
-    // 扣除积分
+    // 扣除积分并获取新积分
     const isReply = body.parentId != null;
-    await deductUserPoints(
+    const deductResult = await deductUserPoints(
       user.id,
       isReply ? "discussion_reply" : "discussions",
       discussion.id
     );
 
+    // 更新 cookie 中的积分
+    if (deductResult.success && deductResult.newPoints !== undefined) {
+      const cookieStore = await cookies();
+      cookieStore.set(
+        "user",
+        JSON.stringify({
+          ...user,
+          points: deductResult.newPoints === Infinity ? undefined : deductResult.newPoints,
+        }),
+        {
+          httpOnly: true,
+          secure: false,
+          sameSite: "lax",
+          maxAge: 60 * 60 * 24 * 7,
+          path: "/",
+        }
+      );
+    }
+
     // 获取用户信息
     const { data: userData } = await client
       .from("users")
-      .select("id, username, role")
+      .select("id, username, role, points")
       .eq("id", user.id)
       .single();
 
@@ -117,7 +136,8 @@ export async function POST(request: NextRequest) {
       discussion: {
         ...discussion,
         users: userData
-      }
+      },
+      newPoints: deductResult.newPoints
     });
   } catch (error) {
     console.error("Create discussion error:", error);

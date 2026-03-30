@@ -60,20 +60,33 @@ export function Navbar() {
   const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [unreadMessages, setUnreadMessages] = useState(0);
 
+  // 刷新用户信息的函数
+  const refreshUser = async () => {
+    try {
+      const res = await fetch("/api/auth/me");
+      if (res.ok) {
+        const data = await res.json();
+        setUser(data.user);
+      }
+    } catch {
+      setUser(null);
+    }
+  };
+
   useEffect(() => {
     // 检查登录状态
-    const checkAuth = async () => {
-      try {
-        const res = await fetch("/api/auth/me");
-        if (res.ok) {
-          const data = await res.json();
-          setUser(data.user);
-        }
-      } catch {
-        setUser(null);
-      }
+    refreshUser();
+  }, []);
+
+  // 监听自定义事件，用于刷新用户积分
+  useEffect(() => {
+    const handlePointsChange = () => {
+      refreshUser();
     };
-    checkAuth();
+    window.addEventListener("pointsChanged", handlePointsChange);
+    return () => {
+      window.removeEventListener("pointsChanged", handlePointsChange);
+    };
   }, []);
 
   // 获取未读消息数量

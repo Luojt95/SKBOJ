@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
     // 查找用户
     const { data: users, error } = await client
       .from("users")
-      .select("id, username, password, role, name_color")
+      .select("id, username, password, role, points")
       .eq("username", username);
 
     if (error) {
@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
         id: user.id,
         username: user.username,
         role: user.role,
-        name_color: user.name_color || "gray",
+        points: user.points || 0,
       }),
       {
         httpOnly: true,
@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
         id: user.id,
         username: user.username,
         role: user.role,
-        name_color: user.name_color || "gray",
+        points: user.points || 0,
       },
     });
   } catch (error) {
