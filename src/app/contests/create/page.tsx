@@ -16,7 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Save, ArrowLeft } from "lucide-react";
+import { Save, ArrowLeft, Info } from "lucide-react";
 import Link from "next/link";
 
 interface Problem {
@@ -35,6 +35,8 @@ export default function CreateContestPage() {
     startTime: "",
     endTime: "",
     type: "oi",
+    format: "OI",
+    adminThreshold: "",
     isVisible: true,
   });
   const [selectedProblems, setSelectedProblems] = useState<number[]>([]);
@@ -66,6 +68,12 @@ export default function CreateContestPage() {
       return;
     }
 
+    // CS赛制需要设置门槛
+    if (formData.format === "CS" && !formData.adminThreshold) {
+      toast.error("CS赛制需要设置管理员门槛分数");
+      return;
+    }
+
     setIsLoading(true);
 
     try {
@@ -74,6 +82,7 @@ export default function CreateContestPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...formData,
+          adminThreshold: formData.format === "CS" ? parseInt(formData.adminThreshold) : null,
           problemIds: selectedProblems,
         }),
       });
@@ -166,17 +175,18 @@ export default function CreateContestPage() {
               <div className="space-y-2">
                 <Label>赛制</Label>
                 <Select
-                  value={formData.type}
+                  value={formData.format}
                   onValueChange={(value) =>
-                    setFormData({ ...formData, type: value })
+                    setFormData({ ...formData, format: value })
                   }
                 >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="oi">OI赛制</SelectItem>
-                    <SelectItem value="ioi">IOI赛制</SelectItem>
+                    <SelectItem value="OI">OI赛制</SelectItem>
+                    <SelectItem value="IOI">IOI赛制</SelectItem>
+                    <SelectItem value="CS">CS赛制</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -191,6 +201,36 @@ export default function CreateContestPage() {
                 <Label htmlFor="isVisible">公开可见</Label>
               </div>
             </div>
+
+            {/* CS赛制额外配置 */}
+            {formData.format === "CS" && (
+              <div className="p-4 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg space-y-3">
+                <div className="flex items-center gap-2 text-amber-800 dark:text-amber-200">
+                  <Info className="h-4 w-4" />
+                  <span className="font-medium">CS赛制说明</span>
+                </div>
+                <p className="text-sm text-amber-700 dark:text-amber-300">
+                  CS赛制类似IOI赛制，但设有管理员门槛。参赛者在比赛中达到门槛分数后，将自动成为管理员。
+                </p>
+                <div className="space-y-2">
+                  <Label htmlFor="adminThreshold">管理员门槛分数 *</Label>
+                  <Input
+                    id="adminThreshold"
+                    type="number"
+                    min="1"
+                    value={formData.adminThreshold}
+                    onChange={(e) =>
+                      setFormData({ ...formData, adminThreshold: e.target.value })
+                    }
+                    placeholder="例如：300"
+                    required
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    参赛者总分达到此分数后自动晋升为管理员
+                  </p>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
 

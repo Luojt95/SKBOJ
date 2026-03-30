@@ -13,7 +13,7 @@ import { Separator } from "@/components/ui/separator";
 import { 
   User, MessageCircle, Activity, Users, Heart, 
   Code, Trophy, FileText, MessageSquare, Share2, Ticket,
-  Calendar, Award, TrendingUp, AlertTriangle
+  Calendar, Coins
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -21,13 +21,8 @@ interface UserProfile {
   id: number;
   username: string;
   role: string;
-  name_color?: string;
   points?: number;
   lastCheckIn?: string;
-  creditRating: number;
-  problemRating: number;
-  contestRating: number;
-  totalRating: number;
   solvedEntry: number;
   solvedPopularMinus: number;
   solvedPopular: number;
@@ -49,7 +44,7 @@ interface Benben {
     id: number;
     username: string;
     role: string;
-    name_color?: string;
+    points?: number;
   };
 }
 
@@ -69,32 +64,45 @@ interface FollowUser {
     id: number;
     username: string;
     role: string;
-    name_color?: string;
-    total_rating?: number;
+    points?: number;
   };
   created_at: string;
 }
 
-// 颜色样式映射
-const nameColorStyles: Record<string, string> = {
-  gray: "text-gray-500",
-  blue: "text-blue-500",
-  green: "text-green-500",
-  orange: "text-orange-500",
-  red: "text-red-500",
-  purple: "text-purple-500",
-  brown: "text-amber-700",
-};
+// 根据积分获取颜色
+function getPointsColor(points: number | undefined, role: string | undefined): string {
+  if (role === "super_admin" || role === "admin") {
+    return "text-purple-500";
+  }
 
-const nameBgStyles: Record<string, string> = {
-  gray: "bg-gray-500",
-  blue: "bg-blue-500",
-  green: "bg-green-500",
-  orange: "bg-orange-500",
-  red: "bg-red-500",
-  purple: "bg-purple-500",
-  brown: "bg-amber-700",
-};
+  const p = points || 0;
+  
+  if (p <= 0) return "text-gray-500";
+  if (p <= 10) return "text-sky-400";
+  if (p <= 20) return "text-blue-600";
+  if (p <= 50) return "text-green-500";
+  if (p <= 100) return "text-yellow-500";
+  if (p <= 200) return "text-orange-500";
+  if (p <= 500) return "text-red-500";
+  return "text-amber-400";
+}
+
+// 获取等级名
+function getPointsTitle(points: number | undefined, role: string | undefined): string {
+  if (role === "super_admin") return "站长";
+  if (role === "admin") return "管理员";
+  
+  const p = points || 0;
+  
+  if (p <= 0) return "新手";
+  if (p <= 10) return "入门";
+  if (p <= 20) return "初级";
+  if (p <= 50) return "中级";
+  if (p <= 100) return "高级";
+  if (p <= 200) return "专家";
+  if (p <= 500) return "大师";
+  return "传奇";
+}
 
 // 难度标签配置
 const difficultyConfig: Record<string, { label: string; color: string; bgColor: string }> = {
@@ -363,9 +371,10 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
     );
   }
 
-  const userColorStyle = user.name_color ? nameColorStyles[user.name_color] || "" : "";
-  const userBgStyle = user.name_color ? nameBgStyles[user.name_color] || "bg-gradient-to-br from-blue-500 to-purple-600" : "bg-gradient-to-br from-blue-500 to-purple-600";
+  const userColorStyle = getPointsColor(user.points, user.role);
   const isOwnProfile = currentUser?.id === user.id;
+  const isSuperAdmin = user.role === "super_admin";
+  const displayPoints = isSuperAdmin ? "∞" : (user.points ?? 100);
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-5xl">
@@ -374,13 +383,16 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
         <CardContent className="pt-6">
           <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
             <Avatar className="h-24 w-24">
-              <AvatarFallback className={`${userBgStyle} text-white text-3xl`}>
+              <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white text-3xl">
                 {user.username[0].toUpperCase()}
               </AvatarFallback>
             </Avatar>
             <div className="flex-1">
               <div className="flex items-center gap-3 mb-2">
                 <h1 className={`text-2xl font-bold ${userColorStyle}`}>{user.username}</h1>
+                <span className="text-sm text-muted-foreground">
+                  ({getPointsTitle(user.points, user.role)})
+                </span>
                 {user.role === "super_admin" && <Badge variant="destructive">站长</Badge>}
                 {user.role === "admin" && <Badge className="bg-orange-500">管理员</Badge>}
               </div>
@@ -390,12 +402,8 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
                   <span>注册于 {formatDate(user.createdAt)}</span>
                 </div>
                 <div className="flex items-center gap-1">
-                  <Award className="h-4 w-4" />
-                  <span>积分: {user.points ?? 100}</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <TrendingUp className="h-4 w-4" />
-                  <span>信用: {user.creditRating}</span>
+                  <Coins className="h-4 w-4 text-amber-500" />
+                  <span className={`font-medium ${userColorStyle}`}>积分: {displayPoints}</span>
                 </div>
               </div>
               <div className="flex items-center gap-6 text-sm">
@@ -568,12 +576,12 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
                   <Card className="hover:bg-muted/50 transition-colors">
                     <CardContent className="py-3 flex items-center gap-3">
                       <Avatar className="h-10 w-10">
-                        <AvatarFallback className={follow.user.name_color ? nameBgStyles[follow.user.name_color] : "bg-gradient-to-br from-blue-500 to-purple-600"}>
+                        <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white">
                           {follow.user.username[0].toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
                       <div className="flex-1">
-                        <p className={`font-medium ${follow.user.name_color ? nameColorStyles[follow.user.name_color] : ""}`}>
+                        <p className={`font-medium ${getPointsColor(follow.user.points, follow.user.role)}`}>
                           {follow.user.username}
                         </p>
                         <p className="text-xs text-muted-foreground">
@@ -603,12 +611,12 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
                   <Card className="hover:bg-muted/50 transition-colors">
                     <CardContent className="py-3 flex items-center gap-3">
                       <Avatar className="h-10 w-10">
-                        <AvatarFallback className={follow.user.name_color ? nameBgStyles[follow.user.name_color] : "bg-gradient-to-br from-blue-500 to-purple-600"}>
+                        <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white">
                           {follow.user.username[0].toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
                       <div className="flex-1">
-                        <p className={`font-medium ${follow.user.name_color ? nameColorStyles[follow.user.name_color] : ""}`}>
+                        <p className={`font-medium ${getPointsColor(follow.user.points, follow.user.role)}`}>
                           {follow.user.username}
                         </p>
                         <p className="text-xs text-muted-foreground">

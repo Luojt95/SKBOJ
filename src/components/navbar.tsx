@@ -14,13 +14,13 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Menu, X, Code, Trophy, Users, Bug, MessageSquare, Share2, Ticket, Home, Bell, Mail } from "lucide-react";
+import { Menu, X, Code, Trophy, Users, Bug, MessageSquare, Share2, Ticket, Home, Bell, Mail, Coins } from "lucide-react";
 
 interface User {
   id: number;
   username: string;
   role: string;
-  name_color?: string;
+  points?: number;
 }
 
 const navItems = [
@@ -34,26 +34,24 @@ const navItems = [
   { href: "/tickets", label: "工单", icon: Ticket },
 ];
 
-// 颜色样式映射
-const nameColorStyles: Record<string, string> = {
-  gray: "text-gray-500",
-  blue: "text-blue-500",
-  green: "text-green-500",
-  orange: "text-orange-500",
-  red: "text-red-500",
-  purple: "text-purple-500",
-  brown: "text-amber-700",
-};
+// 根据积分获取用户名颜色
+function getPointsColor(points: number | undefined, role: string | undefined): string {
+  // 站长和管理员紫色
+  if (role === "super_admin" || role === "admin") {
+    return "text-purple-500";
+  }
 
-const nameBgStyles: Record<string, string> = {
-  gray: "bg-gray-500",
-  blue: "bg-blue-500",
-  green: "bg-green-500",
-  orange: "bg-orange-500",
-  red: "bg-red-500",
-  purple: "bg-purple-500",
-  brown: "bg-amber-700",
-};
+  const p = points || 0;
+  
+  if (p <= 0) return "text-gray-500";        // 0积分：灰色
+  if (p <= 10) return "text-sky-400";        // 1-10：浅蓝色
+  if (p <= 20) return "text-blue-600";       // 11-20：深蓝色
+  if (p <= 50) return "text-green-500";      // 21-50：绿色
+  if (p <= 100) return "text-yellow-500";    // 51-100：黄色
+  if (p <= 200) return "text-orange-500";    // 101-200：橙色
+  if (p <= 500) return "text-red-500";       // 201-500：红色
+  return "text-amber-400";                    // 500+：亮金色
+}
 
 export function Navbar() {
   const pathname = usePathname();
@@ -129,8 +127,9 @@ export function Navbar() {
     }
   };
 
-  const userColorStyle = user?.name_color ? nameColorStyles[user.name_color] || "" : "";
-  const userBgStyle = user?.name_color ? nameBgStyles[user.name_color] || "bg-gradient-to-br from-blue-500 to-purple-600" : "bg-gradient-to-br from-blue-500 to-purple-600";
+  const userColorStyle = getPointsColor(user?.points, user?.role);
+  const isSuperAdmin = user?.role === "super_admin";
+  const displayPoints = isSuperAdmin ? "∞" : (user?.points ?? 100);
 
   return (
     <nav className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -173,6 +172,14 @@ export function Navbar() {
           <div className="hidden md:flex items-center space-x-2">
             {user ? (
               <>
+                {/* 积分显示 */}
+                <Link href="/profile/${user.id}">
+                  <div className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400">
+                    <Coins className="h-4 w-4" />
+                    <span className="font-medium text-sm">{displayPoints}</span>
+                  </div>
+                </Link>
+
                 {/* 通知按钮 */}
                 <Link href="/notifications">
                   <Button variant="ghost" size="icon" className="relative">
@@ -207,7 +214,7 @@ export function Navbar() {
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className="flex items-center space-x-2">
                       <Avatar className="h-8 w-8">
-                        <AvatarFallback className={`${userBgStyle} text-white`}>
+                        <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white">
                           {user.username[0].toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
@@ -276,14 +283,20 @@ export function Navbar() {
               <div className="flex flex-col space-y-2 pt-2 border-t">
                 {user ? (
                   <>
-                    <div className="flex items-center space-x-2 px-3 py-2">
-                      <Avatar className="h-8 w-8">
-                        <AvatarFallback className={`${userBgStyle} text-white`}>
-                          {user.username[0].toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
-                      <span className={`font-medium ${userColorStyle}`}>{user.username}</span>
-                      {getRoleBadge(user.role)}
+                    <div className="flex items-center justify-between px-3 py-2">
+                      <div className="flex items-center space-x-2">
+                        <Avatar className="h-8 w-8">
+                          <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white">
+                            {user.username[0].toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <span className={`font-medium ${userColorStyle}`}>{user.username}</span>
+                        {getRoleBadge(user.role)}
+                      </div>
+                      <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400">
+                        <Coins className="h-3 w-3" />
+                        <span className="font-medium text-xs">{displayPoints}</span>
+                      </div>
                     </div>
                     <Button variant="ghost" asChild className="justify-start">
                       <Link href="/notifications" onClick={() => setIsMenuOpen(false)}>

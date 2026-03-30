@@ -14,16 +14,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Users, Trophy, Code, User, UserX, RefreshCw, ChevronLeft, ChevronRight } from "lucide-react";
-import { nameColorConfig } from "@/lib/constants";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Users, Trophy, Code, User, UserX, RefreshCw, ChevronLeft, ChevronRight, Coins } from "lucide-react";
 import { toast } from "sonner";
 
 interface UserData {
   id: number;
   username: string;
   role: string;
-  name_color: string;
-  total_rating: number;
+  points: number;
   solved_total: number;
   created_at: string;
 }
@@ -39,6 +44,42 @@ interface Pagination {
   pageSize: number;
   totalPages: number;
   total: number;
+}
+
+// 根据积分获取用户名颜色
+function getPointsColor(points: number, role: string): string {
+  // 站长和管理员紫色
+  if (role === "super_admin" || role === "admin") {
+    return "text-purple-500";
+  }
+
+  const p = points || 0;
+  
+  if (p <= 0) return "text-gray-500";        // 0积分：灰色
+  if (p <= 10) return "text-sky-400";        // 1-10：浅蓝色
+  if (p <= 20) return "text-blue-600";       // 11-20：深蓝色
+  if (p <= 50) return "text-green-500";      // 21-50：绿色
+  if (p <= 100) return "text-yellow-500";    // 51-100：黄色
+  if (p <= 200) return "text-orange-500";    // 101-200：橙色
+  if (p <= 500) return "text-red-500";       // 201-500：红色
+  return "text-amber-400";                    // 500+：亮金色
+}
+
+// 根据积分获取等级名
+function getPointsTitle(points: number, role: string): string {
+  if (role === "super_admin") return "站长";
+  if (role === "admin") return "管理员";
+  
+  const p = points || 0;
+  
+  if (p <= 0) return "新手";
+  if (p <= 10) return "入门";
+  if (p <= 20) return "初级";
+  if (p <= 50) return "中级";
+  if (p <= 100) return "高级";
+  if (p <= 200) return "专家";
+  if (p <= 500) return "大师";
+  return "传奇";
 }
 
 export default function UsersPage() {
@@ -57,6 +98,13 @@ export default function UsersPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState<{ id: number; role: string } | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
+  
+  // 积分修改对话框状态
+  const [pointsDialogOpen, setPointsDialogOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<UserData | null>(null);
+  const [pointsChange, setPointsChange] = useState("");
+  const [pointsReason, setPointsReason] = useState("");
+  const [isUpdatingPoints, setIsUpdatingPoints] = useState(false);
 
   const fetchUsers = async (page: number = 1) => {
     try {
@@ -102,14 +150,6 @@ export default function UsersPage() {
     }
   };
 
-  const getNameColor = (user: UserData) => {
-    if (user.role === "admin" || user.role === "super_admin") {
-      return "text-purple-500";
-    }
-    const colorConfig = nameColorConfig[user.name_color] || nameColorConfig.gray;
-    return colorConfig.color;
-  };
-
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("zh-CN");
   };
@@ -127,7 +167,6 @@ export default function UsersPage() {
 
       if (res.ok) {
         toast.success(data.message || "同步成功");
-        // 重新获取用户列表
         fetchUsers(pagination.page);
       } else {
         toast.error(data.error || "同步失败");
@@ -151,9 +190,8 @@ export default function UsersPage() {
 
       if (res.ok) {
         toast.success("权限修改成功");
-        // 更新本地用户列表
         setUsers(users.map(u => 
-          u.id === userId ? { ...u, role: newRole, name_color: newRole === "admin" ? "purple" : u.name_color } : u
+          u.id === userId ? { ...u, role: newRole } : u
         ));
       } else {
         toast.error(data.error || "修改失败");
@@ -181,6 +219,59 @@ export default function UsersPage() {
       }
     } catch {
       toast.error("注销失败，请重试");
+    }
+  };
+
+  // 打开积分修改对话框
+  const openPointsDialog = (user: UserData) => {
+    setSelectedUser(user);
+    setPointsChange("");
+    setPointsReason("");
+    setPointsDialogOpen(true);
+  };
+
+  // 修改积分
+  const handleUpdatePoints = async () => {
+    if (!selectedUser) return;
+    
+    const change = parseInt(pointsChange);
+    if (isNaN(change) || change === 0) {
+      toast.error("请输入有效的积分变化值");
+      return;
+    }
+
+    if (!pointsReason.trim()) {
+      toast.error("请填写修改原因");
+      return;
+    }
+
+    setIsUpdatingPoints(true);
+    try {
+      const res = await fetch("/api/admin/points", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: selectedUser.id,
+          change: change,
+          reason: pointsReason.trim(),
+        }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        toast.success(`积分修改成功，新积分：${data.newPoints}`);
+        setUsers(users.map(u => 
+          u.id === selectedUser.id ? { ...u, points: data.newPoints } : u
+        ));
+        setPointsDialogOpen(false);
+      } else {
+        toast.error(data.error || "修改失败");
+      }
+    } catch {
+      toast.error("修改失败，请重试");
+    } finally {
+      setIsUpdatingPoints(false);
     }
   };
 
@@ -257,11 +348,11 @@ export default function UsersPage() {
                 <TableRow>
                   <TableHead className="w-12">#</TableHead>
                   <TableHead>用户名</TableHead>
-                  <TableHead>Rating</TableHead>
+                  <TableHead>积分</TableHead>
                   <TableHead>做题数</TableHead>
                   <TableHead>权限</TableHead>
                   <TableHead>注册时间</TableHead>
-                  {currentUser?.role === "super_admin" && <TableHead className="w-20">操作</TableHead>}
+                  {currentUser?.role === "super_admin" && <TableHead className="w-32">操作</TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -276,16 +367,22 @@ export default function UsersPage() {
                               {user.username[0].toUpperCase()}
                             </AvatarFallback>
                           </Avatar>
-                          <span className={`font-medium ${getNameColor(user)}`}>
+                          <span className={`font-medium ${getPointsColor(user.points || 0, user.role)}`}>
                             {user.username}
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            ({getPointsTitle(user.points || 0, user.role)})
                           </span>
                         </div>
                       </Link>
                     </TableCell>
                     <TableCell>
-                      <span className={`font-bold ${getNameColor(user)}`}>
-                        {user.total_rating || 100}
-                      </span>
+                      <div className="flex items-center gap-1">
+                        <Coins className="h-4 w-4 text-amber-500" />
+                        <span className={`font-bold ${getPointsColor(user.points || 0, user.role)}`}>
+                          {user.role === "super_admin" ? "∞" : (user.points || 0)}
+                        </span>
+                      </div>
                     </TableCell>
                     <TableCell>
                       <span className="font-medium">{user.solved_total || 0}</span>
@@ -315,15 +412,28 @@ export default function UsersPage() {
                     <TableCell>{formatDate(user.created_at)}</TableCell>
                     {currentUser?.role === "super_admin" && (
                       <TableCell>
-                        {currentUser.id !== user.id && user.role !== "super_admin" && (
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={() => handleDeleteUser(user.id)}
-                          >
-                            注销
-                          </Button>
-                        )}
+                        <div className="flex gap-1">
+                          {currentUser.id !== user.id && user.role !== "super_admin" && (
+                            <>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => openPointsDialog(user)}
+                                title="修改积分"
+                              >
+                                <Coins className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={() => handleDeleteUser(user.id)}
+                                title="注销用户"
+                              >
+                                <UserX className="h-4 w-4" />
+                              </Button>
+                            </>
+                          )}
+                        </div>
                       </TableCell>
                     )}
                   </TableRow>
@@ -387,6 +497,54 @@ export default function UsersPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* 积分修改对话框 */}
+      <Dialog open={pointsDialogOpen} onOpenChange={setPointsDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>修改用户积分</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="flex items-center gap-2">
+              <span className="text-muted-foreground">用户：</span>
+              <span className={`font-medium ${getPointsColor(selectedUser?.points || 0, selectedUser?.role || "")}`}>
+                {selectedUser?.username}
+              </span>
+              <span className="text-muted-foreground">（当前积分：{selectedUser?.points || 0}）</span>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">积分变化值</label>
+              <input
+                type="number"
+                className="w-full p-2 border rounded-md"
+                placeholder="正数增加，负数减少"
+                value={pointsChange}
+                onChange={(e) => setPointsChange(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">
+                例：输入 10 增加10积分，输入 -10 减少10积分
+              </p>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">修改原因</label>
+              <textarea
+                className="w-full p-2 border rounded-md min-h-[80px] resize-none"
+                placeholder="请输入修改原因（用户可见）"
+                value={pointsReason}
+                onChange={(e) => setPointsReason(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPointsDialogOpen(false)}>
+              取消
+            </Button>
+            <Button onClick={handleUpdatePoints} disabled={isUpdatingPoints}>
+              {isUpdatingPoints ? "处理中..." : "确认修改"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

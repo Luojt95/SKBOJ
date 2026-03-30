@@ -17,6 +17,8 @@ interface Contest {
   start_time: string;
   end_time: string;
   type: string;
+  format: string;
+  admin_threshold: number | null;
   problem_ids: number[];
   author_id: number;
   users?: {
@@ -48,6 +50,12 @@ interface User {
 const typeLabels: Record<string, string> = {
   oi: "OI赛制",
   ioi: "IOI赛制",
+};
+
+const formatLabels: Record<string, string> = {
+  OI: "OI赛制",
+  IOI: "IOI赛制",
+  CS: "CS赛制",
 };
 
 function formatTime(dateString: string): string {
@@ -204,7 +212,14 @@ export default function ContestDetailPage() {
           <div className="flex items-center justify-between">
             <CardTitle className="text-2xl">{contest.title}</CardTitle>
             <div className="flex items-center gap-2">
-              <Badge variant="outline">{typeLabels[contest.type]}</Badge>
+              <Badge variant="outline">
+                {formatLabels[contest.format] || typeLabels[contest.type] || "未知赛制"}
+              </Badge>
+              {contest.format === "CS" && contest.admin_threshold && (
+                <Badge className="bg-amber-500">
+                  管理员门槛：{contest.admin_threshold}分
+                </Badge>
+              )}
               <Badge
                 className={
                   status === "ongoing"
@@ -247,6 +262,13 @@ export default function ContestDetailPage() {
         <CardContent>
           {contest.description && (
             <p className="whitespace-pre-wrap">{contest.description}</p>
+          )}
+          {contest.format === "CS" && contest.admin_threshold && (
+            <div className="mt-4 p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg">
+              <p className="text-sm text-amber-800 dark:text-amber-200">
+                <strong>CS赛制：</strong>参赛者在比赛中达到 <strong>{contest.admin_threshold}分</strong> 将自动成为管理员！
+              </p>
+            </div>
           )}
           {status === "ongoing" && user && !isParticipant && (
             <Button className="mt-4" onClick={handleJoin}>
