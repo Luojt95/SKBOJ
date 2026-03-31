@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -88,6 +89,7 @@ const nameBgStyles: Record<string, string> = {
 };
 
 export default function HomePage() {
+  const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [benbens, setBenbens] = useState<Benben[]>([]);
   const [newBenben, setNewBenben] = useState("");
@@ -126,7 +128,13 @@ export default function HomePage() {
 
   // 打卡
   const handleCheckIn = async () => {
-    if (!user || checkingIn) return;
+    if (!user) {
+      toast.error("请先登录");
+      router.push("/login");
+      return;
+    }
+    
+    if (checkingIn) return;
     
     setCheckingIn(true);
     try {
@@ -275,25 +283,14 @@ export default function HomePage() {
               OIer的乐土
             </p>
             <div className="flex flex-wrap justify-center gap-4 pt-4">
-              {user ? (
-                <Button 
-                  size="lg" 
-                  className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
-                  onClick={handleCheckIn}
-                  disabled={checkingIn || checkedIn}
-                >
-                  {checkingIn ? "签到中..." : checkedIn ? "今日已打卡" : "每日打卡 (+10积分)"}
-                </Button>
-              ) : (
-                <>
-                  <Button size="lg" asChild className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
-                    <Link href="/login">登录</Link>
-                  </Button>
-                  <Button size="lg" variant="outline" asChild>
-                    <Link href="/register">注册</Link>
-                  </Button>
-                </>
-              )}
+              <Button 
+                size="lg" 
+                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                onClick={handleCheckIn}
+                disabled={checkingIn || checkedIn}
+              >
+                {checkingIn ? "签到中..." : checkedIn ? "今日已打卡" : "每日打卡 (+10积分)"}
+              </Button>
             </div>
           </div>
         </div>
