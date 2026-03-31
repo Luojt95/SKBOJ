@@ -19,6 +19,8 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { problemId, language, code, contestId } = body;
 
+    console.log("Submission request:", { problemId, language, codeLength: code?.length, contestId, userId: user.id });
+
     if (!problemId || !code) {
       return NextResponse.json({ error: "参数错误" }, { status: 400 });
     }
@@ -55,22 +57,37 @@ export async function POST(request: NextRequest) {
       .eq("id", problemId)
       .single();
 
-    if (problemError || !problem) {
+    if (problemError) {
+      console.error("Get problem error:", problemError);
+      return NextResponse.json({ error: "获取题目失败" }, { status: 500 });
+    }
+    
+    if (!problem) {
       return NextResponse.json({ error: "题目不存在" }, { status: 404 });
     }
 
     // 使用测试数据，如果没有则使用样例
     let testCases = problem.test_cases || [];
-    if (testCases.length === 0 && problem.samples) {
+    if (testCases.length === 0 && problem.samples && problem.samples.length > 0) {
       testCases = problem.samples.map((s: any, idx: number) => ({
         input: s.input || "",
         output: s.output || "",
         score: Math.floor(100 / problem.samples.length),
       }));
     }
+    
+    // 如果没有任何测试数据，创建一个默认测试点
+    if (testCases.length === 0) {
+      console.warn("No test cases for problem:", problemId);
+      return NextResponse.json({ error: "题目没有测试数据，请联系管理员添加" }, { status: 400 });
+    }
+
+    console.log("Test cases count:", testCases.length, "Time limit:", problem.time_limit);
 
     // 真正评测代码
+    console.log("Starting judge...");
     const result = await judgeCode(code, language, testCases, problem.time_limit || 1000);
+    console.log("Judge result:", result);
 
     // 保存提交记录
     const { data: submission, error } = await client
@@ -299,33 +316,63 @@ async function judgeCode(
     };
   }
 
+  // 限制测试点数量，防止评测时间过长
+  const maxTestCases = 10;
+  const limitedTestCases = testCases.slice(0, maxTestCases);
+  
+  // 重新计算每个测试点的分数
+  const scorePerCase = Math.floor(100 / limitedTestCases.length);
+  limitedTestCases.forEach(tc => tc.score = scorePerCase);
+  
   let totalScore = 0;
   let maxTime = 0;
   let maxMemory = 0;
   let allPassed = true;
   let compileError = false;
   let compileMessage = "";
+  let runtimeError = false;
+  let runtimeMessage = "";
 
   try {
-    for (const testCase of testCases) {
-      const result = await runTestCase(code, language, testCase.input, testCase.output, timeLimit);
+    for (let i = 0; i < limitedTestCases.length; i++) {
+      const testCase = limitedTestCases[i];
+      console.log(`Running test case ${i + 1}/${limitedTestCases.length}`);
       
-      if (result.status === "ce") {
-        compileError = true;
-        compileMessage = result.error || "编译错误";
-        break;
-      }
-      
-      if (result.status === "ac") {
-        totalScore += testCase.score || Math.floor(100 / testCases.length);
-      } else {
+      try {
+        const result = await runTestCase(code, language, testCase.input, testCase.output, timeLimit);
+        
+        if (result.status === "ce") {
+          compileError = true;
+          compileMessage = result.error || "编译错误";
+          break;
+        }
+        
+        if (result.status === "re") {
+          runtimeError = true;
+          runtimeMessage = result.error || "运行时错误";
+          // 继续评测其他测试点，不中断
+        }
+        
+        if (result.status === "tle") {
+          allPassed = false;
+          // 超时也继续评测
+        }
+        
+        if (result.status === "ac") {
+          totalScore += testCase.score || 0;
+        } else {
+          allPassed = false;
+        }
+        
+        maxTime = Math.max(maxTime, result.timeUsed);
+        maxMemory = Math.max(maxMemory, result.memoryUsed);
+      } catch (testError) {
+        console.error(`Test case ${i + 1} error:`, testError);
         allPassed = false;
       }
-      
-      maxTime = Math.max(maxTime, result.timeUsed);
-      maxMemory = Math.max(maxMemory, result.memoryUsed);
     }
   } catch (error) {
+    console.error("Judge error:", error);
     return {
       status: "re",
       score: 0,
@@ -345,11 +392,22 @@ async function judgeCode(
     };
   }
 
+  // 确定最终状态
+  let finalStatus = "wa";
+  if (allPassed) {
+    finalStatus = "ac";
+  } else if (totalScore > 0) {
+    finalStatus = "pac";
+  } else if (runtimeError) {
+    finalStatus = "re";
+  }
+
   return {
-    status: allPassed ? "ac" : (totalScore > 0 ? "pac" : "wa"),
+    status: finalStatus,
     score: totalScore,
     timeUsed: maxTime,
     memoryUsed: maxMemory,
+    errorMessage: runtimeError ? runtimeMessage : undefined,
   };
 }
 
@@ -404,13 +462,35 @@ async function runCpp(
     // 写入源代码
     fs.writeFileSync(sourceFile, code);
 
-    // 编译
+    // 编译（带超时）
     const compileResult = await new Promise<{ success: boolean; error: string }>((resolve) => {
       const compile = spawn("g++", ["-o", execFile, sourceFile, "-std=c++17", "-O2"]);
       let error = "";
+      let finished = false;
+      
+      // 编译超时10秒
+      const timeout = setTimeout(() => {
+        if (!finished) {
+          finished = true;
+          compile.kill();
+          resolve({ success: false, error: "编译超时" });
+        }
+      }, 10000);
+      
       compile.stderr.on("data", (data) => { error += data.toString(); });
       compile.on("close", (code) => {
-        resolve({ success: code === 0, error });
+        if (!finished) {
+          finished = true;
+          clearTimeout(timeout);
+          resolve({ success: code === 0, error });
+        }
+      });
+      compile.on("error", (err) => {
+        if (!finished) {
+          finished = true;
+          clearTimeout(timeout);
+          resolve({ success: false, error: err.message });
+        }
       });
     });
 
@@ -421,26 +501,47 @@ async function runCpp(
     // 运行
     const startTime = Date.now();
     const runResult = await new Promise<{ output: string; error: string; timedOut: boolean }>((resolve) => {
-      const proc = spawn(execFile, [], { timeout: timeLimit });
+      const proc = spawn(execFile, []);
       let output = "";
       let error = "";
-      let timedOut = false;
+      let finished = false;
 
-      proc.stdin.write(fs.readFileSync(inputFile));
-      proc.stdin.end();
+      // 设置超时
+      const timeout = setTimeout(() => {
+        if (!finished) {
+          finished = true;
+          proc.kill();
+          resolve({ output, error, timedOut: true });
+        }
+      }, timeLimit + 1000);
+
+      try {
+        proc.stdin.write(fs.readFileSync(inputFile));
+        proc.stdin.end();
+      } catch (e) {
+        if (!finished) {
+          finished = true;
+          clearTimeout(timeout);
+          resolve({ output: "", error: "输入写入失败", timedOut: false });
+          return;
+        }
+      }
 
       proc.stdout.on("data", (data) => { output += data.toString(); });
       proc.stderr.on("data", (data) => { error += data.toString(); });
       
       proc.on("close", () => {
-        resolve({ output, error, timedOut });
+        if (!finished) {
+          finished = true;
+          clearTimeout(timeout);
+          resolve({ output, error, timedOut: false });
+        }
       });
 
       proc.on("error", (err) => {
-        if (err.message.includes("ETIMEDOUT")) {
-          timedOut = true;
-          resolve({ output, error, timedOut: true });
-        } else {
+        if (!finished) {
+          finished = true;
+          clearTimeout(timeout);
           resolve({ output, error: err.message, timedOut: false });
         }
       });
@@ -492,26 +593,47 @@ async function runPython(
     // 运行
     const startTime = Date.now();
     const runResult = await new Promise<{ output: string; error: string; timedOut: boolean }>((resolve) => {
-      const proc = spawn("python3", [sourceFile], { timeout: timeLimit });
+      const proc = spawn("python3", [sourceFile]);
       let output = "";
       let error = "";
-      let timedOut = false;
+      let finished = false;
 
-      proc.stdin.write(fs.readFileSync(inputFile));
-      proc.stdin.end();
+      // 设置超时
+      const timeout = setTimeout(() => {
+        if (!finished) {
+          finished = true;
+          proc.kill();
+          resolve({ output, error, timedOut: true });
+        }
+      }, timeLimit + 1000);
+
+      try {
+        proc.stdin.write(fs.readFileSync(inputFile));
+        proc.stdin.end();
+      } catch (e) {
+        if (!finished) {
+          finished = true;
+          clearTimeout(timeout);
+          resolve({ output: "", error: "输入写入失败", timedOut: false });
+          return;
+        }
+      }
 
       proc.stdout.on("data", (data) => { output += data.toString(); });
       proc.stderr.on("data", (data) => { error += data.toString(); });
       
       proc.on("close", () => {
-        resolve({ output, error, timedOut });
+        if (!finished) {
+          finished = true;
+          clearTimeout(timeout);
+          resolve({ output, error, timedOut: false });
+        }
       });
 
       proc.on("error", (err) => {
-        if (err.message.includes("ETIMEDOUT")) {
-          timedOut = true;
-          resolve({ output, error, timedOut: true });
-        } else {
+        if (!finished) {
+          finished = true;
+          clearTimeout(timeout);
           resolve({ output, error: err.message, timedOut: false });
         }
       });

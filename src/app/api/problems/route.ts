@@ -90,15 +90,20 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const client = getSupabaseClient();
 
+    // 验证必填字段
+    if (!body.title || !body.description) {
+      return NextResponse.json({ error: "标题和描述不能为空" }, { status: 400 });
+    }
+
     const { data: problem, error } = await client
       .from("problems")
       .insert({
         title: body.title,
         description: body.description,
-        input_format: body.inputFormat,
-        output_format: body.outputFormat,
+        input_format: body.inputFormat || "",
+        output_format: body.outputFormat || "",
         samples: body.samples || [],
-        hint: body.hint,
+        hint: body.hint || "",
         category: body.category || "P",
         difficulty: body.difficulty || "popular",
         time_limit: body.timeLimit || 1000,
@@ -113,12 +118,12 @@ export async function POST(request: NextRequest) {
 
     if (error) {
       console.error("Create problem error:", error);
-      return NextResponse.json({ error: "创建题目失败" }, { status: 500 });
+      return NextResponse.json({ error: "创建题目失败: " + (error.message || "数据库错误") }, { status: 500 });
     }
 
     return NextResponse.json({ problem });
   } catch (error) {
     console.error("Create problem error:", error);
-    return NextResponse.json({ error: "创建题目失败" }, { status: 500 });
+    return NextResponse.json({ error: "创建题目失败: " + ((error as Error).message || "未知错误") }, { status: 500 });
   }
 }
