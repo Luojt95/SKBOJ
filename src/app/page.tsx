@@ -94,6 +94,8 @@ export default function HomePage() {
   const [posting, setPosting] = useState(false);
   const [activeTab, setActiveTab] = useState("all");
   const [loading, setLoading] = useState(true);
+  const [checkedIn, setCheckedIn] = useState(false);
+  const [checkingIn, setCheckingIn] = useState(false);
 
   useEffect(() => {
     // 检查登录状态
@@ -103,6 +105,13 @@ export default function HomePage() {
         if (res.ok) {
           const data = await res.json();
           setUser(data.user);
+          
+          // 检查是否已签到
+          const checkInRes = await fetch("/api/check-in");
+          if (checkInRes.ok) {
+            const checkInData = await checkInRes.json();
+            setCheckedIn(checkInData.checkedIn);
+          }
         }
       } catch {
         setUser(null);
@@ -114,6 +123,30 @@ export default function HomePage() {
   useEffect(() => {
     fetchBenbens();
   }, [activeTab]);
+
+  // 打卡
+  const handleCheckIn = async () => {
+    if (!user || checkingIn) return;
+    
+    setCheckingIn(true);
+    try {
+      const res = await fetch("/api/check-in", { method: "POST" });
+      const data = await res.json();
+      
+      if (res.ok && data.success) {
+        toast.success(data.message);
+        setCheckedIn(true);
+        // 触发积分变化事件，让导航栏更新积分显示
+        window.dispatchEvent(new CustomEvent("pointsChanged"));
+      } else {
+        toast.error(data.message || "签到失败");
+      }
+    } catch (error) {
+      toast.error("签到失败");
+    } finally {
+      setCheckingIn(false);
+    }
+  };
 
   const fetchBenbens = async () => {
     try {
@@ -242,12 +275,25 @@ export default function HomePage() {
               OIer的乐土
             </p>
             <div className="flex flex-wrap justify-center gap-4 pt-4">
-              <Button size="lg" asChild className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
-                <Link href="/problems">开始刷题</Link>
-              </Button>
-              <Button size="lg" variant="outline" asChild>
-                <Link href="/register">注册账号</Link>
-              </Button>
+              {user ? (
+                <Button 
+                  size="lg" 
+                  className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                  onClick={handleCheckIn}
+                  disabled={checkingIn || checkedIn}
+                >
+                  {checkingIn ? "签到中..." : checkedIn ? "今日已打卡" : "每日打卡 (+10积分)"}
+                </Button>
+              ) : (
+                <>
+                  <Button size="lg" asChild className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
+                    <Link href="/login">登录</Link>
+                  </Button>
+                  <Button size="lg" variant="outline" asChild>
+                    <Link href="/register">注册</Link>
+                  </Button>
+                </>
+              )}
             </div>
           </div>
         </div>
