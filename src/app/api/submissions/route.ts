@@ -549,7 +549,7 @@ async function runCpp(
 
     // 运行
     const startTime = Date.now();
-    const runResult = await new Promise<{ output: string; error: string; timedOut: boolean }>((resolve) => {
+    const runResult = await new Promise<{ output: string; error: string; timedOut: boolean; exitCode: number | null; signal: string | null }>((resolve) => {
       const proc = spawn(execFile, []);
       let output = "";
       let error = "";
@@ -560,7 +560,7 @@ async function runCpp(
         if (!finished) {
           finished = true;
           proc.kill();
-          resolve({ output, error, timedOut: true });
+          resolve({ output, error, timedOut: true, exitCode: null, signal: null });
         }
       }, timeLimit + 1000);
 
@@ -571,7 +571,7 @@ async function runCpp(
         if (!finished) {
           finished = true;
           clearTimeout(timeout);
-          resolve({ output: "", error: "输入写入失败", timedOut: false });
+          resolve({ output: "", error: "输入写入失败", timedOut: false, exitCode: null, signal: null });
           return;
         }
       }
@@ -579,11 +579,11 @@ async function runCpp(
       proc.stdout.on("data", (data) => { output += data.toString(); });
       proc.stderr.on("data", (data) => { error += data.toString(); });
       
-      proc.on("close", () => {
+      proc.on("close", (code, signal) => {
         if (!finished) {
           finished = true;
           clearTimeout(timeout);
-          resolve({ output, error, timedOut: false });
+          resolve({ output, error, timedOut: false, exitCode: code, signal: signal });
         }
       });
 
@@ -591,7 +591,7 @@ async function runCpp(
         if (!finished) {
           finished = true;
           clearTimeout(timeout);
-          resolve({ output, error: err.message, timedOut: false });
+          resolve({ output, error: err.message, timedOut: false, exitCode: null, signal: null });
         }
       });
     });
@@ -600,6 +600,24 @@ async function runCpp(
 
     if (runResult.timedOut) {
       return { status: "tle", timeUsed, memoryUsed: 0 };
+    }
+
+    // 检查是否被信号终止（如SIGFPE, SIGSEGV等）- 运行时错误
+    if (runResult.signal) {
+      const signalErrors: Record<string, string> = {
+        "SIGFPE": "浮点异常（可能是除以0）",
+        "SIGSEGV": "段错误（访问非法内存）",
+        "SIGABRT": "程序中止",
+        "SIGBUS": "总线错误",
+        "SIGILL": "非法指令",
+      };
+      const errorMsg = signalErrors[runResult.signal] || `被信号终止: ${runResult.signal}`;
+      return { status: "re", timeUsed, memoryUsed: 0, error: errorMsg };
+    }
+
+    // 检查退出码，非0退出码通常表示运行时错误
+    if (runResult.exitCode !== null && runResult.exitCode !== 0) {
+      return { status: "re", timeUsed, memoryUsed: 0, error: `程序异常退出，退出码: ${runResult.exitCode}` };
     }
 
     if (runResult.error) {
@@ -641,7 +659,7 @@ async function runPython(
 
     // 运行
     const startTime = Date.now();
-    const runResult = await new Promise<{ output: string; error: string; timedOut: boolean }>((resolve) => {
+    const runResult = await new Promise<{ output: string; error: string; timedOut: boolean; exitCode: number | null; signal: string | null }>((resolve) => {
       const proc = spawn("python3", [sourceFile]);
       let output = "";
       let error = "";
@@ -652,7 +670,7 @@ async function runPython(
         if (!finished) {
           finished = true;
           proc.kill();
-          resolve({ output, error, timedOut: true });
+          resolve({ output, error, timedOut: true, exitCode: null, signal: null });
         }
       }, timeLimit + 1000);
 
@@ -663,7 +681,7 @@ async function runPython(
         if (!finished) {
           finished = true;
           clearTimeout(timeout);
-          resolve({ output: "", error: "输入写入失败", timedOut: false });
+          resolve({ output: "", error: "输入写入失败", timedOut: false, exitCode: null, signal: null });
           return;
         }
       }
@@ -671,11 +689,11 @@ async function runPython(
       proc.stdout.on("data", (data) => { output += data.toString(); });
       proc.stderr.on("data", (data) => { error += data.toString(); });
       
-      proc.on("close", () => {
+      proc.on("close", (code, signal) => {
         if (!finished) {
           finished = true;
           clearTimeout(timeout);
-          resolve({ output, error, timedOut: false });
+          resolve({ output, error, timedOut: false, exitCode: code, signal: signal });
         }
       });
 
@@ -683,7 +701,7 @@ async function runPython(
         if (!finished) {
           finished = true;
           clearTimeout(timeout);
-          resolve({ output, error: err.message, timedOut: false });
+          resolve({ output, error: err.message, timedOut: false, exitCode: null, signal: null });
         }
       });
     });
@@ -694,8 +712,14 @@ async function runPython(
       return { status: "tle", timeUsed, memoryUsed: 0 };
     }
 
-    if (runResult.error) {
-      return { status: "re", timeUsed, memoryUsed: 0, error: runResult.error };
+    // 检查是否被信号终止
+    if (runResult.signal) {
+      return { status: "re", timeUsed, memoryUsed: 0, error: `被信号终止: ${runResult.signal}` };
+    }
+
+    // Python异常退出通常会有stderr输出和退出码1
+    if (runResult.exitCode !== null && runResult.exitCode !== 0) {
+      return { status: "re", timeUsed, memoryUsed: 0, error: runResult.error || `程序异常退出，退出码: ${runResult.exitCode}` };
     }
 
     // 比较输出
