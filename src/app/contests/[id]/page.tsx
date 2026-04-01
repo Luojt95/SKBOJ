@@ -151,7 +151,8 @@ export default function ContestDetailPage() {
   const isParticipant = user && participants.some((p) => p.user_id === user.id);
   
   // OI赛制下，比赛未结束时不显示分数
-  const isOIContest = contest.type === "oi";
+  // CS赛制类似IOI赛制，比赛进行中也能看到分数
+  const isOIContest = contest.type === "oi" || contest.format === "OI";
   const shouldHideScore = isOIContest && status !== "ended";
 
   // 检查是否可以编辑/删除

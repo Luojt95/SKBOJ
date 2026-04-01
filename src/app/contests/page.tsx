@@ -14,6 +14,7 @@ interface Contest {
   start_time: string;
   end_time: string;
   type: string;
+  format: string;
   author_id: number;
   is_visible: boolean;
 }
@@ -27,6 +28,9 @@ interface User {
 const typeLabels: Record<string, string> = {
   oi: "OI赛制",
   ioi: "IOI赛制",
+  OI: "OI赛制",
+  IOI: "IOI赛制",
+  CS: "CS赛制",
 };
 
 const statusColors: Record<string, string> = {
@@ -138,7 +142,7 @@ export default function ContestsPage() {
                             <Clock className="h-4 w-4" />
                             结束于 {formatTime(contest.end_time)}
                           </span>
-                          <Badge variant="outline">{typeLabels[contest.type]}</Badge>
+                          <Badge variant="outline">{typeLabels[contest.format] || typeLabels[contest.type] || contest.format || contest.type}</Badge>
                         </div>
                       </div>
                       <Badge className={`${statusColors.ongoing} text-white`}>
@@ -173,7 +177,7 @@ export default function ContestsPage() {
                             <Clock className="h-4 w-4" />
                             开始于 {formatTime(contest.start_time)}
                           </span>
-                          <Badge variant="outline">{typeLabels[contest.type]}</Badge>
+                          <Badge variant="outline">{typeLabels[contest.format] || typeLabels[contest.type] || contest.format || contest.type}</Badge>
                         </div>
                       </div>
                       <Badge className={`${statusColors.upcoming} text-white`}>
@@ -208,7 +212,7 @@ export default function ContestsPage() {
                             <Clock className="h-4 w-4" />
                             {formatTime(contest.start_time)} - {formatTime(contest.end_time)}
                           </span>
-                          <Badge variant="outline">{typeLabels[contest.type]}</Badge>
+                          <Badge variant="outline">{typeLabels[contest.format] || typeLabels[contest.type] || contest.format || contest.type}</Badge>
                         </div>
                       </div>
                       <Badge className={`${statusColors.ended} text-white`}>
