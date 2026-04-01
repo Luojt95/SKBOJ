@@ -365,7 +365,7 @@ async function judgeCode(
           break;
         }
         
-        // 统计各状态
+        // 统计各状态（支持TLE和MLE重复计数）
         if (result.status === "ac") {
           statusCounts.ac++;
           totalScore += testCase.score || 0;
@@ -378,9 +378,17 @@ async function judgeCode(
         } else if (result.status === "tle") {
           statusCounts.tle++;
           allPassed = false;
+          // 如果同时MLE，也计数
+          if (result.isMLE) {
+            statusCounts.mle++;
+          }
         } else if (result.status === "mle") {
           statusCounts.mle++;
           allPassed = false;
+          // 如果同时TLE，也计数
+          if (result.isTLE) {
+            statusCounts.tle++;
+          }
         }
         
         testResults.push({ status: result.status, score: result.status === "ac" ? (testCase.score || 0) : 0 });
@@ -405,13 +413,15 @@ async function judgeCode(
     };
   }
 
+  // CE格式
   if (compileError) {
+    const ceFeedback = `Status:CE\nscore:0\n${compileMessage}`;
     return {
       status: "ce",
       score: 0,
       timeUsed: 0,
       memoryUsed: 0,
-      errorMessage: compileMessage,
+      errorMessage: ceFeedback,
       testResults: [],
       statusCounts,
     };
@@ -422,7 +432,7 @@ async function judgeCode(
   if (allPassed) {
     finalStatus = "ac";
   } else if (totalScore > 0) {
-    finalStatus = "pac";
+    finalStatus = "pac";  // 部分通过，显示UAC
   } else if (statusCounts.re > 0) {
     finalStatus = "re";
   } else if (statusCounts.tle > 0) {
@@ -431,15 +441,20 @@ async function judgeCode(
     finalStatus = "mle";
   }
 
-  // 构建评测反馈信息
-  const feedbackInfo = `Status: ${finalStatus.toUpperCase()}\nScore: ${totalScore}\nAC: ${statusCounts.ac} | WA: ${statusCounts.wa} | RE: ${statusCounts.re} | TLE: ${statusCounts.tle} | MLE: ${statusCounts.mle}`;
+  // 构建编译成功的评测反馈信息
+  const displayStatus = finalStatus === "pac" ? "UAC" : finalStatus.toUpperCase();
+  const memoryDisplay = maxMemory >= 1024 
+    ? `${(maxMemory / 1024).toFixed(2)}MB` 
+    : `${maxMemory}KB`;
+  
+  const successFeedback = `Status:${displayStatus}\nscore:${totalScore}\nruntime:${maxTime}ms\nrunmemory:${memoryDisplay}\nAC:${statusCounts.ac}\nWA:${statusCounts.wa}\nRE:${statusCounts.re}\nTLE:${statusCounts.tle}\nMLE:${statusCounts.mle}`;
 
   return {
     status: finalStatus,
     score: totalScore,
     timeUsed: maxTime,
     memoryUsed: maxMemory,
-    errorMessage: feedbackInfo,
+    errorMessage: successFeedback,
     testResults,
     statusCounts,
   };
@@ -452,7 +467,7 @@ async function runTestCase(
   input: string,
   expectedOutput: string,
   timeLimit: number
-): Promise<{ status: string; timeUsed: number; memoryUsed: number; error?: string }> {
+): Promise<{ status: string; timeUsed: number; memoryUsed: number; error?: string; isTLE?: boolean; isMLE?: boolean }> {
   const tmpDir = "/tmp/judge";
   if (!fs.existsSync(tmpDir)) {
     fs.mkdirSync(tmpDir, { recursive: true });
@@ -488,7 +503,7 @@ async function runCpp(
   timeLimit: number,
   tmpDir: string,
   timestamp: number
-): Promise<{ status: string; timeUsed: number; memoryUsed: number; error?: string }> {
+): Promise<{ status: string; timeUsed: number; memoryUsed: number; error?: string; isTLE?: boolean; isMLE?: boolean }> {
   const sourceFile = path.join(tmpDir, `code_${timestamp}.cpp`);
   const execFile = path.join(tmpDir, `code_${timestamp}`);
 
@@ -617,7 +632,7 @@ async function runPython(
   timeLimit: number,
   tmpDir: string,
   timestamp: number
-): Promise<{ status: string; timeUsed: number; memoryUsed: number; error?: string }> {
+): Promise<{ status: string; timeUsed: number; memoryUsed: number; error?: string; isTLE?: boolean; isMLE?: boolean }> {
   const sourceFile = path.join(tmpDir, `code_${timestamp}.py`);
 
   try {
