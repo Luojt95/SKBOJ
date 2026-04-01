@@ -286,7 +286,11 @@ export default function ProblemDetailPage() {
             setOutput(
               `状态: ???\n得分: ???\n用时: ???\n内存: ???\n\n${data.submission.message || "比赛结束后显示评测结果"}`
             );
+          } else if (data.submission.error_message) {
+            // 使用后端格式化的评测反馈
+            setOutput(data.submission.error_message);
           } else {
+            // 兼容旧格式
             setOutput(
               `状态: ${data.submission.status}\n得分: ${data.submission.score}\n用时: ${data.submission.time_used}ms\n内存: ${data.submission.memory_used}KB`
             );
