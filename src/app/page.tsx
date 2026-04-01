@@ -23,7 +23,7 @@ interface Benben {
     id: number;
     username: string;
     role: string;
-    name_color?: string;
+    points?: number;
   };
 }
 
@@ -31,7 +31,26 @@ interface User {
   id: number;
   username: string;
   role: string;
-  name_color?: string;
+  points?: number;
+}
+
+// 根据积分获取用户名颜色
+function getPointsColor(points: number | undefined, role: string | undefined): string {
+  // 站长和管理员紫色
+  if (role === "super_admin" || role === "admin") {
+    return "text-purple-500";
+  }
+
+  const p = points || 0;
+  
+  if (p <= 0) return "text-gray-500";        // 0积分：灰色
+  if (p <= 10) return "text-sky-400";        // 1-10：浅蓝色
+  if (p <= 20) return "text-blue-600";       // 11-20：深蓝色
+  if (p <= 50) return "text-green-500";      // 21-50：绿色
+  if (p <= 100) return "text-yellow-500";    // 51-100：黄色
+  if (p <= 200) return "text-orange-500";    // 101-200：橙色
+  if (p <= 500) return "text-red-500";       // 201-500：红色
+  return "text-amber-400";                    // 500+：亮金色
 }
 
 const features = [
@@ -66,27 +85,6 @@ const features = [
     description: "分享你的代码作品，与OIer们交流学习",
   },
 ];
-
-// 颜色样式映射
-const nameColorStyles: Record<string, string> = {
-  gray: "text-gray-500",
-  blue: "text-blue-500",
-  green: "text-green-500",
-  orange: "text-orange-500",
-  red: "text-red-500",
-  purple: "text-purple-500",
-  brown: "text-amber-700",
-};
-
-const nameBgStyles: Record<string, string> = {
-  gray: "bg-gray-500",
-  blue: "bg-blue-500",
-  green: "bg-green-500",
-  orange: "bg-orange-500",
-  red: "bg-red-500",
-  purple: "bg-purple-500",
-  brown: "bg-amber-700",
-};
 
 export default function HomePage() {
   const router = useRouter();
@@ -362,19 +360,14 @@ export default function HomePage() {
                   </div>
                 ) : (
                   benbens.map((benben) => {
-                    const authorColorStyle = benben.author?.name_color 
-                      ? nameColorStyles[benben.author.name_color] || "" 
-                      : "";
-                    const authorBgStyle = benben.author?.name_color 
-                      ? nameBgStyles[benben.author.name_color] || "bg-gradient-to-br from-blue-500 to-purple-600" 
-                      : "bg-gradient-to-br from-blue-500 to-purple-600";
+                    const authorColorStyle = getPointsColor(benben.author?.points, benben.author?.role);
 
                     return (
                       <div key={benben.id} className="p-4 rounded-lg border">
                         <div className="flex items-start gap-3">
                           <Link href={`/profile/${benben.author_id}`}>
                             <Avatar className="h-10 w-10">
-                              <AvatarFallback className={authorBgStyle}>
+                              <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600">
                                 {benben.author?.username?.[0]?.toUpperCase() || "?"}
                               </AvatarFallback>
                             </Avatar>

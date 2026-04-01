@@ -305,6 +305,14 @@ async function judgeCode(
   timeUsed: number;
   memoryUsed: number;
   errorMessage?: string;
+  testResults?: Array<{ status: string; score: number }>;
+  statusCounts?: {
+    ac: number;
+    wa: number;
+    re: number;
+    tle: number;
+    mle: number;
+  };
 }> {
   if (!testCases || testCases.length === 0) {
     return {
@@ -316,8 +324,8 @@ async function judgeCode(
     };
   }
 
-  // 限制测试点数量，防止评测时间过长
-  const maxTestCases = 10;
+  // 限制测试点数量，防止评测时间过长（上限30个）
+  const maxTestCases = 30;
   const limitedTestCases = testCases.slice(0, maxTestCases);
   
   // 重新计算每个测试点的分数
@@ -330,8 +338,18 @@ async function judgeCode(
   let allPassed = true;
   let compileError = false;
   let compileMessage = "";
-  let runtimeError = false;
-  let runtimeMessage = "";
+  
+  // 统计各状态测试点数量
+  const statusCounts = {
+    ac: 0,
+    wa: 0,
+    re: 0,
+    tle: 0,
+    mle: 0,
+  };
+  
+  // 记录每个测试点的结果
+  const testResults: Array<{ status: string; score: number }> = [];
 
   try {
     for (let i = 0; i < limitedTestCases.length; i++) {
@@ -347,28 +365,33 @@ async function judgeCode(
           break;
         }
         
-        if (result.status === "re") {
-          runtimeError = true;
-          runtimeMessage = result.error || "运行时错误";
-          // 继续评测其他测试点，不中断
-        }
-        
-        if (result.status === "tle") {
-          allPassed = false;
-          // 超时也继续评测
-        }
-        
+        // 统计各状态
         if (result.status === "ac") {
+          statusCounts.ac++;
           totalScore += testCase.score || 0;
-        } else {
+        } else if (result.status === "wa") {
+          statusCounts.wa++;
+          allPassed = false;
+        } else if (result.status === "re") {
+          statusCounts.re++;
+          allPassed = false;
+        } else if (result.status === "tle") {
+          statusCounts.tle++;
+          allPassed = false;
+        } else if (result.status === "mle") {
+          statusCounts.mle++;
           allPassed = false;
         }
+        
+        testResults.push({ status: result.status, score: result.status === "ac" ? (testCase.score || 0) : 0 });
         
         maxTime = Math.max(maxTime, result.timeUsed);
         maxMemory = Math.max(maxMemory, result.memoryUsed);
       } catch (testError) {
         console.error(`Test case ${i + 1} error:`, testError);
         allPassed = false;
+        statusCounts.re++;
+        testResults.push({ status: "re", score: 0 });
       }
     }
   } catch (error) {
@@ -389,6 +412,8 @@ async function judgeCode(
       timeUsed: 0,
       memoryUsed: 0,
       errorMessage: compileMessage,
+      testResults: [],
+      statusCounts,
     };
   }
 
@@ -398,16 +423,25 @@ async function judgeCode(
     finalStatus = "ac";
   } else if (totalScore > 0) {
     finalStatus = "pac";
-  } else if (runtimeError) {
+  } else if (statusCounts.re > 0) {
     finalStatus = "re";
+  } else if (statusCounts.tle > 0) {
+    finalStatus = "tle";
+  } else if (statusCounts.mle > 0) {
+    finalStatus = "mle";
   }
+
+  // 构建评测反馈信息
+  const feedbackInfo = `Status: ${finalStatus.toUpperCase()}\nScore: ${totalScore}\nAC: ${statusCounts.ac} | WA: ${statusCounts.wa} | RE: ${statusCounts.re} | TLE: ${statusCounts.tle} | MLE: ${statusCounts.mle}`;
 
   return {
     status: finalStatus,
     score: totalScore,
     timeUsed: maxTime,
     memoryUsed: maxMemory,
-    errorMessage: runtimeError ? runtimeMessage : undefined,
+    errorMessage: feedbackInfo,
+    testResults,
+    statusCounts,
   };
 }
 
