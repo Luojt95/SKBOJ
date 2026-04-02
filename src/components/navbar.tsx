@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Menu, X, Code, Trophy, Users, Bug, MessageSquare, Share2, Ticket, Home, Bell, Mail, Coins } from "lucide-react";
+import { Menu, X, Code, Trophy, Users, Bug, MessageSquare, Share2, Ticket, Home, Bell, Mail, Coins, HelpCircle } from "lucide-react";
 
 interface User {
   id: number;
@@ -32,6 +32,7 @@ const navItems = [
   { href: "/discussions", label: "讨论", icon: MessageSquare },
   { href: "/shares", label: "分享", icon: Share2 },
   { href: "/tickets", label: "工单", icon: Ticket },
+  { href: "/help", label: "帮助中心", icon: HelpCircle },
 ];
 
 // 根据积分获取用户名颜色
