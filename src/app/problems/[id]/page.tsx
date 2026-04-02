@@ -113,7 +113,7 @@ const statusConfig: Record<string, { label: string; bgClass: string }> = {
   mle: { label: "MLE", bgClass: "bg-orange-500 text-white" },
   re: { label: "RE", bgClass: "bg-purple-500 text-white" },
   ce: { label: "CE", bgClass: "bg-gray-500 text-white" },
-  pac: { label: "PAC", bgClass: "bg-blue-500 text-white" },
+  pac: { label: "UAC", bgClass: "bg-red-500 text-white" },
 };
 
 export default function ProblemDetailPage() {
