@@ -44,7 +44,10 @@ export async function GET(request: NextRequest) {
 
         followersWithUsers = follows.map(f => ({
           ...f,
-          user: usersMap.get(f.follower_id) || null
+          user: usersMap.get(f.follower_id) ? {
+            ...usersMap.get(f.follower_id),
+            points: usersMap.get(f.follower_id)?.total_rating || 0
+          } : null
         }));
       }
 
@@ -79,7 +82,10 @@ export async function GET(request: NextRequest) {
 
         followingWithUsers = follows.map(f => ({
           ...f,
-          user: usersMap.get(f.following_id) || null
+          user: usersMap.get(f.following_id) ? {
+            ...usersMap.get(f.following_id),
+            points: usersMap.get(f.following_id)?.total_rating || 0
+          } : null
         }));
       }
 

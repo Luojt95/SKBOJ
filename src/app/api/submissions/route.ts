@@ -429,18 +429,10 @@ async function judgeCode(
   }
 
   // 确定最终状态
-  let finalStatus = "wa";
-  if (allPassed) {
-    finalStatus = "ac";
-  } else if (totalScore > 0) {
-    finalStatus = "pac";  // 部分通过，显示UAC
-  } else if (statusCounts.re > 0) {
-    finalStatus = "re";
-  } else if (statusCounts.tle > 0) {
-    finalStatus = "tle";
-  } else if (statusCounts.mle > 0) {
-    finalStatus = "mle";
-  }
+  // Status只有AC和UAC两种：
+  // - 全部通过 → AC
+  // - 其他情况（部分AC、全部WA/TLE/RE/MLE）→ UAC
+  let finalStatus = allPassed ? "ac" : "pac";
 
   // 构建编译成功的评测反馈信息
   const displayStatus = finalStatus === "pac" ? "UAC" : finalStatus.toUpperCase();

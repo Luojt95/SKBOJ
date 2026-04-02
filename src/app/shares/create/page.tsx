@@ -15,42 +15,18 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { ArrowLeft, Share2, RefreshCw } from "lucide-react";
+import { ArrowLeft, Share2 } from "lucide-react";
 import Link from "next/link";
-
-interface CaptchaData {
-  token: string;
-  image: string;
-}
 
 export default function CreateSharePage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
-  const [captcha, setCaptcha] = useState<CaptchaData | null>(null);
-  const [captchaAnswer, setCaptchaAnswer] = useState("");
-  const [captchaLoading, setCaptchaLoading] = useState(false);
   const [formData, setFormData] = useState({
     title: "",
     code: "",
     language: "cpp",
     description: "",
   });
-
-  const fetchCaptcha = async () => {
-    setCaptchaLoading(true);
-    try {
-      const res = await fetch("/api/captcha");
-      if (res.ok) {
-        const data = await res.json();
-        setCaptcha(data);
-        setCaptchaAnswer("");
-      }
-    } catch {
-      toast.error("获取验证码失败");
-    } finally {
-      setCaptchaLoading(false);
-    }
-  };
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -61,7 +37,6 @@ export default function CreateSharePage() {
       }
     };
     checkAuth();
-    fetchCaptcha();
   }, [router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -72,27 +47,13 @@ export default function CreateSharePage() {
       return;
     }
 
-    if (!captcha) {
-      toast.error("请先获取验证码");
-      return;
-    }
-
-    if (!captchaAnswer.trim()) {
-      toast.error("请输入验证码");
-      return;
-    }
-
     setIsLoading(true);
 
     try {
       const res = await fetch("/api/shares", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...formData,
-          captchaToken: captcha.token,
-          captchaAnswer: captchaAnswer.trim(),
-        }),
+        body: JSON.stringify(formData),
       });
 
       const data = await res.json();
@@ -101,9 +62,6 @@ export default function CreateSharePage() {
         toast.success("分享成功");
         router.push("/shares");
       } else {
-        if (data.error?.includes("验证码")) {
-          fetchCaptcha();
-        }
         toast.error(data.error || "分享失败");
       }
     } catch {

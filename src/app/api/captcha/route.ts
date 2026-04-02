@@ -14,9 +14,9 @@ setInterval(() => {
   }
 }, 60000); // 每分钟清理一次
 
-// 生成随机一位数（1-9）
-function randomOneDigit(): number {
-  return Math.floor(Math.random() * 9) + 1;
+// 生成随机三位数（100-999）
+function randomThreeDigits(): number {
+  return Math.floor(Math.random() * 900) + 100;
 }
 
 // 生成SVG验证码图片
@@ -64,9 +64,9 @@ function generateCaptchaSvg(num1: number, num2: number): string {
 
 export async function GET() {
   try {
-    // 生成两个一位数
-    const num1 = randomOneDigit();
-    const num2 = randomOneDigit();
+    // 生成两个三位数
+    const num1 = randomThreeDigits();
+    const num2 = randomThreeDigits();
     const answer = (num1 * num2).toString();
     
     // 生成唯一token
