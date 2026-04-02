@@ -2,6 +2,7 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { execSync } from 'child_process';
 
 let envLoaded = false;
+let cachedClient: SupabaseClient | null = null;
 
 interface SupabaseCredentials {
   url: string;
@@ -62,8 +63,10 @@ except Exception as e:
     }
 
     envLoaded = true;
-  } catch {
-    // Silently fail
+    console.log('[Supabase] Environment variables loaded');
+    console.log('[Supabase] URL:', process.env.COZE_SUPABASE_URL?.substring(0, 30) + '...');
+  } catch (error) {
+    console.error('[Supabase] Failed to load env:', error);
   }
 }
 
@@ -74,9 +77,11 @@ function getSupabaseCredentials(): SupabaseCredentials {
   const anonKey = process.env.COZE_SUPABASE_ANON_KEY;
 
   if (!url) {
+    console.error('[Supabase] COZE_SUPABASE_URL is not set');
     throw new Error('COZE_SUPABASE_URL is not set');
   }
   if (!anonKey) {
+    console.error('[Supabase] COZE_SUPABASE_ANON_KEY is not set');
     throw new Error('COZE_SUPABASE_ANON_KEY is not set');
   }
 
@@ -86,30 +91,57 @@ function getSupabaseCredentials(): SupabaseCredentials {
 function getSupabaseClient(token?: string): SupabaseClient {
   const { url, anonKey } = getSupabaseCredentials();
 
+  // 如果是相同的配置，返回缓存的客户端（不带 token 的情况）
+  if (!token && cachedClient) {
+    return cachedClient;
+  }
+
   if (token) {
     return createClient(url, anonKey, {
-      global: {
-        headers: { Authorization: `Bearer ${token}` },
-      },
       db: {
-        timeout: 60000,
+        timeout: 30000,
       },
       auth: {
         autoRefreshToken: false,
         persistSession: false,
       },
+      global: {
+        headers: { Authorization: `Bearer ${token}` },
+      },
     });
   }
 
-  return createClient(url, anonKey, {
+  const client = createClient(url, anonKey, {
     db: {
-      timeout: 60000,
+      timeout: 30000,
     },
     auth: {
       autoRefreshToken: false,
       persistSession: false,
     },
   });
+
+  // 缓存不带 token 的客户端
+  cachedClient = client;
+
+  return client;
 }
 
-export { loadEnv, getSupabaseCredentials, getSupabaseClient };
+// 测试数据库连接
+async function testConnection(): Promise<boolean> {
+  try {
+    const client = getSupabaseClient();
+    const { error } = await client.from('users').select('id').limit(1);
+    if (error) {
+      console.error('[Supabase] Connection test failed:', error.message);
+      return false;
+    }
+    console.log('[Supabase] Connection test successful');
+    return true;
+  } catch (error) {
+    console.error('[Supabase] Connection test error:', error);
+    return false;
+  }
+}
+
+export { loadEnv, getSupabaseCredentials, getSupabaseClient, testConnection };
