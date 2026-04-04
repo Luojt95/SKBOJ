@@ -166,11 +166,56 @@ export async function DELETE(
       return NextResponse.json({ error: "不能注销其他站长" }, { status: 403 });
     }
 
+    // 级联删除用户的所有相关数据
+    const userId = parseInt(id);
+    const deletePromises = [];
+
+    // 删除用户的提交记录
+    deletePromises.push(client.from("submissions").delete().eq("user_id", userId));
+    // 删除用户的点赞
+    deletePromises.push(client.from("likes").delete().eq("user_id", userId));
+    // 删除用户的题解
+    deletePromises.push(client.from("solutions").delete().eq("user_id", userId));
+    // 删除用户的工单
+    deletePromises.push(client.from("tickets").delete().eq("user_id", userId));
+    // 删除用户的参赛记录
+    deletePromises.push(client.from("contest_participants").delete().eq("user_id", userId));
+    // 删除用户的积分历史
+    deletePromises.push(client.from("points_history").delete().eq("user_id", userId));
+    // 删除用户的关注关系
+    deletePromises.push(client.from("user_follows").delete().eq("follower_id", userId));
+    deletePromises.push(client.from("user_follows").delete().eq("following_id", userId));
+    // 删除用户的通知
+    deletePromises.push(client.from("notifications").delete().eq("user_id", userId));
+    // 删除用户的私信
+    deletePromises.push(client.from("private_messages").delete().eq("sender_id", userId));
+    deletePromises.push(client.from("private_messages").delete().eq("receiver_id", userId));
+    // 删除用户的benben
+    deletePromises.push(client.from("benbens").delete().eq("author_id", userId));
+    deletePromises.push(client.from("benbens").delete().eq("reply_to_user_id", userId));
+    // 删除用户的身份信息
+    deletePromises.push(client.from("identities").delete().eq("user_id", userId));
+    // 删除用户的会话
+    deletePromises.push(client.from("sessions").delete().eq("user_id", userId));
+    // 删除用户的MFA因子
+    deletePromises.push(client.from("mfa_factors").delete().eq("user_id", userId));
+    // 删除用户的OAuth授权
+    deletePromises.push(client.from("oauth_authorizations").delete().eq("user_id", userId));
+    deletePromises.push(client.from("oauth_consents").delete().eq("user_id", userId));
+    deletePromises.push(client.from("one_time_tokens").delete().eq("user_id", userId));
+
+    // 执行所有删除操作（不等待，继续删除用户）
+    const deleteResults = await Promise.allSettled(deletePromises);
+    const errors = deleteResults.filter(r => r.status === "rejected");
+    if (errors.length > 0) {
+      console.error("Delete related data errors:", errors);
+    }
+
     // 删除用户
     const { error } = await client
       .from("users")
       .delete()
-      .eq("id", parseInt(id));
+      .eq("id", userId);
 
     if (error) {
       return NextResponse.json({ error: "注销失败" }, { status: 500 });

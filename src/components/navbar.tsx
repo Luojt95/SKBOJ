@@ -125,9 +125,15 @@ export function Navbar() {
   }, [user]);
 
   const handleLogout = async () => {
-    await fetch("/api/auth/logout", { method: "POST" });
-    setUser(null);
-    window.location.href = "/";
+    // 站长可以退出登录，其他用户只能登录其他账号
+    if (user?.role === "super_admin") {
+      await fetch("/api/auth/logout", { method: "POST" });
+      setUser(null);
+      window.location.href = "/";
+    } else {
+      // 其他用户跳转到登录页面，不真正退出
+      window.location.href = "/login?redirect=" + encodeURIComponent(window.location.pathname);
+    }
   };
 
   const getRoleBadge = (role: string) => {
@@ -241,8 +247,8 @@ export function Navbar() {
                       <Link href={`/profile/${user.id}`}>个人中心</Link>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={handleLogout} className="text-red-600">
-                      退出登录
+                    <DropdownMenuItem onClick={handleLogout} className="text-blue-600">
+                      {isSuperAdmin ? "退出登录" : "登录其他账号"}
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -342,9 +348,9 @@ export function Navbar() {
                     <Button
                       variant="ghost"
                       onClick={handleLogout}
-                      className="justify-start text-red-600"
+                      className="justify-start text-blue-600"
                     >
-                      退出登录
+                      {isSuperAdmin ? "退出登录" : "登录其他账号"}
                     </Button>
                   </>
                 ) : (

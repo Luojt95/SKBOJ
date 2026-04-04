@@ -21,8 +21,9 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Users, Trophy, Code, User, UserX, RefreshCw, ChevronLeft, ChevronRight, Coins } from "lucide-react";
+import { Users, Trophy, Code, User, UserX, RefreshCw, ChevronLeft, ChevronRight, Coins, Trash2, Check, Square } from "lucide-react";
 import { toast } from "sonner";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface UserData {
   id: number;
@@ -98,13 +99,17 @@ export default function UsersPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState<{ id: number; role: string } | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
-  
+
   // 积分修改对话框状态
   const [pointsDialogOpen, setPointsDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserData | null>(null);
   const [pointsChange, setPointsChange] = useState("");
   const [pointsReason, setPointsReason] = useState("");
   const [isUpdatingPoints, setIsUpdatingPoints] = useState(false);
+
+  // 批量选择状态
+  const [selectedUserIds, setSelectedUserIds] = useState<Set<number>>(new Set());
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const fetchUsers = async (page: number = 1) => {
     try {
@@ -233,7 +238,7 @@ export default function UsersPage() {
   // 修改积分
   const handleUpdatePoints = async () => {
     if (!selectedUser) return;
-    
+
     const change = parseInt(pointsChange);
     if (isNaN(change) || change === 0) {
       toast.error("请输入有效的积分变化值");
@@ -261,7 +266,7 @@ export default function UsersPage() {
 
       if (res.ok) {
         toast.success(`积分修改成功，新积分：${data.newPoints}`);
-        setUsers(users.map(u => 
+        setUsers(users.map(u =>
           u.id === selectedUser.id ? { ...u, points: data.newPoints } : u
         ));
         setPointsDialogOpen(false);
@@ -272,6 +277,83 @@ export default function UsersPage() {
       toast.error("修改失败，请重试");
     } finally {
       setIsUpdatingPoints(false);
+    }
+  };
+
+  // 处理复选框变化
+  const handleCheckboxChange = (userId: number, checked: boolean) => {
+    setSelectedUserIds(prev => {
+      const newSet = new Set(prev);
+      if (checked) {
+        newSet.add(userId);
+      } else {
+        newSet.delete(userId);
+      }
+      return newSet;
+    });
+  };
+
+  // 处理全选/取消全选
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      // 只能选择自己能删除的用户（不是站长，不是自己）
+      const deletableUsers = users.filter(
+        u => u.role !== "super_admin" && u.id !== currentUser?.id
+      );
+      setSelectedUserIds(new Set(deletableUsers.map(u => u.id)));
+    } else {
+      setSelectedUserIds(new Set());
+    }
+  };
+
+  // 批量删除用户
+  const handleBatchDelete = async () => {
+    if (selectedUserIds.size === 0) {
+      toast.error("请先选择要删除的用户");
+      return;
+    }
+
+    if (!confirm(`确定要删除选中的 ${selectedUserIds.size} 个用户吗？此操作不可恢复！`)) {
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      // 逐个删除
+      const deletePromises = Array.from(selectedUserIds).map(userId =>
+        fetch(`/api/users/${userId}`, { method: "DELETE" })
+      );
+
+      const results = await Promise.allSettled(deletePromises);
+      let successCount = 0;
+      let failCount = 0;
+
+      results.forEach((result, index) => {
+        if (result.status === "fulfilled") {
+          const res = result.value;
+          if (res.ok) {
+            successCount++;
+          } else {
+            failCount++;
+          }
+        } else {
+          failCount++;
+        }
+      });
+
+      if (failCount === 0) {
+        toast.success(`成功删除 ${successCount} 个用户`);
+      } else {
+        toast.error(`删除完成：成功 ${successCount} 个，失败 ${failCount} 个`);
+      }
+
+      // 刷新列表
+      fetchUsers(pagination.page);
+      setSelectedUserIds(new Set());
+    } catch {
+      toast.error("批量删除失败，请重试");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -289,14 +371,26 @@ export default function UsersPage() {
           <p className="text-muted-foreground mt-1">查看平台用户和统计数据</p>
         </div>
         {currentUser?.role === "admin" || currentUser?.role === "super_admin" ? (
-          <Button
-            variant="outline"
-            onClick={handleSyncStats}
-            disabled={isSyncing}
-          >
-            <RefreshCw className={`h-4 w-4 mr-2 ${isSyncing ? "animate-spin" : ""}`} />
-            {isSyncing ? "同步中..." : "同步做题数"}
-          </Button>
+          <div className="flex gap-2">
+            {selectedUserIds.size > 0 && (
+              <Button
+                variant="destructive"
+                onClick={handleBatchDelete}
+                disabled={isDeleting}
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                {isDeleting ? "删除中..." : `批量删除 (${selectedUserIds.size})`}
+              </Button>
+            )}
+            <Button
+              variant="outline"
+              onClick={handleSyncStats}
+              disabled={isSyncing}
+            >
+              <RefreshCw className={`h-4 w-4 mr-2 ${isSyncing ? "animate-spin" : ""}`} />
+              {isSyncing ? "同步中..." : "同步做题数"}
+            </Button>
+          </div>
         ) : null}
       </div>
 
@@ -346,6 +440,17 @@ export default function UsersPage() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  {currentUser?.role === "super_admin" && (
+                    <TableHead className="w-12">
+                      <Checkbox
+                        checked={
+                          users.length > 0 &&
+                          users.filter(u => u.role !== "super_admin" && u.id !== currentUser?.id).length === selectedUserIds.size
+                        }
+                        onCheckedChange={handleSelectAll}
+                      />
+                    </TableHead>
+                  )}
                   <TableHead className="w-12">#</TableHead>
                   <TableHead>用户名</TableHead>
                   <TableHead>积分</TableHead>
@@ -358,6 +463,16 @@ export default function UsersPage() {
               <TableBody>
                 {users.map((user, index) => (
                   <TableRow key={user.id} className="cursor-pointer hover:bg-muted/50">
+                    {currentUser?.role === "super_admin" && (
+                      <TableCell>
+                        <Checkbox
+                          checked={selectedUserIds.has(user.id)}
+                          onCheckedChange={(checked) => handleCheckboxChange(user.id, checked as boolean)}
+                          disabled={user.role === "super_admin" || user.id === currentUser?.id}
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      </TableCell>
+                    )}
                     <TableCell className="font-mono">{(pagination.page - 1) * pagination.pageSize + index + 1}</TableCell>
                     <TableCell>
                       <Link href={`/profile/${user.id}`}>
