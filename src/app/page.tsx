@@ -96,6 +96,7 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true);
   const [checkedIn, setCheckedIn] = useState(false);
   const [checkingIn, setCheckingIn] = useState(false);
+  const [dbError, setDbError] = useState<string | null>(null);
 
   useEffect(() => {
     // 检查登录状态
@@ -113,8 +114,8 @@ export default function HomePage() {
             setCheckedIn(checkInData.checkedIn);
           }
         }
-      } catch {
-        setUser(null);
+      } catch (error) {
+        setDbError("无法连接到服务器，请检查网络连接");
       }
     };
     checkAuth();
@@ -161,9 +162,19 @@ export default function HomePage() {
       if (res.ok) {
         const data = await res.json();
         setBenbens(data.benbens || []);
+        // 如果之前有错误但这次成功了，清除错误
+        if (dbError) {
+          setDbError(null);
+        }
+      } else {
+        // 如果是 500 错误，可能是数据库问题
+        if (res.status >= 500) {
+          setDbError("服务器错误，请稍后重试");
+        }
       }
     } catch (error) {
       console.error("Failed to fetch benbens:", error);
+      setDbError("网络连接失败，请检查网络");
     } finally {
       setLoading(false);
     }
@@ -293,6 +304,43 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+
+      {/* 数据库连接错误提示 */}
+      {dbError && (
+        <section className="py-8 bg-background">
+          <div className="container mx-auto px-4 max-w-4xl">
+            <Card className="border-red-200 bg-red-50 dark:bg-red-950/20">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-red-800 dark:text-red-200 text-lg">
+                  ⚠️ 数据库连接异常
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="text-red-900 dark:text-red-100">
+                <p className="mb-2">
+                  系统检测到数据库连接失败，可能是 Supabase 服务暂时不可用。
+                </p>
+                <p className="text-sm opacity-80 mb-4">
+                  错误信息: {dbError}
+                </p>
+                <div className="flex gap-2">
+                  <Button 
+                    size="sm" 
+                    variant="outline"
+                    onClick={() => window.location.reload()}
+                  >
+                    刷新页面
+                  </Button>
+                  <Link href="/maintenance">
+                    <Button size="sm" variant="outline">
+                      查看系统状态
+                    </Button>
+                  </Link>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </section>
+      )}
 
       {/* 犇犇区域 */}
       <section className="py-12 bg-background">
