@@ -37,17 +37,14 @@ export async function GET(request: NextRequest) {
         const followerIds = follows.map(f => f.follower_id);
         const { data: users } = await client
           .from("users")
-          .select("id, username, role, name_color, total_rating")
+          .select("id, username, role, name_color, points")
           .in("id", followerIds);
 
         const usersMap = new Map((users || []).map(u => [u.id, u]));
 
         followersWithUsers = follows.map(f => ({
           ...f,
-          user: usersMap.get(f.follower_id) ? {
-            ...usersMap.get(f.follower_id),
-            points: usersMap.get(f.follower_id)?.total_rating || 0
-          } : null
+          user: usersMap.get(f.follower_id)
         }));
       }
 
@@ -75,17 +72,14 @@ export async function GET(request: NextRequest) {
         const followingIds = follows.map(f => f.following_id);
         const { data: users } = await client
           .from("users")
-          .select("id, username, role, name_color, total_rating")
+          .select("id, username, role, name_color, points")
           .in("id", followingIds);
 
         const usersMap = new Map((users || []).map(u => [u.id, u]));
 
         followingWithUsers = follows.map(f => ({
           ...f,
-          user: usersMap.get(f.following_id) ? {
-            ...usersMap.get(f.following_id),
-            points: usersMap.get(f.following_id)?.total_rating || 0
-          } : null
+          user: usersMap.get(f.following_id)
         }));
       }
 

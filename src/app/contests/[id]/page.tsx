@@ -149,9 +149,9 @@ export default function ContestDetailPage() {
 
   const status = getContestStatus(contest.start_time, contest.end_time);
   const isParticipant = user && participants.some((p) => p.user_id === user.id);
-  
+
   // OI赛制下，比赛未结束时不显示分数
-  // CS赛制类似IOI赛制，比赛进行中也能看到分数
+  // CS赛制和IOI赛制类似，比赛进行中也能看到分数
   const isOIContest = contest.type === "oi" || contest.format === "OI";
   const shouldHideScore = isOIContest && status !== "ended";
 

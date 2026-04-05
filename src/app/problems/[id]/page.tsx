@@ -599,7 +599,6 @@ export default function ProblemDetailPage() {
                   <SelectContent>
                     <SelectItem value="cpp">C++</SelectItem>
                     <SelectItem value="python">Python</SelectItem>
-                    <SelectItem value="html">HTML</SelectItem>
                   </SelectContent>
                 </Select>
                 <div className="flex gap-2">
