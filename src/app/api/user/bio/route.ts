@@ -33,8 +33,8 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: "用户不存在" }, { status: 404 });
     }
 
-    // 使用RPC函数绕过schema缓存
-    const { data, error } = await client.rpc('update_user_bio', {
+    // 使用RPC函数更新bio
+    const { data, error } = await client.rpc('set_user_bio', {
       user_id: user.id,
       new_bio: bio
     });
