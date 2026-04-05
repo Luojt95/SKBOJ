@@ -22,10 +22,10 @@ export async function PUT(request: NextRequest) {
 
     const client = getSupabaseClient();
 
-    // 检查用户表中是否有bio字段，如果没有则添加
+    // 检查用户是否存在（不查询bio字段以避免schema缓存问题）
     const { data: currentUser } = await client
       .from("users")
-      .select("*")
+      .select("id, username")
       .eq("id", user.id)
       .single();
 
@@ -33,11 +33,11 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: "用户不存在" }, { status: 404 });
     }
 
-    // 更新bio字段
-    const { error } = await client
-      .from("users")
-      .update({ bio })
-      .eq("id", user.id);
+    // 使用RPC函数绕过schema缓存
+    const { data, error } = await client.rpc('update_user_bio', {
+      user_id: user.id,
+      new_bio: bio
+    });
 
     if (error) {
       console.error("Update bio error:", error);
