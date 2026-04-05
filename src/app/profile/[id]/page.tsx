@@ -11,7 +11,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { 
-  User, MessageCircle, Activity, Users, Heart, 
+  User, MessageCircle, Users, Heart, 
   Code, Trophy, FileText, MessageSquare, Share2, Ticket,
   Calendar, Coins
 } from "lucide-react";
@@ -46,14 +46,6 @@ interface Benben {
     role: string;
     points?: number;
   };
-}
-
-interface Activity {
-  type: string;
-  id: number;
-  title: string;
-  created_at: string;
-  status?: string;
 }
 
 interface FollowUser {
@@ -120,7 +112,6 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
   const [user, setUser] = useState<UserProfile | null>(null);
   const [currentUser, setCurrentUser] = useState<{ id: number; role: string } | null>(null);
   const [benbens, setBenbens] = useState<Benben[]>([]);
-  const [activities, setActivities] = useState<Activity[]>([]);
   const [followers, setFollowers] = useState<FollowUser[]>([]);
   const [following, setFollowing] = useState<FollowUser[]>([]);
   const [isFollowing, setIsFollowing] = useState(false);
@@ -207,22 +198,10 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
     }
   };
 
-  const fetchActivities = async () => {
-    try {
-      // 使用现有的API获取用户活动
-      // 由于现有API不支持按作者筛选，这里先简化处理
-      setActivities([]);
-    } catch (error) {
-      console.error("Failed to fetch activities:", error);
-    }
-  };
-
   // Tab切换时加载数据
   useEffect(() => {
     if (activeTab === "benbens" && benbens.length === 0) {
       fetchBenbens();
-    } else if (activeTab === "activities" && activities.length === 0) {
-      fetchActivities();
     } else if (activeTab === "followers") {
       fetchFollowers();
     } else if (activeTab === "following") {
@@ -289,63 +268,6 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
       hour: "2-digit",
       minute: "2-digit",
     });
-  };
-
-  const getActivityLink = (activity: Activity) => {
-    switch (activity.type) {
-      case "problem":
-        return `/problems/${activity.id}`;
-      case "contest":
-        return `/contests/${activity.id}`;
-      case "solution":
-        return `/problems/${activity.id}/solutions`;
-      case "discussion":
-        return `/discussions/${activity.id}`;
-      case "share":
-        return `/shares`;
-      case "ticket":
-        return `/tickets`;
-      default:
-        return "#";
-    }
-  };
-
-  const getActivityIcon = (type: string) => {
-    switch (type) {
-      case "problem":
-        return <Code className="h-4 w-4" />;
-      case "contest":
-        return <Trophy className="h-4 w-4" />;
-      case "solution":
-        return <FileText className="h-4 w-4" />;
-      case "discussion":
-        return <MessageSquare className="h-4 w-4" />;
-      case "share":
-        return <Share2 className="h-4 w-4" />;
-      case "ticket":
-        return <Ticket className="h-4 w-4" />;
-      default:
-        return <Activity className="h-4 w-4" />;
-    }
-  };
-
-  const getActivityLabel = (type: string) => {
-    switch (type) {
-      case "problem":
-        return "创建题目";
-      case "contest":
-        return "创建比赛";
-      case "solution":
-        return "发布题解";
-      case "discussion":
-        return "发起讨论";
-      case "share":
-        return "分享代码";
-      case "ticket":
-        return "提交工单";
-      default:
-        return "动态";
-    }
   };
 
   if (loading) {
@@ -453,7 +375,7 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
 
       {/* Tab导航 */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid grid-cols-5 mb-6">
+        <TabsList className="grid grid-cols-4 mb-6">
           <TabsTrigger value="home" className="flex items-center gap-1">
             <User className="h-4 w-4" />
             <span className="hidden sm:inline">首页</span>
@@ -461,10 +383,6 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
           <TabsTrigger value="benbens" className="flex items-center gap-1">
             <MessageCircle className="h-4 w-4" />
             <span className="hidden sm:inline">犇犇</span>
-          </TabsTrigger>
-          <TabsTrigger value="activities" className="flex items-center gap-1">
-            <Activity className="h-4 w-4" />
-            <span className="hidden sm:inline">动态</span>
           </TabsTrigger>
           <TabsTrigger value="followers" className="flex items-center gap-1">
             <Users className="h-4 w-4" />
@@ -517,45 +435,6 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
                     </div>
                   </CardContent>
                 </Card>
-              ))
-            )}
-          </div>
-        </TabsContent>
-
-        {/* 动态 */}
-        <TabsContent value="activities">
-          <div className="space-y-3">
-            {activities.length === 0 ? (
-              <Card>
-                <CardContent className="py-8 text-center text-muted-foreground">
-                  暂无动态
-                </CardContent>
-              </Card>
-            ) : (
-              activities.map((activity) => (
-                <Link key={`${activity.type}-${activity.id}`} href={getActivityLink(activity)}>
-                  <Card className="hover:bg-muted/50 transition-colors">
-                    <CardContent className="py-3 flex items-center gap-3">
-                      <div className="p-2 rounded-lg bg-muted">
-                        {getActivityIcon(activity.type)}
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs text-muted-foreground">{getActivityLabel(activity.type)}</span>
-                          {activity.status && (
-                            <Badge variant={activity.status === "accepted" ? "default" : "secondary"} className="text-xs">
-                              {activity.status === "accepted" ? "已受理" : activity.status === "rejected" ? "已拒绝" : "待处理"}
-                            </Badge>
-                          )}
-                        </div>
-                        <p className="font-medium truncate">{activity.title}</p>
-                      </div>
-                      <span className="text-xs text-muted-foreground">
-                        {formatDateTime(activity.created_at)}
-                      </span>
-                    </CardContent>
-                  </Card>
-                </Link>
               ))
             )}
           </div>

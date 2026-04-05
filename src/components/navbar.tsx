@@ -246,6 +246,9 @@ export function Navbar() {
                     <DropdownMenuItem asChild>
                       <Link href={`/profile/${user.id}`}>个人中心</Link>
                     </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link href="/settings">个人设置</Link>
+                    </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={handleLogout} className="text-blue-600">
                       {isSuperAdmin ? "退出登录" : "登录其他账号"}
@@ -343,6 +346,11 @@ export function Navbar() {
                     <Button variant="ghost" asChild className="justify-start">
                       <Link href={`/profile/${user.id}`} onClick={() => setIsMenuOpen(false)}>
                         个人中心
+                      </Link>
+                    </Button>
+                    <Button variant="ghost" asChild className="justify-start">
+                      <Link href="/settings" onClick={() => setIsMenuOpen(false)}>
+                        个人设置
                       </Link>
                     </Button>
                     <Button
