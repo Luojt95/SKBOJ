@@ -60,6 +60,7 @@ export function Navbar() {
   const [user, setUser] = useState<User | null>(null);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [unreadMessages, setUnreadMessages] = useState(0);
+  const [canShowRegister, setCanShowRegister] = useState(false);
 
   // 刷新用户信息的函数
   const refreshUser = async () => {
@@ -78,6 +79,17 @@ export function Navbar() {
     // 检查登录状态
     refreshUser();
   }, []);
+
+  // 检查是否可以显示注册按钮（站长或之前是站长）
+  useEffect(() => {
+    const checkCanShowRegister = () => {
+      if (typeof window !== "undefined") {
+        const canShow = user?.role === "super_admin" || localStorage.getItem("previousUserRole") === "super_admin";
+        setCanShowRegister(canShow);
+      }
+    };
+    checkCanShowRegister();
+  }, [user]);
 
   // 监听自定义事件，用于刷新用户积分
   useEffect(() => {
@@ -125,6 +137,10 @@ export function Navbar() {
   }, [user]);
 
   const handleLogout = async () => {
+    // 如果是站长，记录角色信息以便后续访问注册页面
+    if (user?.role === "super_admin") {
+      localStorage.setItem("previousUserRole", user.role);
+    }
     await fetch("/api/auth/logout", { method: "POST" });
     setUser(null);
     window.location.href = "/";
@@ -254,9 +270,16 @@ export function Navbar() {
                 </DropdownMenu>
               </>
             ) : (
-              <Button variant="ghost" asChild>
-                <Link href="/login">登录</Link>
-              </Button>
+              <>
+                <Button variant="ghost" asChild>
+                  <Link href="/login">登录</Link>
+                </Button>
+                {canShowRegister && (
+                  <Button asChild>
+                    <Link href="/register">注册</Link>
+                  </Button>
+                )}
+              </>
             )}
           </div>
 
@@ -367,9 +390,16 @@ export function Navbar() {
                     </Button>
                   </>
                 ) : (
-                  <Button variant="ghost" asChild className="justify-start">
-                    <Link href="/login">登录</Link>
-                  </Button>
+                  <>
+                    <Button variant="ghost" asChild className="justify-start">
+                      <Link href="/login">登录</Link>
+                    </Button>
+                    {canShowRegister && (
+                      <Button asChild className="justify-start">
+                        <Link href="/register">注册</Link>
+                      </Button>
+                    )}
+                  </>
                 )}
               </div>
             </div>

@@ -40,10 +40,15 @@ export default function RegisterPage() {
           if (data.user?.role === "super_admin") {
             setCanAccess(true);
             setUserRole(data.user.role);
-          } else {
-            setCanAccess(false);
-            setUserRole(data.user.role);
+            return;
           }
+        }
+
+        // 检查localStorage中是否记录了之前的站长身份
+        const previousRole = localStorage.getItem("previousUserRole");
+        if (previousRole === "super_admin") {
+          setCanAccess(true);
+          setUserRole(previousRole);
         } else {
           setCanAccess(false);
           setUserRole(null);
@@ -142,7 +147,7 @@ export default function RegisterPage() {
               <div>
                 <h2 className="text-2xl font-bold text-foreground">无权限</h2>
                 <p className="mt-2 text-muted-foreground">
-                  {userRole ? "只有站长可以访问注册页面" : "请先登录"}
+                  只有站长可以访问注册页面
                 </p>
               </div>
               <Button asChild className="w-full">
