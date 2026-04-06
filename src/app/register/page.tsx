@@ -27,22 +27,6 @@ export default function RegisterPage() {
     confirmPassword: "",
     captchaAnswer: "",
   });
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-
-  useEffect(() => {
-    // 检查是否已登录
-    const checkAuth = async () => {
-      try {
-        const res = await fetch("/api/auth/me");
-        if (res.ok) {
-          setIsLoggedIn(true);
-        }
-      } catch {
-        setIsLoggedIn(false);
-      }
-    };
-    checkAuth();
-  }, []);
 
   // 获取验证码
   const fetchCaptcha = async () => {
@@ -100,8 +84,8 @@ export default function RegisterPage() {
       const data = await res.json();
 
       if (res.ok) {
-        toast.success("注册成功，请登录");
-        router.push("/login");
+        toast.success("注册成功");
+        router.push("/");
       } else {
         // 如果验证码错误，刷新验证码
         if (data.error?.includes("验证码")) {
@@ -118,35 +102,13 @@ export default function RegisterPage() {
 
   return (
     <div className="min-h-[calc(100vh-10rem)] flex items-center justify-center py-12 px-4">
-      {isLoggedIn ? (
-        <Card className="w-full max-w-md">
-          <CardContent className="pt-6">
-            <div className="text-center space-y-4">
-              <div className="mx-auto w-16 h-16 rounded-full bg-red-100 dark:bg-red-900/20 flex items-center justify-center">
-                <svg className="w-8 h-8 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                </svg>
-              </div>
-              <div>
-                <h2 className="text-2xl font-bold text-foreground">无权限</h2>
-                <p className="mt-2 text-muted-foreground">
-                  您已登录，无法访问注册页面
-                </p>
-              </div>
-              <Button asChild className="w-full">
-                <Link href="/">返回首页</Link>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      ) : (
-        <Card className="w-full max-w-md">
-          <CardHeader className="text-center">
-            <div className="mx-auto mb-4 w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
-              <UserPlus className="h-6 w-6 text-white" />
-            </div>
-            <CardTitle className="text-2xl">注册</CardTitle>
-            <CardDescription>创建 SKBOJ 账号</CardDescription>
+      <Card className="w-full max-w-md">
+        <CardHeader className="text-center">
+          <div className="mx-auto mb-4 w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+            <UserPlus className="h-6 w-6 text-white" />
+          </div>
+          <CardTitle className="text-2xl">注册</CardTitle>
+          <CardDescription>创建 SKBOJ 账号</CardDescription>
           </CardHeader>
           <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -271,7 +233,6 @@ export default function RegisterPage() {
           </div>
         </CardContent>
       </Card>
-      )}
     </div>
   );
 }

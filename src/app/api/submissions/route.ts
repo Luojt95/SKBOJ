@@ -41,8 +41,8 @@ export async function POST(request: NextRequest) {
         .single();
       
       if (contest) {
-        // 只有OI赛制隐藏结果，CS赛制类似IOI赛制，显示结果
-        isOIContest = contest.type === "oi" || contest.format === "OI";
+        // 只有OI赛制隐藏结果，CS赛制和IOI赛制类似，显示结果
+        isOIContest = contest.format === "OI";
         contestFormat = contest.format || "OI";
         adminThreshold = contest.admin_threshold;
         const now = new Date();

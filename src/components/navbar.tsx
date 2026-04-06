@@ -125,15 +125,9 @@ export function Navbar() {
   }, [user]);
 
   const handleLogout = async () => {
-    // 站长可以退出登录，其他用户只能登录其他账号
-    if (user?.role === "super_admin") {
-      await fetch("/api/auth/logout", { method: "POST" });
-      setUser(null);
-      window.location.href = "/";
-    } else {
-      // 其他用户跳转到登录页面，不真正退出
-      window.location.href = "/login?redirect=" + encodeURIComponent(window.location.pathname);
-    }
+    await fetch("/api/auth/logout", { method: "POST" });
+    setUser(null);
+    window.location.href = "/";
   };
 
   const getRoleBadge = (role: string) => {
@@ -148,8 +142,7 @@ export function Navbar() {
   };
 
   const userColorStyle = getPointsColor(user?.points, user?.role);
-  const isSuperAdmin = user?.role === "super_admin";
-  const displayPoints = isSuperAdmin ? "∞" : (user?.points ?? 100);
+  const displayPoints = user?.role === "super_admin" ? "∞" : (user?.points ?? 100);
 
   return (
     <nav className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -250,8 +243,11 @@ export function Navbar() {
                       <Link href="/settings">个人设置</Link>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={handleLogout} className="text-blue-600">
-                      {isSuperAdmin ? "退出登录" : "登录其他账号"}
+                    <DropdownMenuItem onClick={handleLogout} className="text-red-600">
+                      退出登录
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => window.location.href = "/login"} className="text-blue-600">
+                      登录其他账号
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -355,10 +351,23 @@ export function Navbar() {
                     </Button>
                     <Button
                       variant="ghost"
-                      onClick={handleLogout}
+                      onClick={() => {
+                        handleLogout();
+                        setIsMenuOpen(false);
+                      }}
+                      className="justify-start text-red-600"
+                    >
+                      退出登录
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      onClick={() => {
+                        window.location.href = "/login";
+                        setIsMenuOpen(false);
+                      }}
                       className="justify-start text-blue-600"
                     >
-                      {isSuperAdmin ? "退出登录" : "登录其他账号"}
+                      登录其他账号
                     </Button>
                   </>
                 ) : (
