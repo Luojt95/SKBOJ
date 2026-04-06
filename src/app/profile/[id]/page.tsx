@@ -31,6 +31,7 @@ interface UserProfile {
   solvedProvincial: number;
   solvedNoi: number;
   createdAt: string;
+  bio?: string;
 }
 
 interface Benben {
@@ -402,7 +403,7 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
             </CardHeader>
             <CardContent>
               <p className="text-muted-foreground">
-                这位用户还没有填写个人简介。
+                {user?.bio || "这位用户还没有填写个人简介。"}
               </p>
             </CardContent>
           </Card>

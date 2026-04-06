@@ -18,6 +18,7 @@ interface Conversation {
     username: string;
     role: string;
     name_color?: string;
+    points?: number;
   };
   lastMessage: {
     id: number;
@@ -49,6 +50,24 @@ interface OtherUser {
   username: string;
   role: string;
   name_color?: string;
+}
+
+// 根据积分获取颜色
+function getPointsColor(points: number | undefined, role: string | undefined): string {
+  if (role === "super_admin" || role === "admin") {
+    return "text-purple-500";
+  }
+
+  const p = points || 0;
+
+  if (p <= 0) return "text-gray-500";
+  if (p <= 10) return "text-sky-400";
+  if (p <= 20) return "text-blue-600";
+  if (p <= 50) return "text-green-500";
+  if (p <= 100) return "text-yellow-500";
+  if (p <= 200) return "text-orange-500";
+  if (p <= 500) return "text-red-500";
+  return "text-amber-400";
 }
 
 // 颜色样式映射
@@ -327,7 +346,7 @@ export default function MessagesPage() {
                 ) : (
                   <div className="divide-y">
                     {conversations.map((conv) => {
-                      const userColorStyle = conv.user.name_color ? nameColorStyles[conv.user.name_color] || "" : "";
+                      const colorClass = getPointsColor(conv.user.points, conv.user.role);
                       const userBgStyle = conv.user.name_color ? nameBgStyles[conv.user.name_color] || "bg-gradient-to-br from-blue-500 to-purple-600" : "bg-gradient-to-br from-blue-500 to-purple-600";
                       
                       return (
@@ -356,7 +375,7 @@ export default function MessagesPage() {
                             </div>
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center justify-between">
-                                <p className={`font-medium truncate ${userColorStyle}`}>
+                                <p className={`font-medium truncate ${colorClass}`}>
                                   {conv.user.username}
                                 </p>
                                 <Button
@@ -401,7 +420,7 @@ export default function MessagesPage() {
                             {selectedUser.username[0].toUpperCase()}
                           </AvatarFallback>
                         </Avatar>
-                        <span className={`font-medium ${selectedUser.name_color ? nameColorStyles[selectedUser.name_color] : ""}`}>
+                        <span className={`font-medium ${getPointsColor(selectedUser.points, selectedUser.role)}`}>
                           {selectedUser.username}
                         </span>
                       </div>

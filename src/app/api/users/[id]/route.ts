@@ -15,9 +15,9 @@ export async function GET(
       .from("users")
       .select(`
         id, username, role, points,
-        solved_entry, solved_popular_minus, solved_popular, 
+        solved_entry, solved_popular_minus, solved_popular,
         solved_popular_plus, solved_improve_plus, solved_provincial, solved_noi,
-        created_at
+        created_at, bio
       `)
       .eq("id", parseInt(id))
       .single();
@@ -40,6 +40,7 @@ export async function GET(
       solvedProvincial: user.solved_provincial,
       solvedNoi: user.solved_noi,
       createdAt: user.created_at,
+      bio: user.bio,
     };
 
     return NextResponse.json({ user: formattedUser });

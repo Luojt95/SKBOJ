@@ -152,7 +152,7 @@ export default function ContestDetailPage() {
 
   // OI赛制下，比赛未结束时不显示分数
   // CS赛制和IOI赛制类似，比赛进行中也能看到分数
-  const isOIContest = contest.type === "oi" || contest.format === "OI";
+  const isOIContest = contest.format === "OI";
   const shouldHideScore = isOIContest && status !== "ended";
 
   // 检查是否可以编辑/删除

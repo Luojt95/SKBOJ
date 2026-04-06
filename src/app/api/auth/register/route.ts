@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseClient } from "@/storage/database/supabase-client";
 import bcrypt from "bcryptjs";
 import { verifyCaptchaAnswer } from "@/app/api/captcha/route";
+import { cookies } from "next/headers";
 
 export async function POST(request: NextRequest) {
   try {
@@ -94,6 +95,25 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
+
+    // 设置cookie实现自动登录
+    const cookieStore = await cookies();
+    cookieStore.set(
+      "user",
+      JSON.stringify({
+        id: user.id,
+        username: user.username,
+        role: user.role,
+        points: user.points,
+      }),
+      {
+        httpOnly: true,
+        secure: false,
+        sameSite: "lax",
+        maxAge: 60 * 60 * 24 * 7,
+        path: "/",
+      }
+    );
 
     return NextResponse.json({
       message: "注册成功",
