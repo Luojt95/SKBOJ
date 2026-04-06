@@ -80,6 +80,17 @@ export function Navbar() {
     refreshUser();
   }, []);
 
+  // 根据当前用户角色更新localStorage中的currentUserRole
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      if (user?.role === "super_admin") {
+        localStorage.setItem("currentUserRole", "super_admin");
+      } else {
+        localStorage.removeItem("currentUserRole");
+      }
+    }
+  }, [user]);
+
   // 检查是否可以显示注册按钮（站长或之前是站长）
   useEffect(() => {
     const checkCanShowRegister = () => {
@@ -137,9 +148,14 @@ export function Navbar() {
   }, [user]);
 
   const handleLogout = async () => {
-    // 如果是站长，记录角色信息以便后续访问注册页面
-    if (user?.role === "super_admin") {
-      localStorage.setItem("previousUserRole", user.role);
+    // 检查localStorage中的currentUserRole，如果是站长则记录到previousUserRole，否则清除
+    if (typeof window !== "undefined") {
+      const currentUserRole = localStorage.getItem("currentUserRole");
+      if (currentUserRole === "super_admin") {
+        localStorage.setItem("previousUserRole", "super_admin");
+      } else {
+        localStorage.removeItem("previousUserRole");
+      }
     }
     await fetch("/api/auth/logout", { method: "POST" });
     setUser(null);
