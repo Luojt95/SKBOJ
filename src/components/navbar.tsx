@@ -143,6 +143,7 @@ export function Navbar() {
 
   const userColorStyle = getPointsColor(user?.points, user?.role);
   const displayPoints = user?.role === "super_admin" ? "∞" : (user?.points ?? 100);
+  const canRegister = user?.role === "super_admin";
 
   return (
     <nav className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -253,14 +254,9 @@ export function Navbar() {
                 </DropdownMenu>
               </>
             ) : (
-              <>
-                <Button variant="ghost" asChild>
-                  <Link href="/login">登录</Link>
-                </Button>
-                <Button asChild>
-                  <Link href="/register">注册</Link>
-                </Button>
-              </>
+              <Button variant="ghost" asChild>
+                <Link href="/login">登录</Link>
+              </Button>
             )}
           </div>
 
@@ -371,14 +367,9 @@ export function Navbar() {
                     </Button>
                   </>
                 ) : (
-                  <>
-                    <Button variant="ghost" asChild className="justify-start">
-                      <Link href="/login">登录</Link>
-                    </Button>
-                    <Button asChild className="justify-start">
-                      <Link href="/register">注册</Link>
-                    </Button>
-                  </>
+                  <Button variant="ghost" asChild className="justify-start">
+                    <Link href="/login">登录</Link>
+                  </Button>
                 )}
               </div>
             </div>
