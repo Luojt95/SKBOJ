@@ -168,12 +168,12 @@ export async function resetDailyLimits(userId: number): Promise<boolean> {
       checked_in: true,
       problems_created: 0,
       benbens_created: 0,
-      messages_sent: 0,
+      messages_created: 0,
       contests_created: 0,
       discussions_created: 0,
       shares_created: 0,
       tickets_created: 0,
-      replies_created: 0,
+      replies_count: 0,
     });
 
     return !error;

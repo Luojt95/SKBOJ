@@ -41,17 +41,41 @@ export async function GET(request: NextRequest) {
     const defaultLimits = {
       problems_created: 3,
       benbens_created: 3,
-      messages_created: 5,
+      messages_sent: 5,
       contests_created: 1,
       discussions_created: 1,
       shares_created: 2,
       tickets_created: 1,
-      replies_count: 5
+      replies_created: 5
+    };
+
+    // 转换字段名以匹配前端期望
+    const transformedLimits = limits ? {
+      problems_created: limits.problems_created || 0,
+      benbens_created: limits.benbens_created || 0,
+      messages_sent: limits.messages_created || 0,
+      contests_created: limits.contests_created || 0,
+      discussions_created: limits.discussions_created || 0,
+      shares_created: limits.shares_created || 0,
+      tickets_created: limits.tickets_created || 0,
+      replies_created: limits.replies_count || 0,
+      checkedIn: limits.checked_in || false,
+    } : {
+      ...defaultLimits,
+      checkedIn: false,
+      problems_created: 0,
+      benbens_created: 0,
+      messages_sent: 0,
+      contests_created: 0,
+      discussions_created: 0,
+      shares_created: 0,
+      tickets_created: 0,
+      replies_created: 0,
     };
 
     return NextResponse.json({
       unlimited: false,
-      limits: limits || { ...defaultLimits, user_id: user.id, date: today },
+      limits: transformedLimits,
       maxLimits: defaultLimits
     });
   } catch (error) {
@@ -111,6 +135,17 @@ export async function POST(request: NextRequest) {
       reply: "replies_count"
     };
 
+    const reverseFieldMap: Record<string, string> = {
+      problems_created: "problem",
+      benbens_created: "benben",
+      messages_created: "message",
+      contests_created: "contest",
+      discussions_created: "discussion",
+      shares_created: "share",
+      tickets_created: "ticket",
+      replies_count: "reply"
+    };
+
     const field = fieldMap[type];
     if (!field) {
       return NextResponse.json({ error: "无效的类型" }, { status: 400 });
@@ -133,7 +168,16 @@ export async function POST(request: NextRequest) {
         .from("daily_limits")
         .insert({
           user_id: user.id,
-          date: today
+          date: today,
+          checked_in: true,
+          problems_created: 0,
+          benbens_created: 0,
+          messages_created: 0,
+          contests_created: 0,
+          discussions_created: 0,
+          shares_created: 0,
+          tickets_created: 0,
+          replies_count: 0,
         })
         .select()
         .single();
@@ -172,7 +216,20 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "更新失败" }, { status: 500 });
     }
 
-    return NextResponse.json({ success: true, limits: updatedLimits });
+    // 转换字段名以匹配前端期望
+    const transformedLimits = {
+      problems_created: updatedLimits.problems_created || 0,
+      benbens_created: updatedLimits.benbens_created || 0,
+      messages_sent: updatedLimits.messages_created || 0,
+      contests_created: updatedLimits.contests_created || 0,
+      discussions_created: updatedLimits.discussions_created || 0,
+      shares_created: updatedLimits.shares_created || 0,
+      tickets_created: updatedLimits.tickets_created || 0,
+      replies_created: updatedLimits.replies_count || 0,
+      checkedIn: updatedLimits.checked_in || false,
+    };
+
+    return NextResponse.json({ success: true, limits: transformedLimits });
   } catch (error) {
     console.error("Update daily limits error:", error);
     return NextResponse.json({ error: "更新失败" }, { status: 500 });

@@ -141,7 +141,7 @@ export default function HomePage() {
 
           // 获取每日限制
           if (data.user && data.user.role !== 'super_admin') {
-            fetchDailyLimits(data.user.id);
+            fetchDailyLimits();
           }
         }
       } catch (error) {
@@ -151,13 +151,13 @@ export default function HomePage() {
     checkAuth();
   }, []);
 
-  const fetchDailyLimits = async (userId: number) => {
+  const fetchDailyLimits = async () => {
     setLimitsLoading(true);
     try {
       const res = await fetch('/api/daily-limits');
       if (res.ok) {
         const data = await res.json();
-        setDailyLimits(data);
+        setDailyLimits(data.limits);
       }
     } catch (error) {
       console.error('获取每日限制失败:', error);
@@ -189,7 +189,7 @@ export default function HomePage() {
         toast.success(data.message);
         setCheckedIn(true);
         // 刷新每日限制
-        await fetchDailyLimits(user.id);
+        await fetchDailyLimits();
         // 触发积分变化事件，让导航栏更新积分显示
         window.dispatchEvent(new CustomEvent("pointsChanged"));
       } else {
