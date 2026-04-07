@@ -1,4 +1,5 @@
 import { getSupabaseClient } from "@/storage/database/supabase-client";
+import { resetDailyLimits } from "./daily-limits";
 
 // 积分消耗配置
 export const POINTS_COST = {
@@ -214,10 +215,13 @@ export async function checkIn(userId: number): Promise<{ success: boolean; messa
     related_type: "check_in",
   });
 
-  return { 
-    success: true, 
+  // 重置每日限制
+  await resetDailyLimits(userId);
+
+  return {
+    success: true,
     message: `签到成功，获得 ${POINTS_REWARD.CHECK_IN} 积分`,
-    points: newPoints 
+    points: newPoints
   };
 }
 

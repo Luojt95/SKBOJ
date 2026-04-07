@@ -34,6 +34,29 @@ interface User {
   points?: number;
 }
 
+interface DailyLimits {
+  checkedIn: boolean;
+  problems_created: number;
+  benbens_created: number;
+  messages_sent: number;
+  contests_created: number;
+  discussions_created: number;
+  shares_created: number;
+  tickets_created: number;
+  replies_created: number;
+}
+
+const LIMITS = {
+  problems_created: 3,
+  benbens_created: 3,
+  messages_sent: 5,
+  contests_created: 1,
+  discussions_created: 1,
+  shares_created: 2,
+  tickets_created: 1,
+  replies_created: 5,
+};
+
 // 根据积分获取用户名颜色
 function getPointsColor(points: number | undefined, role: string | undefined): string {
   // 站长和管理员紫色
@@ -97,6 +120,8 @@ export default function HomePage() {
   const [checkedIn, setCheckedIn] = useState(false);
   const [checkingIn, setCheckingIn] = useState(false);
   const [dbError, setDbError] = useState<string | null>(null);
+  const [dailyLimits, setDailyLimits] = useState<DailyLimits | null>(null);
+  const [limitsLoading, setLimitsLoading] = useState(false);
 
   useEffect(() => {
     // 检查登录状态
@@ -106,12 +131,17 @@ export default function HomePage() {
         if (res.ok) {
           const data = await res.json();
           setUser(data.user);
-          
+
           // 检查是否已签到
           const checkInRes = await fetch("/api/check-in");
           if (checkInRes.ok) {
             const checkInData = await checkInRes.json();
             setCheckedIn(checkInData.checkedIn);
+          }
+
+          // 获取每日限制
+          if (data.user && data.user.role !== 'super_admin') {
+            fetchDailyLimits(data.user.id);
           }
         }
       } catch (error) {
@@ -120,6 +150,21 @@ export default function HomePage() {
     };
     checkAuth();
   }, []);
+
+  const fetchDailyLimits = async (userId: number) => {
+    setLimitsLoading(true);
+    try {
+      const res = await fetch('/api/daily-limits');
+      if (res.ok) {
+        const data = await res.json();
+        setDailyLimits(data);
+      }
+    } catch (error) {
+      console.error('获取每日限制失败:', error);
+    } finally {
+      setLimitsLoading(false);
+    }
+  };
 
   useEffect(() => {
     fetchBenbens();
@@ -132,17 +177,19 @@ export default function HomePage() {
       router.push("/login");
       return;
     }
-    
+
     if (checkingIn) return;
-    
+
     setCheckingIn(true);
     try {
       const res = await fetch("/api/check-in", { method: "POST" });
       const data = await res.json();
-      
+
       if (res.ok && data.success) {
         toast.success(data.message);
         setCheckedIn(true);
+        // 刷新每日限制
+        await fetchDailyLimits(user.id);
         // 触发积分变化事件，让导航栏更新积分显示
         window.dispatchEvent(new CustomEvent("pointsChanged"));
       } else {
@@ -292,8 +339,8 @@ export default function HomePage() {
               OIer的乐土
             </p>
             <div className="flex flex-wrap justify-center gap-4 pt-4">
-              <Button 
-                size="lg" 
+              <Button
+                size="lg"
                 className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
                 onClick={handleCheckIn}
                 disabled={checkingIn || checkedIn}
@@ -301,6 +348,83 @@ export default function HomePage() {
                 {checkingIn ? "签到中..." : checkedIn ? "今日已打卡" : "每日打卡 (+10积分)"}
               </Button>
             </div>
+
+            {/* 每日限制显示 */}
+            {user && user.role !== 'super_admin' && dailyLimits && (
+              <div className="mt-8 w-full max-w-2xl">
+                <Card className="bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm border-2">
+                  <CardHeader>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <Zap className="h-5 w-5 text-yellow-500" />
+                      今日限额
+                      {!dailyLimits.checkedIn && (
+                        <Badge variant="outline" className="ml-2 bg-orange-50 text-orange-700 border-orange-200">
+                          请先打卡解锁
+                        </Badge>
+                      )}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {!dailyLimits.checkedIn ? (
+                      <p className="text-center text-muted-foreground py-4">
+                        每日打卡后解锁所有功能使用次数
+                      </p>
+                    ) : (
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div className="text-center p-3 rounded-lg bg-blue-50 dark:bg-blue-950/20">
+                          <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                            {dailyLimits.problems_created}/{LIMITS.problems_created}
+                          </div>
+                          <div className="text-xs text-muted-foreground mt-1">创建题目</div>
+                        </div>
+                        <div className="text-center p-3 rounded-lg bg-purple-50 dark:bg-purple-950/20">
+                          <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">
+                            {dailyLimits.benbens_created}/{LIMITS.benbens_created}
+                          </div>
+                          <div className="text-xs text-muted-foreground mt-1">发犇犇</div>
+                        </div>
+                        <div className="text-center p-3 rounded-lg bg-green-50 dark:bg-green-950/20">
+                          <div className="text-2xl font-bold text-green-600 dark:text-green-400">
+                            {dailyLimits.messages_sent}/{LIMITS.messages_sent}
+                          </div>
+                          <div className="text-xs text-muted-foreground mt-1">发送私信</div>
+                        </div>
+                        <div className="text-center p-3 rounded-lg bg-orange-50 dark:bg-orange-950/20">
+                          <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">
+                            {dailyLimits.contests_created}/{LIMITS.contests_created}
+                          </div>
+                          <div className="text-xs text-muted-foreground mt-1">创建比赛</div>
+                        </div>
+                        <div className="text-center p-3 rounded-lg bg-pink-50 dark:bg-pink-950/20">
+                          <div className="text-2xl font-bold text-pink-600 dark:text-pink-400">
+                            {dailyLimits.discussions_created}/{LIMITS.discussions_created}
+                          </div>
+                          <div className="text-xs text-muted-foreground mt-1">创建讨论</div>
+                        </div>
+                        <div className="text-center p-3 rounded-lg bg-cyan-50 dark:bg-cyan-950/20">
+                          <div className="text-2xl font-bold text-cyan-600 dark:text-cyan-400">
+                            {dailyLimits.shares_created}/{LIMITS.shares_created}
+                          </div>
+                          <div className="text-xs text-muted-foreground mt-1">分享代码</div>
+                        </div>
+                        <div className="text-center p-3 rounded-lg bg-red-50 dark:bg-red-950/20">
+                          <div className="text-2xl font-bold text-red-600 dark:text-red-400">
+                            {dailyLimits.tickets_created}/{LIMITS.tickets_created}
+                          </div>
+                          <div className="text-xs text-muted-foreground mt-1">提交工单</div>
+                        </div>
+                        <div className="text-center p-3 rounded-lg bg-yellow-50 dark:bg-yellow-950/20">
+                          <div className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">
+                            {dailyLimits.replies_created}/{LIMITS.replies_created}
+                          </div>
+                          <div className="text-xs text-muted-foreground mt-1">回复次数</div>
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            )}
           </div>
         </div>
       </section>

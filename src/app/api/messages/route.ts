@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { getSupabaseClient } from "@/storage/database/supabase-client";
 import { checkUserPoints, deductUserPoints } from "@/lib/warning-check";
+import { checkUserCanPerformAction } from "@/lib/permission-check";
+import { checkDailyLimit, updateDailyLimit } from "@/lib/daily-limits";
 
 // 获取私信列表（会话列表）
 export async function GET(request: NextRequest) {
@@ -145,6 +147,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "不能给自己发私信" }, { status: 400 });
     }
 
+    // 检查是否被禁言
+    const banCheck = await checkUserCanPerformAction(user.id, "message");
+    if (!banCheck.canPerform) {
+      return NextResponse.json({ error: banCheck.message }, { status: 403 });
+    }
+
+    // 检查每日限制（发送私信）
+    const limitCheck = await checkDailyLimit(user.id, "messages_sent", 5);
+    if (!limitCheck.allowed) {
+      return NextResponse.json({ error: limitCheck.reason }, { status: 403 });
+    }
+
     // 检查积分
     const pointsCheck = await checkUserPoints(user.id, "messages");
     if (!pointsCheck.allowed) {
@@ -182,6 +196,9 @@ export async function POST(request: NextRequest) {
 
     // 扣除积分
     await deductUserPoints(user.id, "messages", message.id);
+
+    // 更新每日限制
+    await updateDailyLimit(user.id, "messages_sent");
 
     // 获取发送者信息
     const { data: sender } = await client

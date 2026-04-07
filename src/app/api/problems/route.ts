@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { getSupabaseClient } from "@/storage/database/supabase-client";
+import { checkDailyLimit, updateDailyLimit } from "@/lib/daily-limits";
 
 // 获取题目列表
 export async function GET(request: NextRequest) {
@@ -87,6 +88,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "没有权限" }, { status: 403 });
     }
 
+    // 检查每日限制（管理员限制3道，站长不受限制）
+    if (user.role === "admin") {
+      const limitCheck = await checkDailyLimit(user.id, "problems_created", 3);
+      if (!limitCheck.allowed) {
+        return NextResponse.json({ error: limitCheck.reason }, { status: 403 });
+      }
+    }
+
     const body = await request.json();
     const client = getSupabaseClient();
 
@@ -119,6 +128,11 @@ export async function POST(request: NextRequest) {
     if (error) {
       console.error("Create problem error:", error);
       return NextResponse.json({ error: "创建题目失败: " + (error.message || "数据库错误") }, { status: 500 });
+    }
+
+    // 更新每日限制（管理员需要更新，站长不需要）
+    if (user.role === "admin") {
+      await updateDailyLimit(user.id, "problems_created");
     }
 
     return NextResponse.json({ problem });

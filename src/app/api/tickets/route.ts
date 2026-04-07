@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { getSupabaseClient } from "@/storage/database/supabase-client";
+import { checkUserCanPerformAction } from "@/lib/permission-check";
+import { checkDailyLimit, updateDailyLimit } from "@/lib/daily-limits";
 
 // 获取工单列表
 export async function GET() {
@@ -77,6 +79,18 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const client = getSupabaseClient();
 
+    // 检查是否被禁言
+    const banCheck = await checkUserCanPerformAction(user.id, "ticket");
+    if (!banCheck.canPerform) {
+      return NextResponse.json({ error: banCheck.message }, { status: 403 });
+    }
+
+    // 检查每日限制（提交工单）
+    const limitCheck = await checkDailyLimit(user.id, "tickets_created", 1);
+    if (!limitCheck.allowed) {
+      return NextResponse.json({ error: limitCheck.reason }, { status: 403 });
+    }
+
     const { data: ticket, error } = await client
       .from("tickets")
       .insert({
@@ -94,6 +108,9 @@ export async function POST(request: NextRequest) {
       console.error("Create ticket error:", error);
       return NextResponse.json({ error: "提交失败: " + error.message }, { status: 500 });
     }
+
+    // 更新每日限制
+    await updateDailyLimit(user.id, "tickets_created");
 
     return NextResponse.json({ ticket });
   } catch (error) {

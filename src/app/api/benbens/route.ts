@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { getSupabaseClient } from "@/storage/database/supabase-client";
 import { checkUserPoints, deductUserPoints } from "@/lib/warning-check";
+import { checkUserCanPerformAction } from "@/lib/permission-check";
+import { checkDailyLimit, updateDailyLimit } from "@/lib/daily-limits";
 
 // 获取犇犇列表
 export async function GET(request: NextRequest) {
@@ -107,9 +109,29 @@ export async function POST(request: NextRequest) {
 
     const user = JSON.parse(userCookie.value);
     const body = await request.json();
-    
-    // 检查积分（发犇犇-3，回复-2）
+
+    // 检查是否被禁言
+    const banCheck = await checkUserCanPerformAction(user.id, "benben");
+    if (!banCheck.canPerform) {
+      return NextResponse.json({ error: banCheck.message }, { status: 403 });
+    }
+
+    // 检查每日限制（犇犇创建）
     const isReply = body.parentId != null;
+    if (!isReply) {
+      const limitCheck = await checkDailyLimit(user.id, "benbens_created", 3);
+      if (!limitCheck.allowed) {
+        return NextResponse.json({ error: limitCheck.reason }, { status: 403 });
+      }
+    } else {
+      // 检查回复次数
+      const limitCheck = await checkDailyLimit(user.id, "replies_created", 5);
+      if (!limitCheck.allowed) {
+        return NextResponse.json({ error: limitCheck.reason }, { status: 403 });
+      }
+    }
+
+    // 检查积分（发犇犇-3，回复-2）
     const pointsCheck = await checkUserPoints(
       user.id,
       isReply ? "benben_reply" : "benbens"
@@ -151,6 +173,13 @@ export async function POST(request: NextRequest) {
       isReply ? "benben_reply" : "benbens",
       benben.id
     );
+
+    // 更新每日限制
+    if (!isReply) {
+      await updateDailyLimit(user.id, "benbens_created");
+    } else {
+      await updateDailyLimit(user.id, "replies_created");
+    }
 
     // 更新 cookie 中的积分
     if (deductResult.success && deductResult.newPoints !== undefined) {

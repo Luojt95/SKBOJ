@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { getSupabaseClient } from "@/storage/database/supabase-client";
+import { checkUserCanPerformAction } from "@/lib/permission-check";
+import { checkDailyLimit, updateDailyLimit } from "@/lib/daily-limits";
 
 // 获取分享列表
 export async function GET() {
@@ -53,6 +55,18 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const client = getSupabaseClient();
 
+    // 检查是否被禁言
+    const banCheck = await checkUserCanPerformAction(user.id, "share");
+    if (!banCheck.canPerform) {
+      return NextResponse.json({ error: banCheck.message }, { status: 403 });
+    }
+
+    // 检查每日限制（分享代码）
+    const limitCheck = await checkDailyLimit(user.id, "shares_created", 2);
+    if (!limitCheck.allowed) {
+      return NextResponse.json({ error: limitCheck.reason }, { status: 403 });
+    }
+
     const { data: share, error } = await client
       .from("code_shares")
       .insert({
@@ -70,6 +84,9 @@ export async function POST(request: NextRequest) {
       console.error("Create share error:", error);
       return NextResponse.json({ error: "分享失败: " + error.message }, { status: 500 });
     }
+
+    // 更新每日限制
+    await updateDailyLimit(user.id, "shares_created");
 
     return NextResponse.json({ share });
   } catch (error) {
