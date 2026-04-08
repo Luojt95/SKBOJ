@@ -22,7 +22,8 @@ export async function GET(request: NextRequest) {
         id, username, role, created_at, 
         name_color, total_rating, points,
         solved_entry, solved_popular_minus, solved_popular, 
-        solved_popular_plus, solved_improve_plus, solved_provincial, solved_noi
+        solved_popular_plus, solved_improve_plus, solved_provincial, solved_noi,
+        is_banned
       `)
       .order("points", { ascending: false })
       .range(offset, offset + pageSize - 1);

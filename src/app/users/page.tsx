@@ -21,7 +21,10 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Users, Trophy, Code, User, UserX, RefreshCw, ChevronLeft, ChevronRight, Coins, Trash2, Check, Square } from "lucide-react";
+import { Users, Trophy, Code, User, UserX, RefreshCw, ChevronLeft, ChevronRight, Coins, Trash2, Check, Square, Ban } from "lucide-react";
+import { DialogDescription } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Checkbox } from "@/components/ui/checkbox";
 
@@ -32,6 +35,7 @@ interface UserData {
   points: number;
   solved_total: number;
   created_at: string;
+  is_banned?: boolean;
 }
 
 interface Stats {
@@ -110,6 +114,12 @@ export default function UsersPage() {
   // 批量选择状态
   const [selectedUserIds, setSelectedUserIds] = useState<Set<number>>(new Set());
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // 禁言对话框状态
+  const [banDialogOpen, setBanDialogOpen] = useState(false);
+  const [banUser, setBanUser] = useState<UserData | null>(null);
+  const [banReason, setBanReason] = useState("");
+  const [isBanning, setIsBanning] = useState(false);
 
   const fetchUsers = async (page: number = 1) => {
     try {
@@ -277,6 +287,62 @@ export default function UsersPage() {
       toast.error("修改失败，请重试");
     } finally {
       setIsUpdatingPoints(false);
+    }
+  };
+
+  // 禁言用户
+  const handleBanUser = async () => {
+    if (!banUser || !banReason.trim()) {
+      toast.error("请输入禁言原因");
+      return;
+    }
+
+    setIsBanning(true);
+    try {
+      const res = await fetch(`/api/users/${banUser.id}/ban`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reason: banReason.trim() }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        toast.success(`已禁言用户 ${banUser.username}`);
+        setBanDialogOpen(false);
+        setBanReason("");
+        fetchUsers(pagination.page);
+      } else {
+        toast.error(data.error || "禁言失败");
+      }
+    } catch {
+      toast.error("禁言失败，请重试");
+    } finally {
+      setIsBanning(false);
+    }
+  };
+
+  // 解禁用户
+  const handleUnbanUser = async (userId: number, username: string) => {
+    if (!confirm(`确定要解禁用户 ${username} 吗？`)) {
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/users/${userId}/ban`, {
+        method: "DELETE",
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        toast.success(`已解禁用户 ${username}`);
+        fetchUsers(pagination.page);
+      } else {
+        toast.error(data.error || "解禁失败");
+      }
+    } catch {
+      toast.error("解禁失败，请重试");
     }
   };
 
@@ -539,6 +605,14 @@ export default function UsersPage() {
                                 <Coins className="h-4 w-4" />
                               </Button>
                               <Button
+                                variant={user.is_banned ? "outline" : "secondary"}
+                                size="sm"
+                                onClick={() => user.is_banned ? handleUnbanUser(user.id, user.username) : (setBanUser(user), setBanDialogOpen(true))}
+                                title={user.is_banned ? "解禁用户" : "禁言用户"}
+                              >
+                                <Ban className={`h-4 w-4 ${user.is_banned ? "text-green-500" : "text-orange-500"}`} />
+                              </Button>
+                              <Button
                                 variant="destructive"
                                 size="sm"
                                 onClick={() => handleDeleteUser(user.id)}
@@ -656,6 +730,47 @@ export default function UsersPage() {
             </Button>
             <Button onClick={handleUpdatePoints} disabled={isUpdatingPoints}>
               {isUpdatingPoints ? "处理中..." : "确认修改"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 禁言对话框 */}
+      <Dialog open={banDialogOpen} onOpenChange={setBanDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Ban className="h-5 w-5 text-orange-500" />
+              禁言用户
+            </DialogTitle>
+            <DialogDescription>
+              禁言后该用户的积分将被清零，权限降级为普通用户，且无法发犇犇、私信、讨论、分享和提交工单。
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="flex items-center gap-2">
+              <span className="font-medium">用户：</span>
+              <span className="text-lg">{banUser?.username}</span>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="banReason">禁言原因 *</Label>
+              <Input
+                id="banReason"
+                placeholder="请输入禁言原因（将告知用户）"
+                value={banReason}
+                onChange={(e) => setBanReason(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">
+                请输入禁言原因，这将显示给用户
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBanDialogOpen(false)}>
+              取消
+            </Button>
+            <Button variant="destructive" onClick={handleBanUser} disabled={isBanning || !banReason.trim()}>
+              {isBanning ? "处理中..." : "确认禁言"}
             </Button>
           </DialogFooter>
         </DialogContent>
