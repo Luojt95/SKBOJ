@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getCurrentUser } from "@/storage/database/supabase-client";
+import { cookies } from "next/headers";
+import { getSupabaseClient } from "@/storage/database/supabase-client";
 import { banUser, unbanUser, isUserBanned } from "@/lib/ban-system";
 
 // GET - 检查用户是否被禁言
@@ -28,11 +29,14 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
-    const currentUser = await getCurrentUser();
+    const cookieStore = await cookies();
+    const userCookie = cookieStore.get("user");
 
-    if (!currentUser) {
+    if (!userCookie) {
       return NextResponse.json({ error: "未登录" }, { status: 401 });
     }
+
+    const currentUser = JSON.parse(userCookie.value);
 
     if (currentUser.role !== "super_admin") {
       return NextResponse.json({ error: "无权限" }, { status: 403 });
@@ -70,11 +74,14 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    const currentUser = await getCurrentUser();
+    const cookieStore = await cookies();
+    const userCookie = cookieStore.get("user");
 
-    if (!currentUser) {
+    if (!userCookie) {
       return NextResponse.json({ error: "未登录" }, { status: 401 });
     }
+
+    const currentUser = JSON.parse(userCookie.value);
 
     if (currentUser.role !== "super_admin") {
       return NextResponse.json({ error: "无权限" }, { status: 403 });
