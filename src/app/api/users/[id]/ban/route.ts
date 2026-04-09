@@ -6,10 +6,11 @@ import { banUser, unbanUser, isUserBanned } from "@/lib/ban-system";
 // GET - 检查用户是否被禁言
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const userId = parseInt(params.id);
+    const { id } = await params;
+    const userId = parseInt(id);
 
     if (isNaN(userId)) {
       return NextResponse.json({ error: "无效的用户ID" }, { status: 400 });
@@ -26,7 +27,7 @@ export async function GET(
 // POST - 禁言用户（仅站长）
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const cookieStore = await cookies();
@@ -42,7 +43,8 @@ export async function POST(
       return NextResponse.json({ error: "无权限" }, { status: 403 });
     }
 
-    const targetUserId = parseInt(params.id);
+    const { id } = await params;
+    const targetUserId = parseInt(id);
 
     if (isNaN(targetUserId)) {
       return NextResponse.json({ error: "无效的用户ID" }, { status: 400 });
@@ -71,7 +73,7 @@ export async function POST(
 // DELETE - 解禁用户（仅站长）
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const cookieStore = await cookies();
@@ -87,7 +89,8 @@ export async function DELETE(
       return NextResponse.json({ error: "无权限" }, { status: 403 });
     }
 
-    const targetUserId = parseInt(params.id);
+    const { id } = await params;
+    const targetUserId = parseInt(id);
 
     if (isNaN(targetUserId)) {
       return NextResponse.json({ error: "无效的用户ID" }, { status: 400 });

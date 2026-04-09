@@ -122,7 +122,6 @@ export async function POST(request: NextRequest) {
     }
 
     // 扣除积分并获取新积分
-    const isReply = body.parentId != null;
     const deductResult = await deductUserPoints(
       user.id,
       isReply ? "discussion_reply" : "discussions",

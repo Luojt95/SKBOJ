@@ -50,6 +50,7 @@ interface OtherUser {
   username: string;
   role: string;
   name_color?: string;
+  points?: number;
 }
 
 // 根据积分获取颜色
