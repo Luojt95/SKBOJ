@@ -370,11 +370,13 @@ export default function CreateProblemPage() {
                 <Input
                   id="timeLimit"
                   type="number"
+                  min={1}
+                  max={10000}
                   value={formData.timeLimit}
                   onChange={(e) =>
                     setFormData({
                       ...formData,
-                      timeLimit: parseInt(e.target.value) || 1000,
+                      timeLimit: Math.min(10000, Math.max(1, parseInt(e.target.value) || 1000)),
                     })
                   }
                 />
@@ -384,11 +386,13 @@ export default function CreateProblemPage() {
                 <Input
                   id="memoryLimit"
                   type="number"
+                  min={1}
+                  max={1024}
                   value={formData.memoryLimit}
                   onChange={(e) =>
                     setFormData({
                       ...formData,
-                      memoryLimit: parseInt(e.target.value) || 256,
+                      memoryLimit: Math.min(1024, Math.max(1, parseInt(e.target.value) || 256)),
                     })
                   }
                 />
@@ -429,12 +433,14 @@ export default function CreateProblemPage() {
             {tags.length > 0 && (
               <div className="flex flex-wrap gap-1 mt-3">
                 {tags.map((tag) => (
-                  <Badge key={tag} variant="secondary" className="gap-1 text-xs">
+                  <Badge 
+                    key={tag} 
+                    variant="secondary" 
+                    className="gap-1 text-xs cursor-pointer hover:bg-muted/80"
+                    onClick={() => handleRemoveTag(tag)}
+                  >
                     {tag}
-                    <X
-                      className="h-3 w-3 cursor-pointer"
-                      onClick={() => handleRemoveTag(tag)}
-                    />
+                    <X className="h-3 w-3" />
                   </Badge>
                 ))}
               </div>

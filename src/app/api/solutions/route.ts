@@ -163,3 +163,81 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ solutions: [] });
   }
 }
+
+// 审核题解（PUT）
+export async function PUT(request: NextRequest) {
+  try {
+    const cookieStore = await cookies();
+    const userCookie = cookieStore.get("user");
+
+    if (!userCookie) {
+      return NextResponse.json({ error: "请先登录" }, { status: 401 });
+    }
+
+    const user = JSON.parse(userCookie.value);
+
+    // 只有管理员和站长可以审核
+    if (user.role !== "admin" && user.role !== "super_admin") {
+      return NextResponse.json({ error: "没有权限审核题解" }, { status: 403 });
+    }
+
+    const body = await request.json();
+    const { solution_id, action } = body;
+
+    if (!solution_id || !action) {
+      return NextResponse.json({ error: "参数不完整" }, { status: 400 });
+    }
+
+    if (!["approve", "reject"].includes(action)) {
+      return NextResponse.json({ error: "无效的操作" }, { status: 400 });
+    }
+
+    const client = getSupabaseClient();
+
+    // 获取题解信息
+    const { data: solution, error: getError } = await client
+      .from("solutions")
+      .select("id, problem_id, user_id, title, status")
+      .eq("id", solution_id)
+      .single();
+
+    if (getError || !solution) {
+      return NextResponse.json({ error: "题解不存在" }, { status: 404 });
+    }
+
+    // 更新状态
+    const newStatus = action === "approve" ? "approved" : "rejected";
+    const { error: updateError } = await client
+      .from("solutions")
+      .update({
+        status: newStatus,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", solution_id);
+
+    if (updateError) {
+      console.error("Update solution status error:", updateError);
+      return NextResponse.json({ error: "更新失败" }, { status: 500 });
+    }
+
+    // 创建通知给题解作者
+    await client.from("notifications").insert({
+      user_id: solution.user_id,
+      type: action === "approve" ? "solution_approved" : "solution_rejected",
+      title: action === "approve" ? "题解审核通过" : "题解审核未通过",
+      content: action === "approve"
+        ? `您提交的题解《${solution.title}》已通过审核`
+        : `您提交的题解《${solution.title}》未通过审核`,
+      related_id: solution_id,
+      related_type: "solution",
+    });
+
+    return NextResponse.json({
+      success: true,
+      message: action === "approve" ? "已通过审核" : "已标记为未通过"
+    });
+  } catch (error) {
+    console.error("Review solution error:", error);
+    return NextResponse.json({ error: "审核失败" }, { status: 500 });
+  }
+}

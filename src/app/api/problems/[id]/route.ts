@@ -197,6 +197,10 @@ export async function PUT(
       return NextResponse.json({ error: "没有权限修改此题目" }, { status: 403 });
     }
 
+    // 验证时间限制和内存限制
+    const timeLimit = Math.min(10000, Math.max(1, parseInt(body.timeLimit) || 1000));
+    const memoryLimit = Math.min(1024, Math.max(1, parseInt(body.memoryLimit) || 256));
+
     const { data: updatedProblem, error } = await client
       .from("problems")
       .update({
@@ -208,8 +212,8 @@ export async function PUT(
         hint: body.hint,
         category: body.category,
         difficulty: body.difficulty,
-        time_limit: body.timeLimit,
-        memory_limit: body.memoryLimit,
+        time_limit: timeLimit,
+        memory_limit: memoryLimit,
         is_visible: body.isVisible,
         tags: body.tags,
         test_cases: body.testCases,

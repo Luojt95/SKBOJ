@@ -16,7 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { ArrowLeft, Play, Send, BookOpen, Edit, Trash2 } from "lucide-react";
+import { ArrowLeft, Play, Send, BookOpen, Edit, Trash2, CheckCircle } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
@@ -125,7 +125,9 @@ export default function ProblemDetailPage() {
   const [user, setUser] = useState<User | null>(null);
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [solutions, setSolutions] = useState<Solution[]>([]);
+  const [pendingSolutions, setPendingSolutions] = useState<Solution[]>([]);
   const [likedSolutions, setLikedSolutions] = useState<Set<number>>(new Set());
+  const [isAdmin, setIsAdmin] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [language, setLanguage] = useState("cpp");
   const [code, setCode] = useState(defaultCodes.cpp);
@@ -156,6 +158,8 @@ export default function ProblemDetailPage() {
         if (userRes.ok) {
           const userData = await userRes.json();
           setUser(userData.user);
+          // 检查是否为管理员或站长
+          setIsAdmin(userData.user?.role === "admin" || userData.user?.role === "super_admin");
         }
 
         if (submissionsRes.ok) {
@@ -173,8 +177,24 @@ export default function ProblemDetailPage() {
         setIsLoading(false);
       }
     };
+
+    const fetchPendingSolutions = async () => {
+      try {
+        const res = await fetch(`/api/solutions?problem_id=${params.id}&status=pending`);
+        if (res.ok) {
+          const data = await res.json();
+          setPendingSolutions(data.solutions || []);
+        }
+      } catch (error) {
+        console.error("Failed to fetch pending solutions:", error);
+      }
+    };
+
     fetchData();
-  }, [params.id]);
+    if (isAdmin) {
+      fetchPendingSolutions();
+    }
+  }, [params.id, isAdmin]);
 
   const handleLanguageChange = (lang: string) => {
     setLanguage(lang);
@@ -219,6 +239,36 @@ export default function ProblemDetailPage() {
             s.id === solutionId ? { ...s, likes: data.likes } : s
           )
         );
+      }
+    } catch (error) {
+      toast.error("操作失败");
+    }
+  };
+
+  const handleReviewSolution = async (solutionId: number, action: "approve" | "reject") => {
+    if (!isAdmin) return;
+
+    try {
+      const res = await fetch("/api/solutions", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: solutionId, action }),
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        toast.success(action === "approve" ? "审核通过" : "已拒绝");
+        // 从待审核列表移除
+        setPendingSolutions(prev => prev.filter(s => s.id !== solutionId));
+        if (action === "approve") {
+          // 添加到已审核列表
+          const reviewed = pendingSolutions.find(s => s.id === solutionId);
+          if (reviewed) {
+            setSolutions(prev => [{ ...reviewed, status: "approved" }, ...prev]);
+          }
+        }
+      } else {
+        toast.error(data.error || "操作失败");
       }
     } catch (error) {
       toast.error("操作失败");
@@ -423,9 +473,10 @@ export default function ProblemDetailPage() {
           </Card>
 
           <Tabs defaultValue="description">
-            <TabsList className="grid w-full grid-cols-2">
+            <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="description">题目描述</TabsTrigger>
               <TabsTrigger value="solutions">题解</TabsTrigger>
+              {isAdmin && <TabsTrigger value="pending">待审核题解</TabsTrigger>}
             </TabsList>
             <TabsContent value="description">
               <Card>
@@ -584,6 +635,70 @@ export default function ProblemDetailPage() {
                 </CardContent>
               </Card>
             </TabsContent>
+            {isAdmin && (
+              <TabsContent value="pending">
+                <Card>
+                  <CardContent className="pt-6">
+                    {pendingSolutions.length === 0 ? (
+                      <div className="text-center text-muted-foreground">
+                        <CheckCircle className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                        <p>暂无待审核题解</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {pendingSolutions.map((solution) => (
+                          <div 
+                            key={solution.id} 
+                            className="p-4 border rounded-lg hover:bg-muted/50 transition-colors"
+                          >
+                            <div className="flex items-center justify-between mb-2">
+                              <h4 className="font-semibold">{solution.title}</h4>
+                              <div className="flex gap-2">
+                                <Button 
+                                  size="sm" 
+                                  variant="default"
+                                  onClick={() => handleReviewSolution(solution.id, "approve")}
+                                >
+                                  通过
+                                </Button>
+                                <Button 
+                                  size="sm" 
+                                  variant="destructive"
+                                  onClick={() => handleReviewSolution(solution.id, "reject")}
+                                >
+                                  拒绝
+                                </Button>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-4 text-sm">
+                              {solution.users && (
+                                <Link 
+                                  href={`/profile/${solution.users.id}`}
+                                  className="text-blue-600 hover:text-blue-800 dark:text-blue-400"
+                                >
+                                  {solution.users.username}
+                                </Link>
+                              )}
+                              <span className="text-muted-foreground">
+                                {new Date(solution.created_at).toLocaleString("zh-CN")}
+                              </span>
+                            </div>
+                            <div className="mt-3 prose prose-sm dark:prose-invert max-w-none">
+                              <ReactMarkdown
+                                remarkPlugins={[remarkGfm, remarkMath]}
+                                rehypePlugins={[rehypeKatex]}
+                              >
+                                {solution.content}
+                              </ReactMarkdown>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            )}
           </Tabs>
         </div>
 

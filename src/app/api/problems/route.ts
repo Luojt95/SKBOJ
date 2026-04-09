@@ -104,6 +104,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "标题和描述不能为空" }, { status: 400 });
     }
 
+    // 验证时间限制和内存限制
+    const timeLimit = Math.min(10000, Math.max(1, parseInt(body.timeLimit) || 1000));
+    const memoryLimit = Math.min(1024, Math.max(1, parseInt(body.memoryLimit) || 256));
+
     const { data: problem, error } = await client
       .from("problems")
       .insert({
@@ -115,8 +119,8 @@ export async function POST(request: NextRequest) {
         hint: body.hint || "",
         category: body.category || "P",
         difficulty: body.difficulty || "popular",
-        time_limit: body.timeLimit || 1000,
-        memory_limit: body.memoryLimit || 256,
+        time_limit: timeLimit,
+        memory_limit: memoryLimit,
         is_visible: body.isVisible ?? true,
         author_id: user.id,
         tags: body.tags || [],

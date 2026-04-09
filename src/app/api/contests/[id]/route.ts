@@ -52,14 +52,37 @@ export async function GET(
       author = authorData;
     }
 
-    // 获取比赛题目
+    // 检查用户权限
+    const cookieStore = await cookies();
+    const userCookie = cookieStore.get("user");
+    let currentUser: { id: number; role: string } | null = null;
+    if (userCookie) {
+      try {
+        currentUser = JSON.parse(userCookie.value);
+      } catch { /* ignore */ }
+    }
+
+    // 判断是否为管理员或站长
+    const userRoleLevel = currentUser ? (roleLevel[currentUser.role] || 0) : 0;
+    const isAdminOrAbove = userRoleLevel >= 1;
+
+    // 判断比赛是否已开始
+    const now = new Date();
+    const startTime = new Date(contest.start_time);
+    const hasStarted = now >= startTime;
+
+    // 获取比赛题目（比赛开始前仅管理员/站长可见）
     let problems: any[] = [];
     if (contest.problem_ids && contest.problem_ids.length > 0) {
-      const { data: problemsData } = await client
-        .from("problems")
-        .select("id, title, difficulty, category")
-        .in("id", contest.problem_ids);
-      problems = problemsData || [];
+      // 比赛已开始 或 用户是管理员/站长 或 用户是比赛创建者
+      const isCreator = currentUser && currentUser.id === contest.author_id;
+      if (hasStarted || isAdminOrAbove || isCreator) {
+        const { data: problemsData } = await client
+          .from("problems")
+          .select("id, title, difficulty, category")
+          .in("id", contest.problem_ids);
+        problems = problemsData || [];
+      }
     }
 
     // 获取参与者和排行
