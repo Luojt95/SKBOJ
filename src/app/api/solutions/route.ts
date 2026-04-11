@@ -182,9 +182,12 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { solution_id, action } = body;
+    const { id, solution_id, action } = body;
 
-    if (!solution_id || !action) {
+    // 兼容 id 和 solution_id 两种参数名
+    const targetId = id || solution_id;
+
+    if (!targetId || !action) {
       return NextResponse.json({ error: "参数不完整" }, { status: 400 });
     }
 
@@ -198,7 +201,7 @@ export async function PUT(request: NextRequest) {
     const { data: solution, error: getError } = await client
       .from("solutions")
       .select("id, problem_id, user_id, title, status")
-      .eq("id", solution_id)
+      .eq("id", targetId)
       .single();
 
     if (getError || !solution) {
@@ -213,7 +216,7 @@ export async function PUT(request: NextRequest) {
         status: newStatus,
         updated_at: new Date().toISOString(),
       })
-      .eq("id", solution_id);
+      .eq("id", targetId);
 
     if (updateError) {
       console.error("Update solution status error:", updateError);
@@ -228,7 +231,7 @@ export async function PUT(request: NextRequest) {
       content: action === "approve"
         ? `您提交的题解《${solution.title}》已通过审核`
         : `您提交的题解《${solution.title}》未通过审核`,
-      related_id: solution_id,
+      related_id: targetId,
       related_type: "solution",
     });
 

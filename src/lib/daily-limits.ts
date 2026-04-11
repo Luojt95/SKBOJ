@@ -10,7 +10,7 @@ export async function getDailyLimits(userId: number): Promise<{
   discussions_created: number;
   shares_created: number;
   tickets_created: number;
-  replies_created: number;
+  replies_count: number;
 }> {
   const client = getSupabaseClient();
 
@@ -34,7 +34,7 @@ export async function getDailyLimits(userId: number): Promise<{
       discussions_created: 0,
       shares_created: 0,
       tickets_created: 0,
-      replies_created: 0,
+      replies_count: 0,
     };
   }
 
@@ -47,7 +47,7 @@ export async function getDailyLimits(userId: number): Promise<{
     discussions_created: limits.discussions_created || 0,
     shares_created: limits.shares_created || 0,
     tickets_created: limits.tickets_created || 0,
-    replies_created: limits.replies_created || 0,
+    replies_count: limits.replies_count || 0,
   };
 }
 
@@ -94,7 +94,7 @@ export async function checkDailyLimit(
       discussions_created: "创建讨论",
       shares_created: "分享代码",
       tickets_created: "提交工单",
-      replies_created: "回复",
+      replies_count: "回复",
     };
     return {
       allowed: false,
@@ -120,24 +120,27 @@ export async function updateDailyLimit(userId: number, action: string): Promise<
     .eq("date", dateStr)
     .single();
 
+  // 统一回复字段名
+  const dbAction = action === "replies_created" ? "replies_count" : action;
+
   if (!existing) {
     // 创建新记录
     const { error } = await client.from("daily_limits").insert({
       user_id: userId,
       date: dateStr,
       checked_in: false,
-      [action]: 1,
+      [dbAction]: 1,
     });
 
     return !error;
   }
 
   // 更新现有记录
-  const currentCount = (existing as any)[action] || 0;
+  const currentCount = (existing as any)[dbAction] || 0;
   const { error } = await client
     .from("daily_limits")
     .update({
-      [action]: currentCount + 1,
+      [dbAction]: currentCount + 1,
     })
     .eq("user_id", userId)
     .eq("date", dateStr);

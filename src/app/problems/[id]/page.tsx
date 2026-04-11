@@ -135,32 +135,45 @@ export default function ProblemDetailPage() {
   const [output, setOutput] = useState("");
   const [isRunning, setIsRunning] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [accessError, setAccessError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [problemRes, userRes, submissionsRes, solutionsRes] = await Promise.all([
-          fetch(`/api/problems/${params.id}`),
+        const [problemRes, userRes] = await Promise.all([
+          fetch(`/api/problems/${params.id}${contestId ? `?contest=${contestId}` : ""}`),
           fetch("/api/auth/me"),
+        ]);
+
+        // 处理题目访问错误
+        if (!problemRes.ok) {
+          const errorData = await problemRes.json();
+          if (problemRes.status === 403) {
+            setAccessError(errorData.error || "无法访问此题目");
+          } else {
+            setAccessError(errorData.error || "获取题目失败");
+          }
+          setIsLoading(false);
+          return;
+        }
+
+        const data = await problemRes.json();
+        setProblem(data.problem);
+        // 设置默认输入
+        if (data.problem?.samples?.[0]?.input) {
+          setInput(data.problem.samples[0].input);
+        }
+
+        const userData = await userRes.json();
+        setUser(userData.user);
+        // 检查是否为管理员或站长
+        setIsAdmin(userData.user?.role === "admin" || userData.user?.role === "super_admin");
+
+        // 只有题目成功加载后才获取提交和题解
+        const [submissionsRes, solutionsRes] = await Promise.all([
           fetch(`/api/submissions/problem/${params.id}`),
           fetch(`/api/solutions?problem_id=${params.id}`),
         ]);
-
-        if (problemRes.ok) {
-          const data = await problemRes.json();
-          setProblem(data.problem);
-          // 设置默认输入
-          if (data.problem?.samples?.[0]?.input) {
-            setInput(data.problem.samples[0].input);
-          }
-        }
-
-        if (userRes.ok) {
-          const userData = await userRes.json();
-          setUser(userData.user);
-          // 检查是否为管理员或站长
-          setIsAdmin(userData.user?.role === "admin" || userData.user?.role === "super_admin");
-        }
 
         if (submissionsRes.ok) {
           const submissionsData = await submissionsRes.json();
@@ -373,6 +386,26 @@ export default function ProblemDetailPage() {
   if (isLoading) {
     return (
       <div className="container mx-auto px-4 py-8 text-center">加载中...</div>
+    );
+  }
+
+  // 访问错误提示
+  if (accessError) {
+    return (
+      <div className="container mx-auto px-4 py-8 text-center">
+        <div className="max-w-md mx-auto">
+          <h2 className="text-xl font-bold mb-4">无法访问题目</h2>
+          <p className="text-muted-foreground mb-4">{accessError}</p>
+          <div className="flex gap-2 justify-center">
+            <Button asChild>
+              <Link href="/contests">返回比赛列表</Link>
+            </Button>
+            <Button variant="outline" asChild>
+              <Link href="/problems">返回题目列表</Link>
+            </Button>
+          </div>
+        </div>
+      </div>
     );
   }
 

@@ -202,12 +202,21 @@ export async function POST(request: NextRequest) {
 
     // 更新父犇犇的回复数
     if (body.parentId) {
-      await client
+      // 获取当前回复数
+      const { data: parentBenben } = await client
         .from("benbens")
-        .update({ 
-          reply_count: client.rpc("increment_reply_count", { id: body.parentId }) 
-        })
-        .eq("id", body.parentId);
+        .select("reply_count")
+        .eq("id", body.parentId)
+        .single();
+      
+      if (parentBenben) {
+        await client
+          .from("benbens")
+          .update({ 
+            reply_count: (parentBenben.reply_count || 0) + 1
+          })
+          .eq("id", body.parentId);
+      }
     }
 
     // 获取用户信息

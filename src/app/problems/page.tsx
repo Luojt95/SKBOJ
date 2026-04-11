@@ -13,7 +13,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, Plus, Code, MinusCircle } from "lucide-react";
+import { Search, Plus, Code, MinusCircle, RefreshCw } from "lucide-react";
+import { toast } from "sonner";
 import { difficultyConfig, categoryConfig } from "@/lib/constants";
 
 interface Problem {
@@ -56,6 +57,7 @@ export default function ProblemsPage() {
   const [search, setSearch] = useState("");
   const [difficulty, setDifficulty] = useState("all");
   const [category, setCategory] = useState("all");
+  const [isReordering, setIsReordering] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -98,6 +100,33 @@ export default function ProblemsPage() {
 
   const canCreateProblem = user && (user.role === "admin" || user.role === "super_admin");
 
+  // 整理题号 - 按题库分类重新编号
+  const handleReorderProblems = async () => {
+    if (!confirm("确定要整理题号吗？此操作将按题库分类重新分配题目编号（如P0001, P0002...）。")) {
+      return;
+    }
+
+    setIsReordering(true);
+    try {
+      const res = await fetch("/api/problems/reorder", {
+        method: "POST",
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        toast.success(`整理完成，共整理了 ${data.updatedCount} 道题目`);
+        // 刷新页面
+        window.location.reload();
+      } else {
+        toast.error(data.error || "整理失败");
+      }
+    } catch (error) {
+      toast.error("整理失败");
+    } finally {
+      setIsReordering(false);
+    }
+  };
+
   // 根据题库生成题目编号
   const getProblemNumber = (problem: Problem) => {
     const prefix = problem.category || "P";
@@ -120,12 +149,22 @@ export default function ProblemsPage() {
           <p className="text-muted-foreground mt-1">共 {filteredProblems.length} 道题目</p>
         </div>
         {canCreateProblem && (
-          <Button asChild className="bg-gradient-to-r from-blue-600 to-purple-600">
-            <Link href="/problems/create">
-              <Plus className="h-4 w-4 mr-2" />
-              创建题目
-            </Link>
-          </Button>
+          <div className="flex gap-2">
+            <Button 
+              variant="outline" 
+              onClick={handleReorderProblems}
+              disabled={isReordering}
+            >
+              <RefreshCw className={`h-4 w-4 mr-2 ${isReordering ? "animate-spin" : ""}`} />
+              整理题号
+            </Button>
+            <Button asChild className="bg-gradient-to-r from-blue-600 to-purple-600">
+              <Link href="/problems/create">
+                <Plus className="h-4 w-4 mr-2" />
+                创建题目
+              </Link>
+            </Button>
+          </div>
         )}
       </div>
 

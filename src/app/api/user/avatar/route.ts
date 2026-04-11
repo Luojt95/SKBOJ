@@ -33,6 +33,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "图片大小不能超过 2MB" }, { status: 400 });
     }
 
+    let avatarUrl: string;
+
     // 将文件转换为 Buffer
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
@@ -53,22 +55,19 @@ export async function POST(request: NextRequest) {
         });
 
       if (uploadError) {
-        console.error("Upload error:", uploadError);
-        // 如果 bucket 不存在，尝试创建
-        if (uploadError.message.includes("Bucket not found")) {
-          console.warn("Bucket 'avatars' not found, skipping storage upload");
-          return NextResponse.json({ error: "存储服务未配置，请联系管理员" }, { status: 500 });
-        }
-        return NextResponse.json({ error: "上传失败" }, { status: 500 });
+        // 如果存储上传失败，使用 Base64 数据存储
+        console.warn("Storage upload failed, using Base64 storage:", uploadError.message);
+        const base64Data = `data:${file.type};base64,${buffer.toString("base64")}`;
+        avatarUrl = base64Data;
+      } else {
+        // 获取公共 URL
+        const { data: publicUrlData } = getSupabaseClient()
+          .storage
+          .from("avatars")
+          .getPublicUrl(fileName);
+
+        avatarUrl = publicUrlData.publicUrl;
       }
-
-      // 获取公共 URL
-      const { data: publicUrlData } = getSupabaseClient()
-        .storage
-        .from("avatars")
-        .getPublicUrl(fileName);
-
-      const avatarUrl = publicUrlData.publicUrl;
 
       // 更新用户的头像URL
       const client = getSupabaseClient();
@@ -101,7 +100,39 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true, avatarUrl });
     } catch (storageError) {
       console.error("Storage error:", storageError);
-      return NextResponse.json({ error: "存储服务错误" }, { status: 500 });
+      // 存储异常时使用 Base64
+      const base64Data = `data:${file.type};base64,${buffer.toString("base64")}`;
+      avatarUrl = base64Data;
+
+      // 更新用户的头像URL
+      const client = getSupabaseClient();
+      const { error: updateError } = await client
+        .from("users")
+        .update({ avatar: avatarUrl })
+        .eq("id", user.id);
+
+      if (updateError) {
+        console.error("Update avatar error:", updateError);
+        return NextResponse.json({ error: "更新头像失败" }, { status: 500 });
+      }
+
+      // 更新cookie
+      cookieStore.set(
+        "user",
+        JSON.stringify({
+          ...user,
+          avatar: avatarUrl,
+        }),
+        {
+          httpOnly: true,
+          secure: false,
+          sameSite: "lax",
+          maxAge: 60 * 60 * 24 * 7,
+          path: "/",
+        }
+      );
+
+      return NextResponse.json({ success: true, avatarUrl });
     }
   } catch (error) {
     console.error("Upload avatar error:", error);
