@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (!problems || problems.length === 0) {
-      return NextResponse.json({ success: true, updatedCount: 0 });
+      return NextResponse.json({ success: true, updatedCount: 0, message: "没有题目需要整理" });
     }
 
     // 按题库分组
@@ -49,30 +49,35 @@ export async function POST(request: NextRequest) {
 
     // 更新每个题库的题目题号
     let updatedCount = 0;
+    const categories: string[] = [];
+
     for (const [category, categoryProblems] of Object.entries(problemsByCategory)) {
       // 按创建时间排序
       categoryProblems.sort((a, b) => 
         new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
       );
 
+      // 记录题库信息
+      categories.push(`${category}(${categoryProblems.length}道)`);
+
       // 为每个题库内的题目重新编号（1, 2, 3...）
       for (let i = 0; i < categoryProblems.length; i++) {
         const problem = categoryProblems[i];
         const newNumber = i + 1;
 
-        // 更新题目的 category_prefix（如果存在这个字段）
-        // 由于 category 已经是题库标识，我们需要一个单独的字段来存储题库内的序号
-        // 假设 problems 表有 category_index 字段来存储题库内的序号
+        // 更新题目的 category_index
         const { error: updateError } = await client
           .from("problems")
           .update({ 
             category_index: newNumber,
-            updated_at: new Date().toISOString()
           })
           .eq("id", problem.id);
 
-        if (!updateError) {
+        // 只有没有错误时才计数（即使更新 0 行也认为是成功的）
+        if (updateError === null || updateError === undefined) {
           updatedCount++;
+        } else {
+          console.error(`Update error for problem ${problem.id}:`, updateError);
         }
       }
     }
@@ -80,7 +85,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ 
       success: true, 
       updatedCount,
-      message: `已整理 ${updatedCount} 道题目`
+      categories: categories.join(", "),
+      message: `已整理 ${updatedCount} 道题目（${categories.join(", ")}）`
     });
   } catch (error) {
     console.error("Reorder problems error:", error);

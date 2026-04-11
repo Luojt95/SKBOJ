@@ -22,6 +22,7 @@ interface Problem {
   title: string;
   difficulty: string;
   category: string;
+  category_index: number | null;
   tags: string[];
   author_id: number;
   is_visible: boolean;
@@ -127,10 +128,11 @@ export default function ProblemsPage() {
     }
   };
 
-  // 根据题库生成题目编号
+  // 根据题库和题目序号生成题目编号
   const getProblemNumber = (problem: Problem) => {
     const prefix = problem.category || "P";
-    return `${prefix}${String(problem.id).padStart(4, '0')}`;
+    const index = problem.category_index || problem.id;
+    return `${prefix}${String(index).padStart(4, '0')}`;
   };
 
   if (isLoading) {
@@ -262,7 +264,7 @@ export default function ProblemsPage() {
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        {status && status.bestScore > 0 && status.bestScore < 100 && (
+                        {status && (
                           <span className="text-sm text-blue-500 font-medium">{status.bestScore}分</span>
                         )}
                         {!problem.is_visible && (

@@ -22,8 +22,10 @@ export async function GET(request: NextRequest) {
     // 构建查询
     let query = client
       .from("problems")
-      .select("id, title, difficulty, category, tags, author_id, is_visible, created_at")
-      .order("id", { ascending: true });
+      .select("id, title, difficulty, category, category_index, tags, author_id, is_visible, created_at")
+      .order("category", { ascending: true })
+      .order("category_index", { ascending: true })
+      .order("created_at", { ascending: true });
 
     // 如果不是管理员/站长，只显示公开的题目
     if (!user || (user.role !== "admin" && user.role !== "super_admin")) {
@@ -108,6 +110,18 @@ export async function POST(request: NextRequest) {
     const timeLimit = Math.min(10000, Math.max(1, parseInt(body.timeLimit) || 1000));
     const memoryLimit = Math.min(1024, Math.max(1, parseInt(body.memoryLimit) || 256));
 
+    // 获取该题库当前最大的 category_index
+    const category = body.category || "P";
+    const { data: maxIndexData } = await client
+      .from("problems")
+      .select("category_index")
+      .eq("category", category)
+      .order("category_index", { ascending: false })
+      .limit(1);
+    
+    const maxIndex = maxIndexData && maxIndexData.length > 0 ? (maxIndexData[0].category_index || 0) : 0;
+    const newCategoryIndex = (maxIndex || 0) + 1;
+
     const { data: problem, error } = await client
       .from("problems")
       .insert({
@@ -117,7 +131,8 @@ export async function POST(request: NextRequest) {
         output_format: body.outputFormat || "",
         samples: body.samples || [],
         hint: body.hint || "",
-        category: body.category || "P",
+        category: category,
+        category_index: newCategoryIndex,
         difficulty: body.difficulty || "popular",
         time_limit: timeLimit,
         memory_limit: memoryLimit,
