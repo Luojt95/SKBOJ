@@ -482,7 +482,7 @@ export default function ProblemDetailPage() {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <span className={catConfig.color}>{catConfig.label}{problem.id}</span>
+                  <span className={catConfig.color}>{catConfig.label}{(problem as any).category_index || problem.id}</span>
                   <CardTitle className="text-2xl">{problem.title}</CardTitle>
                 </div>
                 <Badge className={`${diffConfig.bg} text-white`}>
