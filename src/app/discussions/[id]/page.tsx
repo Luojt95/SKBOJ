@@ -331,16 +331,32 @@ export default function DiscussionDetailPage() {
         <CardContent>
           {user ? (
             <div className="space-y-4">
-              <Textarea
-                value={replyContent}
-                onChange={(e) => setReplyContent(e.target.value)}
-                className="min-h-[120px]"
-                placeholder="支持 Markdown 格式..."
-              />
+              <div className="relative">
+                <textarea
+                  value={replyContent}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val.length <= 80) {
+                      setReplyContent(val);
+                      // 自动调整高度
+                      e.target.style.height = 'auto';
+                      e.target.style.height = Math.min(e.target.scrollHeight, 200) + 'px';
+                    }
+                  }}
+                  className="w-full px-3 py-2 border rounded-md bg-background text-sm resize-none overflow-hidden min-h-[80px] max-h-[200px]"
+                  placeholder="支持 Markdown 格式... (最多80字符)"
+                  disabled={isSubmitting}
+                  rows={3}
+                  style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}
+                />
+                <div className="text-xs text-muted-foreground text-right mt-1">
+                  {replyContent.length}/80
+                </div>
+              </div>
               <div className="flex justify-end">
                 <Button
                   onClick={handleReply}
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || !replyContent.trim()}
                   className="bg-gradient-to-r from-blue-600 to-purple-600"
                 >
                   {isSubmitting ? "发送中..." : "发送回复"}
@@ -369,9 +385,10 @@ export default function DiscussionDetailPage() {
             </CardContent>
           </Card>
         ) : (
-          replies.map((reply) => (
-            <Card key={reply.id}>
-              <CardContent className="py-4">
+          <div className="max-h-[400px] overflow-y-auto rounded-lg border">
+            {replies.map((reply) => (
+              <Card key={reply.id} className="m-2 mb-0 border-0 border-b last:border-b-0">
+                <CardContent className="py-4">
                 <div className="flex items-start justify-between mb-2">
                   <div className="flex items-center gap-2 text-sm">
                     {reply.users ? (
@@ -409,7 +426,8 @@ export default function DiscussionDetailPage() {
                 </div>
               </CardContent>
             </Card>
-          ))
+            ))}
+          </div>
         )}
       </div>
     </div>

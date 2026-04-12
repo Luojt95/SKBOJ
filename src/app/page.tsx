@@ -494,16 +494,26 @@ export default function HomePage() {
               {/* 发布犇犇 */}
               {user ? (
                 <div className="mb-6">
-                  <Textarea
+                  <textarea
                     placeholder="发一条犇犇吧... 使用@用户名 可以提及用户"
                     value={newBenben}
-                    onChange={(e) => setNewBenben(e.target.value)}
-                    className="mb-2"
-                    maxLength={500}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val.length <= 80) {
+                        setNewBenben(val);
+                        // 自动调整高度
+                        e.target.style.height = 'auto';
+                        e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px';
+                      }
+                    }}
+                    className="w-full px-3 py-2 border rounded-md bg-background text-sm resize-none overflow-hidden min-h-[60px] max-h-[120px] mb-2"
+                    disabled={posting}
+                    rows={2}
+                    style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}
                   />
                   <div className="flex justify-between items-center">
                     <span className="text-xs text-muted-foreground">
-                      {newBenben.length}/500
+                      {newBenben.length}/80
                     </span>
                     <Button onClick={postBenben} disabled={posting || !newBenben.trim()}>
                       <Send className="h-4 w-4 mr-2" />
@@ -559,7 +569,7 @@ export default function HomePage() {
                                 <Badge variant="destructive" className="text-xs">站长</Badge>
                               )}
                             </div>
-                            <p className="whitespace-pre-wrap mb-2">
+                            <p className="whitespace-pre-wrap break-all mb-2">
                               {renderContent(benben.content)}
                             </p>
                             <div className="flex items-center gap-4 text-sm text-muted-foreground">

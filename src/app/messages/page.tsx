@@ -393,7 +393,7 @@ export default function MessagesPage() {
                               </div>
                               <p className="text-sm text-muted-foreground truncate">
                                 {conv.lastMessage.sender_id === currentUser?.id ? "你: " : ""}
-                                {conv.lastMessage.content}
+                                <span className="break-all">{conv.lastMessage.content}</span>
                               </p>
                               <p className="text-xs text-muted-foreground mt-1">
                                 {formatDateTime(conv.lastMessage.created_at)}
@@ -450,7 +450,7 @@ export default function MessagesPage() {
                                     : "bg-muted"
                                 }`}
                               >
-                                <p className="whitespace-pre-wrap">{msg.content}</p>
+                                <p className="whitespace-pre-wrap break-all">{msg.content}</p>
                                 <p className={`text-xs mt-1 ${isOwn ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
                                   {formatDateTime(msg.created_at)}
                                 </p>
@@ -465,19 +465,35 @@ export default function MessagesPage() {
 
                   {/* 发送区域 */}
                   <div className="p-3 border-t">
-                    <div className="flex gap-2">
-                      <Input
-                        placeholder="输入消息..."
-                        value={newMessage}
-                        onChange={(e) => setNewMessage(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" && !e.shiftKey) {
-                            e.preventDefault();
-                            sendMessage();
-                          }
-                        }}
-                        disabled={sending}
-                      />
+                    <div className="flex gap-2 items-end">
+                      <div className="flex-1 relative">
+                        <textarea
+                          className="w-full px-3 py-2 border rounded-md bg-background text-sm resize-none overflow-hidden min-h-[40px] max-h-[120px]"
+                          placeholder="输入消息..."
+                          value={newMessage}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            if (val.length <= 80) {
+                              setNewMessage(val);
+                              // 自动调整高度
+                              e.target.style.height = 'auto';
+                              e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px';
+                            }
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" && !e.shiftKey) {
+                              e.preventDefault();
+                              sendMessage();
+                            }
+                          }}
+                          disabled={sending}
+                          rows={1}
+                          style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}
+                        />
+                        <div className="text-xs text-muted-foreground text-right mt-1">
+                          {newMessage.length}/80
+                        </div>
+                      </div>
                       <Button onClick={sendMessage} disabled={sending || !newMessage.trim()}>
                         <Send className="h-4 w-4" />
                       </Button>

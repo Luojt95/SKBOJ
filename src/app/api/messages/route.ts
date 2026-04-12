@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
       // 获取对方用户信息
       const { data: otherUser } = await client
         .from("users")
-        .select("id, username, role, name_color")
+        .select("id, username, role, name_color, points")
         .eq("id", targetId)
         .single();
 
@@ -88,7 +88,7 @@ export async function GET(request: NextRequest) {
       if (userIds.length > 0) {
         const { data: users } = await client
           .from("users")
-          .select("id, username, role, name_color")
+          .select("id, username, role, name_color, points")
           .in("id", userIds);
 
         const usersMap = new Map((users || []).map(u => [u.id, u]));
