@@ -309,7 +309,7 @@ export default function DiscussionDetailPage() {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="prose prose-sm dark:prose-invert max-w-none">
+          <div className="prose prose-sm dark:prose-invert max-w-none break-words overflow-wrap-anywhere">
             <ReactMarkdown
               remarkPlugins={[remarkGfm, remarkMath]}
               rehypePlugins={[rehypeKatex]}
@@ -416,7 +416,7 @@ export default function DiscussionDetailPage() {
                     </Button>
                   )}
                 </div>
-                <div className="prose prose-sm dark:prose-invert max-w-none">
+                <div className="prose prose-sm dark:prose-invert max-w-none break-words overflow-wrap-anywhere">
                   <ReactMarkdown
                     remarkPlugins={[remarkGfm, remarkMath]}
                     rehypePlugins={[rehypeKatex]}

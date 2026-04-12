@@ -391,7 +391,7 @@ export default function MessagesPage() {
                                   <Trash2 className="h-3 w-3" />
                                 </Button>
                               </div>
-                              <p className="text-sm text-muted-foreground truncate">
+                              <p className="text-sm text-muted-foreground break-words">
                                 {conv.lastMessage.sender_id === currentUser?.id ? "你: " : ""}
                                 <span className="break-all">{conv.lastMessage.content}</span>
                               </p>

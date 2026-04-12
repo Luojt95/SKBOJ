@@ -300,21 +300,25 @@ export default function HomePage() {
   // 渲染内容，支持@提及高亮
   const renderContent = (content: string) => {
     const parts = content.split(/(@[a-zA-Z0-9_\u4e00-\u9fa5]+)/g);
-    return parts.map((part, index) => {
-      if (part.startsWith("@")) {
-        const username = part.slice(1);
-        return (
-          <Link
-            key={index}
-            href={`/profile?username=${username}`}
-            className="text-primary hover:underline"
-          >
-            {part}
-          </Link>
-        );
-      }
-      return part;
-    });
+    return (
+      <span className="break-words overflow-wrap-anywhere">
+        {parts.map((part, index) => {
+          if (part.startsWith("@")) {
+            const username = part.slice(1);
+            return (
+              <Link
+                key={index}
+                href={`/profile?username=${username}`}
+                className="text-primary hover:underline"
+              >
+                {part}
+              </Link>
+            );
+          }
+          return part;
+        })}
+      </span>
+    );
   };
 
   return (
