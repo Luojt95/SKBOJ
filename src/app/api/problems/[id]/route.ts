@@ -57,71 +57,79 @@ export async function GET(
 
     problem.author = author;
 
-    // 检查题目是否在比赛中
-    const { data: contests } = await client
-      .from("contests")
-      .select("id, title, start_time, end_time, type, problem_ids, author_id")
-      .contains("problem_ids", [parseInt(id)]);
-
-    const isInContest = contests && contests.length > 0;
+    // 如果URL中有contest参数，直接获取对应比赛
+    let contest = null;
+    if (contestId) {
+      const { data: contestData } = await client
+        .from("contests")
+        .select("id, title, start_time, end_time, type, problem_ids, author_id")
+        .eq("id", parseInt(contestId))
+        .single();
+      contest = contestData;
+    }
+    
+    // 如果找到了比赛，检查题目是否在比赛题目列表中
+    const problemIdNum = parseInt(id);
+    if (contest && contest.problem_ids) {
+      const problemInContest = contest.problem_ids.includes(problemIdNum);
+      if (!problemInContest) {
+        contest = null; // 题目不在这个比赛的题目列表中
+      }
+    }
+    
+    const isInContest = contest !== null;
 
     // 如果题目在比赛中，需要特殊处理访问权限
-    if (isInContest) {
-      // 找到包含此题目的比赛
-      const relatedContest = contests.find(c => c.problem_ids.includes(parseInt(id)));
-      
-      if (relatedContest) {
-        const now = new Date();
-        const startTime = new Date(relatedContest.start_time);
-        const endTime = new Date(relatedContest.end_time);
-        const isContestOngoing = now >= startTime && now <= endTime;
-        const isContestEnded = now > endTime;
+    if (isInContest && contest) {
+      const now = new Date();
+      const startTime = new Date(contest.start_time);
+      const endTime = new Date(contest.end_time);
+      const isContestOngoing = now >= startTime && now <= endTime;
+      const isContestEnded = now > endTime;
 
-        // 如果是管理员或比赛创建者，允许访问
-        const isAdmin = user && (user.role === "admin" || user.role === "super_admin");
-        const isContestAuthor = user && user.id === relatedContest.author_id;
+      // 如果是管理员或比赛创建者，允许访问
+      const isAdmin = user && (user.role === "admin" || user.role === "super_admin");
+      const isContestAuthor = user && user.id === contest.author_id;
 
-        if (!isAdmin && !isContestAuthor) {
-          // 检查用户是否是比赛参与者
-          let isParticipant = false;
-          if (user) {
-            const { data: participation } = await client
-              .from("contest_participants")
-              .select("id")
-              .eq("contest_id", relatedContest.id)
-              .eq("user_id", user.id)
-              .single();
-            isParticipant = !!participation;
-          }
-
-          // 比赛未开始：不能访问
-          if (now < startTime) {
-            return NextResponse.json({ 
-              error: "比赛尚未开始，题目暂时不可访问",
-              contest: { id: relatedContest.id, title: relatedContest.title, start_time: relatedContest.start_time }
-            }, { status: 403 });
-          }
-
-          // 比赛进行中：只有参赛者可以访问
-          if (isContestOngoing && !isParticipant) {
-            return NextResponse.json({ 
-              error: "请先参加比赛后再访问题目",
-              contest: { id: relatedContest.id, title: relatedContest.title }
-            }, { status: 403 });
-          }
-
-          // 比赛已结束：所有人都可以访问（如果题目是比赛专属的，可能需要检查）
+      if (!isAdmin && !isContestAuthor) {
+        // 检查用户是否是比赛参与者
+        let isParticipant = false;
+        if (user) {
+          const { data: participation } = await client
+            .from("contest_participants")
+            .select("id")
+            .eq("contest_id", contest.id)
+            .eq("user_id", user.id)
+            .single();
+          isParticipant = !!participation;
         }
 
-        // 添加比赛信息到题目数据
-        problem.contest = {
-          id: relatedContest.id,
-          title: relatedContest.title,
-          type: relatedContest.type,
-          is_ongoing: isContestOngoing,
-          is_ended: isContestEnded,
-        };
+        // 比赛未开始：不能访问
+        if (now < startTime) {
+          return NextResponse.json({ 
+            error: "比赛尚未开始，题目暂时不可访问",
+            contest: { id: contest.id, title: contest.title, start_time: contest.start_time }
+          }, { status: 403 });
+        }
+
+        // 比赛进行中：只有参赛者可以访问
+        if (isContestOngoing && !isParticipant) {
+          return NextResponse.json({ 
+            error: "请先参加比赛后再访问题目",
+            contest: { id: contest.id, title: contest.title }
+          }, { status: 403 });
+        }
+        // 比赛已结束：所有人都可以访问
       }
+
+      // 添加比赛信息到题目数据
+      problem.contest = {
+        id: contest.id,
+        title: contest.title,
+        type: contest.type,
+        is_ongoing: isContestOngoing,
+        is_ended: isContestEnded,
+      };
     } else {
       // 题目不在比赛中，检查普通可见权限
       if (!problem.is_visible) {
