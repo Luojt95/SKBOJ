@@ -336,22 +336,21 @@ export default function DiscussionDetailPage() {
                   value={replyContent}
                   onChange={(e) => {
                     const val = e.target.value;
-                    const lines = val.split('\n').length;
-                    if (val.length <= 80 && lines <= 5) {
+                    if (val.length <= 500) {
                       setReplyContent(val);
                       // 自动调整高度
                       e.target.style.height = 'auto';
-                      e.target.style.height = Math.min(e.target.scrollHeight, 150) + 'px';
+                      e.target.style.height = Math.min(e.target.scrollHeight, 300) + 'px';
                     }
                   }}
-                  className="w-full px-3 py-2 border rounded-md bg-background text-sm resize-none overflow-hidden min-h-[80px] max-h-[150px] break-words overflow-wrap-anywhere"
-                  placeholder="支持 Markdown 格式... (最多80字符，5行)"
+                  className="w-full px-3 py-2 border rounded-md bg-background text-sm resize-none overflow-hidden min-h-[80px] max-h-[300px] break-words overflow-wrap-anywhere"
+                  placeholder="支持 Markdown 格式... (最多500字符)"
                   disabled={isSubmitting}
                   rows={3}
                   style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}
                 />
                 <div className="text-xs text-muted-foreground text-right mt-1">
-                  {replyContent.length}/80
+                  {replyContent.length}/500
                 </div>
               </div>
               <div className="flex justify-end">

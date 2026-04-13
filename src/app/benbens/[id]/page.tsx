@@ -311,7 +311,7 @@ export default function BenbenDetailPage({ params }: { params: Promise<{ id: str
                   <Badge variant="destructive">站长</Badge>
                 )}
               </div>
-              <p className="whitespace-pre-wrap mb-3 text-lg">
+              <p className="whitespace-pre-wrap mb-3 text-lg break-words overflow-wrap-anywhere word-break-break-all">
                 {renderContent(benben.content)}
               </p>
               <div className="flex items-center justify-between">
@@ -369,12 +369,20 @@ export default function BenbenDetailPage({ params }: { params: Promise<{ id: str
                   </Button>
                 </div>
               )}
-              <Textarea
+              <textarea
                 placeholder={replyingTo ? `回复 @${replyingTo.author?.username}...` : "写下你的回复..."}
                 value={replyContent}
-                onChange={(e) => setReplyContent(e.target.value)}
-                className="mb-2"
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setReplyContent(val);
+                  // 自动调整高度
+                  e.target.style.height = 'auto';
+                  e.target.style.height = Math.min(e.target.scrollHeight, 300) + 'px';
+                }}
+                className="mb-2 w-full px-3 py-2 border rounded-md bg-background text-sm resize-none overflow-hidden min-h-[80px] max-h-[300px] break-words overflow-wrap-anywhere"
                 maxLength={500}
+                rows={3}
+                style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}
               />
               <div className="flex justify-between items-center">
                 <span className="text-xs text-muted-foreground">
@@ -434,7 +442,7 @@ export default function BenbenDetailPage({ params }: { params: Promise<{ id: str
                             </span>
                           )}
                         </div>
-                        <p className="whitespace-pre-wrap text-sm mb-2">
+                        <p className="whitespace-pre-wrap text-sm mb-2 break-words overflow-wrap-anywhere word-break-break-all">
                           {renderContent(reply.content)}
                         </p>
                         <div className="flex items-center justify-between">

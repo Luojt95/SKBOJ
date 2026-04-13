@@ -190,13 +190,19 @@ export default function DiscussionsPage() {
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium">内容</label>
-                <Textarea
+                <textarea
                   value={newDiscussion.content}
-                  onChange={(e) =>
-                    setNewDiscussion({ ...newDiscussion, content: e.target.value })
-                  }
-                  placeholder="请输入内容"
-                  rows={6}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setNewDiscussion({ ...newDiscussion, content: val });
+                    // 自动调整高度
+                    e.target.style.height = 'auto';
+                    e.target.style.height = Math.min(e.target.scrollHeight, 300) + 'px';
+                  }}
+                  placeholder="请输入内容（支持 Markdown）"
+                  className="w-full px-3 py-2 border rounded-md bg-background text-sm resize-none overflow-hidden min-h-[120px] max-h-[300px] break-words overflow-wrap-anywhere"
+                  rows={5}
+                  style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}
                 />
               </div>
               <div className="flex justify-end gap-2">
@@ -248,7 +254,7 @@ export default function DiscussionsPage() {
                         {discussion.title}
                       </h3>
                     </Link>
-                    <p className="text-muted-foreground mt-1 line-clamp-2">
+                    <p className="text-muted-foreground mt-1 line-clamp-2 break-words overflow-wrap-anywhere word-break-break-all">
                       {discussion.content}
                     </p>
                     <div className="flex items-center gap-4 mt-3 text-sm text-muted-foreground">
