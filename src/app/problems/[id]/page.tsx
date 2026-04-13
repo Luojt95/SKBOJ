@@ -24,6 +24,12 @@ import rehypeKatex from "rehype-katex";
 import "katex/dist/katex.min.css";
 import { difficultyConfig, categoryConfig } from "@/lib/constants";
 
+interface Tag {
+  id: number;
+  name: string;
+  color: string;
+}
+
 interface Problem {
   id: number;
   title: string;
@@ -36,7 +42,7 @@ interface Problem {
   category: string;
   time_limit: number;
   memory_limit: number;
-  tags: string[];
+  tags: Tag[];
   author_id: number;
   author?: { id: number; username: string; role: string };
   is_visible: boolean;
@@ -491,8 +497,12 @@ export default function ProblemDetailPage() {
               </div>
               <div className="flex flex-wrap gap-2 mt-2">
                 {problem.tags?.map((tag) => (
-                  <Badge key={tag} variant="outline">
-                    {tag}
+                  <Badge key={tag.id} variant="outline" className="gap-1">
+                    <span
+                      className="w-2 h-2 rounded-full"
+                      style={{ backgroundColor: tag.color }}
+                    />
+                    {tag.name}
                   </Badge>
                 ))}
               </div>

@@ -6,6 +6,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
@@ -13,9 +21,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, Plus, Code, MinusCircle, RefreshCw } from "lucide-react";
+import { Label } from "@/components/ui/label";
+import { Search, Plus, Code, MinusCircle, RefreshCw, Tags, Settings, X, Edit2, Trash2, PlusCircle } from "lucide-react";
 import { toast } from "sonner";
 import { difficultyConfig, categoryConfig } from "@/lib/constants";
+
+interface Tag {
+  id: number;
+  name: string;
+  color: string;
+}
 
 interface Problem {
   id: number;
@@ -23,7 +38,7 @@ interface Problem {
   difficulty: string;
   category: string;
   category_index: number | null;
-  tags: string[];
+  tags: Tag[];
   author_id: number;
   is_visible: boolean;
   created_at: string;
@@ -39,6 +54,18 @@ interface ProblemStatus {
   status: string;
   bestScore: number;
 }
+
+interface TagFormData {
+  name: string;
+  color: string;
+}
+
+const tagColors = [
+  "#ef4444", "#f97316", "#f59e0b", "#eab308", "#84cc16",
+  "#22c55e", "#10b981", "#14b8a6", "#06b6d4", "#0ea5e9",
+  "#3b82f6", "#6366f1", "#8b5cf6", "#a855f7", "#d946ef",
+  "#ec4899", "#f43f5e", "#64748b", "#78716c", "#92400e",
+];
 
 const statusConfig: Record<string, { label: string; bgClass: string }> = {
   ac: { label: "AC", bgClass: "bg-green-500 text-white" },
@@ -59,6 +86,40 @@ export default function ProblemsPage() {
   const [difficulty, setDifficulty] = useState("all");
   const [category, setCategory] = useState("all");
   const [isReordering, setIsReordering] = useState(false);
+  
+  // 标签相关状态
+  const [allTags, setAllTags] = useState<Tag[]>([]);
+  const [selectedTags, setSelectedTags] = useState<number[]>([]);
+  const [tagDialogOpen, setTagDialogOpen] = useState(false);
+  const [tagManageDialogOpen, setTagManageDialogOpen] = useState(false);
+  const [tagForm, setTagForm] = useState<TagFormData>({ name: "", color: "#3b82f6" });
+  const [editingTag, setEditingTag] = useState<Tag | null>(null);
+  const [tagManageLoading, setTagManageLoading] = useState(false);
+
+  const fetchProblems = async () => {
+    try {
+      const params = new URLSearchParams();
+      if (selectedTags.length > 0) {
+        params.set("tags", selectedTags.join(","));
+      }
+      
+      const res = await fetch(`/api/problems?${params.toString()}`);
+      const data = await res.json();
+      setProblems(data.problems || []);
+    } catch (error) {
+      console.error("Failed to fetch problems:", error);
+    }
+  };
+
+  const fetchTags = async () => {
+    try {
+      const res = await fetch("/api/tags");
+      const data = await res.json();
+      setAllTags(data.tags || []);
+    } catch (error) {
+      console.error("Failed to fetch tags:", error);
+    }
+  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -79,10 +140,10 @@ export default function ProblemsPage() {
           }
         }
 
+        // 获取标签列表
+        await fetchTags();
         // 获取题目列表
-        const problemsRes = await fetch("/api/problems");
-        const problemsData = await problemsRes.json();
-        setProblems(problemsData.problems || []);
+        await fetchProblems();
       } catch (error) {
         console.error("Failed to fetch data:", error);
       } finally {
@@ -92,6 +153,13 @@ export default function ProblemsPage() {
     fetchData();
   }, []);
 
+  // 标签筛选变化时重新获取题目
+  useEffect(() => {
+    if (!isLoading) {
+      fetchProblems();
+    }
+  }, [selectedTags]);
+
   const filteredProblems = problems.filter((problem) => {
     const matchesSearch = problem.title.toLowerCase().includes(search.toLowerCase());
     const matchesDifficulty = difficulty === "all" || problem.difficulty === difficulty;
@@ -99,9 +167,118 @@ export default function ProblemsPage() {
     return matchesSearch && matchesDifficulty && matchesCategory;
   });
 
+  const canManageTags = user && (user.role === "admin" || user.role === "super_admin");
   const canCreateProblem = user && (user.role === "admin" || user.role === "super_admin");
 
-  // 整理题号 - 按题库分类重新编号
+  // 标签选择
+  const handleTagToggle = (tagId: number) => {
+    setSelectedTags(prev => 
+      prev.includes(tagId)
+        ? prev.filter(id => id !== tagId)
+        : [...prev, tagId]
+    );
+  };
+
+  const handleClearTags = () => {
+    setSelectedTags([]);
+  };
+
+  // 标签管理
+  const handleCreateTag = async () => {
+    if (!tagForm.name.trim()) {
+      toast.error("请输入标签名称");
+      return;
+    }
+
+    setTagManageLoading(true);
+    try {
+      const res = await fetch("/api/tags", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(tagForm),
+      });
+      const data = await res.json();
+      
+      if (data.success) {
+        toast.success("标签创建成功");
+        setTagForm({ name: "", color: "#3b82f6" });
+        await fetchTags();
+      } else {
+        toast.error(data.error || "创建失败");
+      }
+    } catch (error) {
+      toast.error("创建失败");
+    } finally {
+      setTagManageLoading(false);
+    }
+  };
+
+  const handleUpdateTag = async () => {
+    if (!editingTag || !tagForm.name.trim()) {
+      toast.error("请输入标签名称");
+      return;
+    }
+
+    setTagManageLoading(true);
+    try {
+      const res = await fetch(`/api/tags?id=${editingTag.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(tagForm),
+      });
+      const data = await res.json();
+      
+      if (data.success) {
+        toast.success("标签更新成功");
+        setEditingTag(null);
+        setTagForm({ name: "", color: "#3b82f6" });
+        await fetchTags();
+      } else {
+        toast.error(data.error || "更新失败");
+      }
+    } catch (error) {
+      toast.error("更新失败");
+    } finally {
+      setTagManageLoading(false);
+    }
+  };
+
+  const handleDeleteTag = async (tagId: number) => {
+    if (!confirm("确定要删除此标签吗？")) return;
+
+    setTagManageLoading(true);
+    try {
+      const res = await fetch(`/api/tags?id=${tagId}`, {
+        method: "DELETE",
+      });
+      const data = await res.json();
+      
+      if (data.success) {
+        toast.success("标签删除成功");
+        // 移除选中的标签
+        setSelectedTags(prev => prev.filter(id => id !== tagId));
+        await fetchTags();
+      } else {
+        toast.error(data.error || "删除失败");
+      }
+    } catch (error) {
+      toast.error("删除失败");
+    } finally {
+      setTagManageLoading(false);
+    }
+  };
+
+  const startEditTag = (tag: Tag) => {
+    setEditingTag(tag);
+    setTagForm({ name: tag.name, color: tag.color });
+  };
+
+  const cancelEdit = () => {
+    setEditingTag(null);
+    setTagForm({ name: "", color: "#3b82f6" });
+  };
+
+  // 整理题号
   const handleReorderProblems = async () => {
     if (!confirm("确定要整理题号吗？此操作将按题库分类重新分配题目编号（如P0001, P0002...）。")) {
       return;
@@ -210,9 +387,200 @@ export default function ProblemsPage() {
                 <SelectItem value="noi">NOI/NOI+/CTSC</SelectItem>
               </SelectContent>
             </Select>
+            
+            {/* 标签筛选按钮 */}
+            <Dialog open={tagDialogOpen} onOpenChange={setTagDialogOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline" className="relative">
+                  <Tags className="h-4 w-4 mr-2" />
+                  标签筛选
+                  {selectedTags.length > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-blue-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center">
+                      {selectedTags.length}
+                    </span>
+                  )}
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                  <DialogTitle>选择标签（AND 筛选）</DialogTitle>
+                  <p className="text-sm text-muted-foreground">
+                    选中的标签必须全部匹配才会显示题目
+                  </p>
+                </DialogHeader>
+                <div className="max-h-80 overflow-y-auto py-4">
+                  {allTags.length === 0 ? (
+                    <p className="text-center text-muted-foreground py-8">暂无标签</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {allTags.map((tag) => (
+                        <div key={tag.id} className="flex items-center gap-3">
+                          <Checkbox
+                            id={`tag-${tag.id}`}
+                            checked={selectedTags.includes(tag.id)}
+                            onCheckedChange={() => handleTagToggle(tag.id)}
+                          />
+                          <Label
+                            htmlFor={`tag-${tag.id}`}
+                            className="flex items-center gap-2 cursor-pointer flex-1"
+                          >
+                            <span
+                              className="w-3 h-3 rounded-full"
+                              style={{ backgroundColor: tag.color }}
+                            />
+                            {tag.name}
+                          </Label>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <div className="flex justify-between">
+                  <Button variant="ghost" onClick={handleClearTags}>
+                    清除筛选
+                  </Button>
+                  <Button onClick={() => setTagDialogOpen(false)}>
+                    确认 ({selectedTags.length})
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+
+            {/* 标签管理按钮 */}
+            {canManageTags && (
+              <Button variant="ghost" onClick={() => setTagManageDialogOpen(true)}>
+                <Settings className="h-4 w-4 mr-2" />
+                管理标签
+              </Button>
+            )}
           </div>
+
+          {/* 已选中的标签展示 */}
+          {selectedTags.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2 mt-4 pt-4 border-t">
+              <span className="text-sm text-muted-foreground">已选标签：</span>
+              {selectedTags.map(tagId => {
+                const tag = allTags.find(t => t.id === tagId);
+                return tag ? (
+                  <Badge
+                    key={tag.id}
+                    variant="secondary"
+                    className="gap-1 cursor-pointer"
+                    onClick={() => handleTagToggle(tag.id)}
+                  >
+                    <span
+                      className="w-2 h-2 rounded-full"
+                      style={{ backgroundColor: tag.color }}
+                    />
+                    {tag.name}
+                    <X className="h-3 w-3" />
+                  </Badge>
+                ) : null;
+              })}
+              <Button variant="ghost" size="sm" onClick={handleClearTags} className="h-6 px-2">
+                清除全部
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
+
+      {/* 标签管理弹窗 */}
+      <Dialog open={tagManageDialogOpen} onOpenChange={setTagManageDialogOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>标签管理</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {/* 添加/编辑表单 */}
+            <div className="flex gap-2 items-end">
+              <div className="flex-1 space-y-2">
+                <Label>{editingTag ? "编辑标签" : "新建标签"}</Label>
+                <Input
+                  placeholder="标签名称"
+                  value={tagForm.name}
+                  onChange={(e) => setTagForm({ ...tagForm, name: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>颜色</Label>
+                <div className="flex gap-1 flex-wrap max-w-[200px]">
+                  {tagColors.map((color) => (
+                    <button
+                      key={color}
+                      type="button"
+                      className={`w-6 h-6 rounded-full border-2 ${
+                        tagForm.color === color ? "border-gray-800 scale-110" : "border-transparent"
+                      }`}
+                      style={{ backgroundColor: color }}
+                      onClick={() => setTagForm({ ...tagForm, color })}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              {editingTag ? (
+                <>
+                  <Button onClick={handleUpdateTag} disabled={tagManageLoading}>
+                    保存修改
+                  </Button>
+                  <Button variant="ghost" onClick={cancelEdit}>
+                    取消
+                  </Button>
+                </>
+              ) : (
+                <Button onClick={handleCreateTag} disabled={tagManageLoading}>
+                  <PlusCircle className="h-4 w-4 mr-2" />
+                  添加标签
+                </Button>
+              )}
+            </div>
+
+            {/* 标签列表 */}
+            <div className="border-t pt-4">
+              <Label className="mb-2 block">已有标签 ({allTags.length})</Label>
+              <div className="max-h-60 overflow-y-auto space-y-2">
+                {allTags.length === 0 ? (
+                  <p className="text-center text-muted-foreground py-4">暂无标签</p>
+                ) : (
+                  allTags.map((tag) => (
+                    <div
+                      key={tag.id}
+                      className="flex items-center justify-between p-2 rounded hover:bg-muted"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span
+                          className="w-3 h-3 rounded-full"
+                          style={{ backgroundColor: tag.color }}
+                        />
+                        <span>{tag.name}</span>
+                      </div>
+                      <div className="flex gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => startEditTag(tag)}
+                        >
+                          <Edit2 className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDeleteTag(tag.id)}
+                          className="text-red-500 hover:text-red-600"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* 题目列表 */}
       <div className="space-y-4">
@@ -256,8 +624,16 @@ export default function ProblemsPage() {
                               {diffConfig.label}
                             </Badge>
                             {problem.tags?.slice(0, 3).map((tag) => (
-                              <Badge key={tag} variant="outline" className="text-xs">
-                                {tag}
+                              <Badge
+                                key={tag.id}
+                                variant="outline"
+                                className="text-xs gap-1"
+                              >
+                                <span
+                                  className="w-2 h-2 rounded-full"
+                                  style={{ backgroundColor: tag.color }}
+                                />
+                                {tag.name}
                               </Badge>
                             ))}
                           </div>

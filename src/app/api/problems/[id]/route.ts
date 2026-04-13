@@ -144,6 +144,14 @@ export async function GET(
       delete problem.test_cases;
     }
 
+    // 获取题目的标签
+    const { data: problemTags } = await client
+      .from("problem_tags")
+      .select("tag_id, tags(name, color)")
+      .eq("problem_id", parseInt(id));
+    
+    problem.tags = (problemTags || []).map(pt => pt.tags).filter(Boolean);
+
     // 获取提交统计
     const { data: submissionStats } = await client
       .from("submissions")
@@ -223,7 +231,6 @@ export async function PUT(
         time_limit: timeLimit,
         memory_limit: memoryLimit,
         is_visible: body.isVisible,
-        tags: body.tags,
         test_cases: body.testCases,
         updated_at: new Date().toISOString(),
       })
@@ -234,6 +241,24 @@ export async function PUT(
     if (error) {
       console.error("Update problem error:", error);
       return NextResponse.json({ error: "更新失败" }, { status: 500 });
+    }
+
+    // 更新标签关联
+    if (body.tagIds !== undefined) {
+      // 删除旧的关联
+      await client
+        .from("problem_tags")
+        .delete()
+        .eq("problem_id", parseInt(id));
+
+      // 插入新的关联
+      if (body.tagIds.length > 0) {
+        const tagInserts = body.tagIds.map((tagId: number) => ({
+          problem_id: parseInt(id),
+          tag_id: tagId,
+        }));
+        await client.from("problem_tags").insert(tagInserts);
+      }
     }
 
     return NextResponse.json({ problem: updatedProblem });

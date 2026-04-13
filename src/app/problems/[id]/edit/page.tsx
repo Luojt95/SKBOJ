@@ -9,6 +9,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
@@ -17,7 +25,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Plus, X, Save, Upload, FileArchive, CheckCircle2, Loader2, ArrowLeft } from "lucide-react";
+import { Plus, X, Save, Upload, FileArchive, CheckCircle2, Loader2, ArrowLeft, Tags } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
@@ -37,6 +45,12 @@ interface TestCase {
   inputKey?: string;
   outputKey?: string;
   score: number;
+}
+
+interface Tag {
+  id: number;
+  name: string;
+  color: string;
 }
 
 // Markdown 编辑器组件
@@ -121,13 +135,19 @@ export default function EditProblemPage() {
   const [user, setUser] = useState<{ id: number; role: string } | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // 标签相关状态
+  const [allTags, setAllTags] = useState<Tag[]>([]);
+  const [selectedTagIds, setSelectedTagIds] = useState<number[]>([]);
+  const [tagDialogOpen, setTagDialogOpen] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [problemRes, userRes] = await Promise.all([
+        const [problemRes, userRes, tagsRes] = await Promise.all([
           fetch(`/api/problems/${problemId}`),
           fetch("/api/auth/me"),
+          fetch("/api/tags"),
         ]);
 
         if (problemRes.ok) {
@@ -145,7 +165,8 @@ export default function EditProblemPage() {
             memoryLimit: p.memory_limit || 256,
             isVisible: p.is_visible ?? true,
           });
-          setTags(p.tags || []);
+          // 设置已有的标签
+          setSelectedTagIds((p.tags || []).map((t: Tag) => t.id));
           setSamples(p.samples || [{ input: "", output: "" }]);
           setTestCases((p.test_cases || []).map((tc: any) => ({
             ...tc,
@@ -157,6 +178,11 @@ export default function EditProblemPage() {
           const userData = await userRes.json();
           setUser(userData.user);
         }
+        
+        if (tagsRes.ok) {
+          const tagsData = await tagsRes.json();
+          setAllTags(tagsData.tags || []);
+        }
       } catch (error) {
         console.error("Failed to fetch data:", error);
         toast.error("加载失败");
@@ -167,15 +193,12 @@ export default function EditProblemPage() {
     fetchData();
   }, [problemId]);
 
-  const handleAddTag = () => {
-    if (tagInput.trim() && !tags.includes(tagInput.trim())) {
-      setTags([...tags, tagInput.trim()]);
-      setTagInput("");
-    }
-  };
-
-  const handleRemoveTag = (tag: string) => {
-    setTags(tags.filter((t) => t !== tag));
+  const handleTagToggle = (tagId: number) => {
+    setSelectedTagIds(prev =>
+      prev.includes(tagId)
+        ? prev.filter(id => id !== tagId)
+        : [...prev, tagId]
+    );
   };
 
   const handleAddSample = () => {
@@ -253,7 +276,7 @@ export default function EditProblemPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...formData,
-          tags,
+          tagIds: selectedTagIds,
           samples,
           testCases,
         }),
@@ -459,23 +482,54 @@ export default function EditProblemPage() {
               </div>
               <div className="space-y-2">
                 <Label>标签</Label>
-                <div className="flex gap-1">
-                  <Input
-                    value={tagInput}
-                    onChange={(e) => setTagInput(e.target.value)}
-                    placeholder="添加标签"
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        handleAddTag();
-                      }
-                    }}
-                    className="text-sm"
-                  />
-                  <Button type="button" size="icon" variant="outline" onClick={handleAddTag}>
-                    <Plus className="h-4 w-4" />
-                  </Button>
-                </div>
+                <Dialog open={tagDialogOpen} onOpenChange={setTagDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" type="button" className="w-full justify-start">
+                      <Tags className="h-4 w-4 mr-2" />
+                      {selectedTagIds.length === 0 ? "选择标签" : `已选择 ${selectedTagIds.length} 个标签`}
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                      <DialogTitle>选择标签</DialogTitle>
+                      <p className="text-sm text-muted-foreground">
+                        选择与题目相关的标签
+                      </p>
+                    </DialogHeader>
+                    <div className="max-h-80 overflow-y-auto py-4">
+                      {allTags.length === 0 ? (
+                        <p className="text-center text-muted-foreground py-8">暂无标签</p>
+                      ) : (
+                        <div className="space-y-2">
+                          {allTags.map((tag) => (
+                            <div key={tag.id} className="flex items-center gap-3">
+                              <Checkbox
+                                id={`edit-tag-${tag.id}`}
+                                checked={selectedTagIds.includes(tag.id)}
+                                onCheckedChange={() => handleTagToggle(tag.id)}
+                              />
+                              <Label
+                                htmlFor={`edit-tag-${tag.id}`}
+                                className="flex items-center gap-2 cursor-pointer flex-1"
+                              >
+                                <span
+                                  className="w-3 h-3 rounded-full"
+                                  style={{ backgroundColor: tag.color }}
+                                />
+                                {tag.name}
+                              </Label>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex justify-end">
+                      <Button onClick={() => setTagDialogOpen(false)}>
+                        确认 ({selectedTagIds.length})
+                      </Button>
+                    </div>
+                  </DialogContent>
+                </Dialog>
               </div>
               <div className="space-y-2">
                 <Label>可见性</Label>
@@ -490,19 +544,24 @@ export default function EditProblemPage() {
                 </div>
               </div>
             </div>
-            {tags.length > 0 && (
+            {selectedTagIds.length > 0 && (
               <div className="flex flex-wrap gap-1 mt-3">
-                {tags.map((tag) => (
-                  <Badge 
-                    key={tag} 
-                    variant="secondary" 
-                    className="gap-1 text-xs cursor-pointer hover:bg-muted/80"
-                    onClick={() => handleRemoveTag(tag)}
-                  >
-                    {tag}
-                    <X className="h-3 w-3" />
-                  </Badge>
-                ))}
+                {selectedTagIds.map(tagId => {
+                  const tag = allTags.find(t => t.id === tagId);
+                  return tag ? (
+                    <Badge
+                      key={tag.id}
+                      variant="secondary"
+                      className="gap-1 text-xs"
+                    >
+                      <span
+                        className="w-2 h-2 rounded-full"
+                        style={{ backgroundColor: tag.color }}
+                      />
+                      {tag.name}
+                    </Badge>
+                  ) : null;
+                })}
               </div>
             )}
           </CardContent>
