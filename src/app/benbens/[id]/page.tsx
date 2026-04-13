@@ -379,7 +379,7 @@ export default function BenbenDetailPage({ params }: { params: Promise<{ id: str
                   e.target.style.height = 'auto';
                   e.target.style.height = Math.min(e.target.scrollHeight, 300) + 'px';
                 }}
-                className="mb-2 w-full px-3 py-2 border rounded-md bg-background text-sm resize-none overflow-hidden min-h-[80px] max-h-[300px] break-words overflow-wrap-anywhere"
+                className="mb-2 w-full px-3 py-2 border rounded-md bg-background text-sm resize-none min-h-[80px] max-h-[300px] overflow-y-auto break-words overflow-wrap-anywhere"
                 maxLength={500}
                 rows={3}
                 style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}

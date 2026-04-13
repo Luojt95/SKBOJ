@@ -468,7 +468,7 @@ export default function MessagesPage() {
                     <div className="flex gap-2 items-end">
                       <div className="flex-1 relative">
                         <textarea
-                          className="w-full px-3 py-2 border rounded-md bg-background text-sm resize-none overflow-hidden min-h-[40px] max-h-[120px]"
+                          className="w-full px-3 py-2 border rounded-md bg-background text-sm resize-none min-h-[40px] max-h-[120px] overflow-y-auto break-words overflow-wrap-anywhere"
                           placeholder="输入消息..."
                           value={newMessage}
                           onChange={(e) => {

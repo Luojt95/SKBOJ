@@ -200,7 +200,7 @@ export default function DiscussionsPage() {
                     e.target.style.height = Math.min(e.target.scrollHeight, 300) + 'px';
                   }}
                   placeholder="请输入内容（支持 Markdown）"
-                  className="w-full px-3 py-2 border rounded-md bg-background text-sm resize-none overflow-hidden min-h-[120px] max-h-[300px] break-words overflow-wrap-anywhere"
+                  className="w-full px-3 py-2 border rounded-md bg-background text-sm resize-none min-h-[120px] max-h-[300px] overflow-y-auto break-words overflow-wrap-anywhere"
                   rows={5}
                   style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}
                 />
