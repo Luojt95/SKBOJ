@@ -322,9 +322,9 @@ export default function MessagesPage() {
         <CardContent className="p-0 h-[calc(100%-60px)]">
           <div className="grid grid-cols-3 h-full">
             {/* 会话列表 */}
-            <div className="border-r flex flex-col">
+            <div className="border-r flex flex-col h-full overflow-hidden">
               {/* 搜索新用户 */}
-              <div className="p-3 border-b">
+              <div className="p-3 border-b flex-shrink-0">
                 <div className="flex gap-2">
                   <Input
                     placeholder="输入用户名"
@@ -339,7 +339,7 @@ export default function MessagesPage() {
               </div>
 
               {/* 会话列表 */}
-              <ScrollArea className="flex-1">
+              <ScrollArea className="flex-1 min-h-0 h-full">
                 {conversations.length === 0 ? (
                   <div className="p-4 text-center text-muted-foreground text-sm">
                     暂无私信
@@ -391,9 +391,10 @@ export default function MessagesPage() {
                                   <Trash2 className="h-3 w-3" />
                                 </Button>
                               </div>
-                              <p className="text-sm text-muted-foreground break-words overflow-wrap-anywhere word-break-break-all max-w-full">
+                              <p className="text-sm text-muted-foreground truncate">
                                 {conv.lastMessage.sender_id === currentUser?.id ? "你: " : ""}
-                                <span className="break-words overflow-wrap-anywhere">{conv.lastMessage.content}</span>
+                                {conv.lastMessage.content.slice(0, 10)}
+                                {conv.lastMessage.content.length > 10 ? "……" : ""}
                               </p>
                               <p className="text-xs text-muted-foreground mt-1">
                                 {formatDateTime(conv.lastMessage.created_at)}
@@ -444,13 +445,13 @@ export default function MessagesPage() {
                               className={`flex ${isOwn ? "justify-end" : "justify-start"}`}
                             >
                               <div
-                                className={`max-w-[70%] px-4 py-2 rounded-lg ${
+                                className={`max-w-[70%] min-w-0 px-4 py-2 rounded-lg break-words ${
                                   isOwn
                                     ? "bg-primary text-primary-foreground"
                                     : "bg-muted"
                                 }`}
                               >
-                                <p className="whitespace-pre-wrap break-words word-break-break-all overflow-wrap-anywhere">{msg.content}</p>
+                                <p className="whitespace-pre-wrap break-all overflow-hidden">{msg.content}</p>
                                 <p className={`text-xs mt-1 ${isOwn ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
                                   {formatDateTime(msg.created_at)}
                                 </p>
