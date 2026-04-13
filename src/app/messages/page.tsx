@@ -391,9 +391,9 @@ export default function MessagesPage() {
                                   <Trash2 className="h-3 w-3" />
                                 </Button>
                               </div>
-                              <p className="text-sm text-muted-foreground break-words">
+                              <p className="text-sm text-muted-foreground break-words overflow-wrap-anywhere word-break-break-all max-w-full">
                                 {conv.lastMessage.sender_id === currentUser?.id ? "你: " : ""}
-                                <span className="break-all">{conv.lastMessage.content}</span>
+                                <span className="break-words overflow-wrap-anywhere">{conv.lastMessage.content}</span>
                               </p>
                               <p className="text-xs text-muted-foreground mt-1">
                                 {formatDateTime(conv.lastMessage.created_at)}
@@ -429,7 +429,7 @@ export default function MessagesPage() {
                   </div>
 
                   {/* 消息列表 */}
-                  <ScrollArea className="flex-1 p-4">
+                  <ScrollArea className="flex-1 p-4 h-0">
                     {messages.length === 0 ? (
                       <div className="h-full flex items-center justify-center text-muted-foreground">
                         发送第一条消息开始聊天
@@ -450,7 +450,7 @@ export default function MessagesPage() {
                                     : "bg-muted"
                                 }`}
                               >
-                                <p className="whitespace-pre-wrap break-all">{msg.content}</p>
+                                <p className="whitespace-pre-wrap break-words word-break-break-all overflow-wrap-anywhere">{msg.content}</p>
                                 <p className={`text-xs mt-1 ${isOwn ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
                                   {formatDateTime(msg.created_at)}
                                 </p>

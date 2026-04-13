@@ -301,7 +301,7 @@ export default function HomePage() {
   const renderContent = (content: string) => {
     const parts = content.split(/(@[a-zA-Z0-9_\u4e00-\u9fa5]+)/g);
     return (
-      <span className="break-words overflow-wrap-anywhere">
+      <span className="break-words overflow-wrap-anywhere word-break-break-all">
         {parts.map((part, index) => {
           if (part.startsWith("@")) {
             const username = part.slice(1);
@@ -573,7 +573,7 @@ export default function HomePage() {
                                 <Badge variant="destructive" className="text-xs">站长</Badge>
                               )}
                             </div>
-                            <p className="whitespace-pre-wrap break-all mb-2">
+                            <p className="whitespace-pre-wrap break-words overflow-wrap-anywhere word-break-break-all mb-2 max-w-full">
                               {renderContent(benben.content)}
                             </p>
                             <div className="flex items-center gap-4 text-sm text-muted-foreground">

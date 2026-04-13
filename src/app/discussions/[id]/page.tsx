@@ -309,7 +309,7 @@ export default function DiscussionDetailPage() {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="prose prose-sm dark:prose-invert max-w-none break-words overflow-wrap-anywhere">
+          <div className="prose prose-sm dark:prose-invert max-w-none break-words overflow-wrap-anywhere word-break-break-all">
             <ReactMarkdown
               remarkPlugins={[remarkGfm, remarkMath]}
               rehypePlugins={[rehypeKatex]}
@@ -336,15 +336,16 @@ export default function DiscussionDetailPage() {
                   value={replyContent}
                   onChange={(e) => {
                     const val = e.target.value;
-                    if (val.length <= 80) {
+                    const lines = val.split('\n').length;
+                    if (val.length <= 80 && lines <= 5) {
                       setReplyContent(val);
                       // 自动调整高度
                       e.target.style.height = 'auto';
-                      e.target.style.height = Math.min(e.target.scrollHeight, 200) + 'px';
+                      e.target.style.height = Math.min(e.target.scrollHeight, 150) + 'px';
                     }
                   }}
-                  className="w-full px-3 py-2 border rounded-md bg-background text-sm resize-none overflow-hidden min-h-[80px] max-h-[200px]"
-                  placeholder="支持 Markdown 格式... (最多80字符)"
+                  className="w-full px-3 py-2 border rounded-md bg-background text-sm resize-none overflow-hidden min-h-[80px] max-h-[150px] break-words overflow-wrap-anywhere"
+                  placeholder="支持 Markdown 格式... (最多80字符，5行)"
                   disabled={isSubmitting}
                   rows={3}
                   style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}
@@ -416,7 +417,7 @@ export default function DiscussionDetailPage() {
                     </Button>
                   )}
                 </div>
-                <div className="prose prose-sm dark:prose-invert max-w-none break-words overflow-wrap-anywhere">
+                <div className="prose prose-sm dark:prose-invert max-w-none break-words overflow-wrap-anywhere word-break-break-all">
                   <ReactMarkdown
                     remarkPlugins={[remarkGfm, remarkMath]}
                     rehypePlugins={[rehypeKatex]}
