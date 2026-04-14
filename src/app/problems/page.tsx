@@ -22,7 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { Search, Plus, Code, MinusCircle, RefreshCw, Tags, Settings, X, Edit2, Trash2, PlusCircle } from "lucide-react";
+import { Search, Plus, Code, MinusCircle, RefreshCw, Tags, Settings, X, Trash2, PlusCircle } from "lucide-react";
 import { toast } from "sonner";
 import { difficultyConfig, categoryConfig } from "@/lib/constants";
 
@@ -93,7 +93,6 @@ export default function ProblemsPage() {
   const [tagDialogOpen, setTagDialogOpen] = useState(false);
   const [tagManageDialogOpen, setTagManageDialogOpen] = useState(false);
   const [tagForm, setTagForm] = useState<TagFormData>({ name: "", color: "#3b82f6" });
-  const [editingTag, setEditingTag] = useState<Tag | null>(null);
   const [tagManageLoading, setTagManageLoading] = useState(false);
 
   const fetchProblems = async () => {
@@ -213,36 +212,6 @@ export default function ProblemsPage() {
     }
   };
 
-  const handleUpdateTag = async () => {
-    if (!editingTag || !tagForm.name.trim()) {
-      toast.error("请输入标签名称");
-      return;
-    }
-
-    setTagManageLoading(true);
-    try {
-      const res = await fetch(`/api/tags?id=${editingTag.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(tagForm),
-      });
-      const data = await res.json();
-      
-      if (data.success) {
-        toast.success("标签更新成功");
-        setEditingTag(null);
-        setTagForm({ name: "", color: "#3b82f6" });
-        await fetchTags();
-      } else {
-        toast.error(data.error || "更新失败");
-      }
-    } catch (error) {
-      toast.error("更新失败");
-    } finally {
-      setTagManageLoading(false);
-    }
-  };
-
   const handleDeleteTag = async (tagId: number) => {
     if (!confirm("确定要删除此标签吗？")) return;
 
@@ -268,16 +237,6 @@ export default function ProblemsPage() {
     } finally {
       setTagManageLoading(false);
     }
-  };
-
-  const startEditTag = (tag: Tag) => {
-    setEditingTag(tag);
-    setTagForm({ name: tag.name, color: tag.color });
-  };
-
-  const cancelEdit = () => {
-    setEditingTag(null);
-    setTagForm({ name: "", color: "#3b82f6" });
   };
 
   // 整理题号
@@ -494,10 +453,10 @@ export default function ProblemsPage() {
             <DialogTitle>标签管理</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            {/* 添加/编辑表单 */}
+            {/* 添加表单 */}
             <div className="flex gap-2 items-end">
               <div className="flex-1 space-y-2">
-                <Label>{editingTag ? "编辑标签" : "新建标签"}</Label>
+                <Label>新建标签</Label>
                 <Input
                   placeholder="标签名称"
                   value={tagForm.name}
@@ -521,23 +480,10 @@ export default function ProblemsPage() {
                 </div>
               </div>
             </div>
-            <div className="flex gap-2">
-              {editingTag ? (
-                <>
-                  <Button onClick={handleUpdateTag} disabled={tagManageLoading}>
-                    保存修改
-                  </Button>
-                  <Button variant="ghost" onClick={cancelEdit}>
-                    取消
-                  </Button>
-                </>
-              ) : (
-                <Button onClick={handleCreateTag} disabled={tagManageLoading}>
-                  <PlusCircle className="h-4 w-4 mr-2" />
-                  添加标签
-                </Button>
-              )}
-            </div>
+            <Button onClick={handleCreateTag} disabled={tagManageLoading}>
+              <PlusCircle className="h-4 w-4 mr-2" />
+              添加标签
+            </Button>
 
             {/* 标签列表 */}
             <div className="border-t pt-4">
@@ -559,13 +505,6 @@ export default function ProblemsPage() {
                         <span>{tag.name}</span>
                       </div>
                       <div className="flex gap-1">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => startEditTag(tag)}
-                        >
-                          <Edit2 className="h-4 w-4" />
-                        </Button>
                         <Button
                           variant="ghost"
                           size="sm"
