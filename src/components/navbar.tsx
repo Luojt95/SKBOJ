@@ -14,7 +14,9 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Menu, X, Code, Trophy, Users, Bug, MessageSquare, Share2, Ticket, Home, Bell, Mail, Coins, HelpCircle } from "lucide-react";
+import { Menu, X, Code, Trophy, Users, Bug, MessageSquare, Share2, Ticket, Home, Bell, Mail, Coins, HelpCircle, Clock } from "lucide-react";
+import { useLogoutCooldown } from "@/hooks/use-logout-cooldown";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface User {
   id: number;
@@ -61,6 +63,9 @@ export function Navbar() {
   const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [unreadMessages, setUnreadMessages] = useState(0);
   const [canShowRegister, setCanShowRegister] = useState(false);
+  
+  // 退出登录冷却
+  const { canLogout, formattedTime, refresh: refreshCooldown } = useLogoutCooldown();
 
   // 刷新用户信息的函数
   const refreshUser = async () => {
@@ -69,6 +74,11 @@ export function Navbar() {
       if (res.ok) {
         const data = await res.json();
         setUser(data.user);
+        // 同步 lastLogin 到 localStorage
+        if (data.user?.lastLogin) {
+          localStorage.setItem("lastLogin", data.user.lastLogin);
+        }
+        refreshCooldown();
       }
     } catch {
       setUser(null);
@@ -79,6 +89,11 @@ export function Navbar() {
     // 检查登录状态
     refreshUser();
   }, []);
+
+  // 用户变化时刷新冷却时间
+  useEffect(() => {
+    refreshCooldown();
+  }, [user, refreshCooldown]);
 
   // 根据当前用户角色更新localStorage中的currentUserRole
   useEffect(() => {
@@ -268,7 +283,7 @@ export function Navbar() {
                       {getRoleBadge(user.role)}
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuContent align="end" className="w-56">
                     <DropdownMenuItem asChild>
                       <Link href={`/profile/${user.id}`}>个人中心</Link>
                     </DropdownMenuItem>
@@ -276,12 +291,30 @@ export function Navbar() {
                       <Link href="/settings">个人设置</Link>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={handleLogout} className="text-red-600">
-                      退出登录
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => window.location.href = "/login"} className="text-blue-600">
-                      登录其他账号
-                    </DropdownMenuItem>
+                    {canLogout ? (
+                      <>
+                        <DropdownMenuItem onClick={handleLogout} className="text-red-600">
+                          退出登录
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => window.location.href = "/login"} className="text-blue-600">
+                          登录其他账号
+                        </DropdownMenuItem>
+                      </>
+                    ) : (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <div className="flex items-center gap-2 px-2 py-1.5 text-muted-foreground cursor-not-allowed">
+                              <Clock className="h-4 w-4" />
+                              <span className="text-sm">退出登录 ({formattedTime})</span>
+                            </div>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>登录后需等待10分钟方可退出</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    )}
                   </DropdownMenuContent>
                 </DropdownMenu>
               </>
@@ -384,26 +417,36 @@ export function Navbar() {
                         个人设置
                       </Link>
                     </Button>
-                    <Button
-                      variant="ghost"
-                      onClick={() => {
-                        handleLogout();
-                        setIsMenuOpen(false);
-                      }}
-                      className="justify-start text-red-600"
-                    >
-                      退出登录
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      onClick={() => {
-                        window.location.href = "/login";
-                        setIsMenuOpen(false);
-                      }}
-                      className="justify-start text-blue-600"
-                    >
-                      登录其他账号
-                    </Button>
+                    {canLogout ? (
+                      <>
+                        <Button
+                          variant="ghost"
+                          onClick={() => {
+                            handleLogout();
+                            setIsMenuOpen(false);
+                          }}
+                          className="justify-start text-red-600"
+                        >
+                          退出登录
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          onClick={() => {
+                            window.location.href = "/login";
+                            setIsMenuOpen(false);
+                          }}
+                          className="justify-start text-blue-600"
+                        >
+                          登录其他账号
+                        </Button>
+                      </>
+                    ) : (
+                      <div className="flex items-center gap-2 px-3 py-2 text-muted-foreground">
+                        <Clock className="h-4 w-4" />
+                        <span className="text-sm">退出登录 ({formattedTime})</span>
+                        <span className="text-xs text-muted-foreground/60">登录后需等待10分钟</span>
+                      </div>
+                    )}
                   </>
                 ) : (
                   <>

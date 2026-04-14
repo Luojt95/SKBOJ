@@ -65,6 +65,7 @@ export async function POST(request: NextRequest) {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     // 创建用户（默认为普通用户，初始100积分）
+    const now = new Date().toISOString();
     const { data: user, error } = await client
       .from("users")
       .insert({
@@ -84,6 +85,7 @@ export async function POST(request: NextRequest) {
         solved_improve_plus: 0,
         solved_provincial: 0,
         solved_noi: 0,
+        last_login: now, // 注册时也设置 last_login
       })
       .select("id, username, role, name_color, created_at, points")
       .single();
@@ -105,6 +107,7 @@ export async function POST(request: NextRequest) {
         username: user.username,
         role: user.role,
         points: user.points,
+        lastLogin: now,
       }),
       {
         httpOnly: true,
@@ -122,6 +125,7 @@ export async function POST(request: NextRequest) {
         username: user.username,
         role: user.role,
         name_color: user.name_color,
+        lastLogin: now,
       },
     });
   } catch (error) {

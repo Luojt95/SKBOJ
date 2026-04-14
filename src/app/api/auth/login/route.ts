@@ -50,6 +50,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // 更新 last_login 时间
+    const now = new Date().toISOString();
+    await client
+      .from("users")
+      .update({ last_login: now })
+      .eq("id", user.id);
+
     // 设置cookie
     const cookieStore = await cookies();
     cookieStore.set(
@@ -59,6 +66,7 @@ export async function POST(request: NextRequest) {
         username: user.username,
         role: user.role,
         points: user.points || 0,
+        lastLogin: now,
       }),
       {
         httpOnly: true,
@@ -76,6 +84,7 @@ export async function POST(request: NextRequest) {
         username: user.username,
         role: user.role,
         points: user.points || 0,
+        lastLogin: now,
       },
     });
   } catch (error) {

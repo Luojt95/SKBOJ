@@ -117,6 +117,10 @@ export default function RegisterPage() {
       const data = await res.json();
 
       if (res.ok) {
+        // 保存登录时间，用于退出冷却
+        if (data.user?.lastLogin) {
+          localStorage.setItem("lastLogin", data.user.lastLogin);
+        }
         toast.success("注册成功");
         router.push("/");
       } else {
