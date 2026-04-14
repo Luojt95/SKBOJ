@@ -18,12 +18,22 @@ import {
 import { toast } from "sonner";
 import { Save, ArrowLeft, Loader2 } from "lucide-react";
 import Link from "next/link";
+import { categoryConfig } from "@/lib/constants";
 
 interface Problem {
   id: number;
   title: string;
   difficulty: string;
+  category: string;
+  category_index: number | null;
 }
+
+// 根据题库和题目序号生成题目编号
+const getProblemNumber = (problem: Problem) => {
+  const prefix = problem.category || "P";
+  const index = problem.category_index || problem.id;
+  return `${prefix}${String(index).padStart(4, '0')}`;
+};
 
 interface Contest {
   id: number;
@@ -266,7 +276,7 @@ export default function EditContestPage() {
                     htmlFor={`problem-${problem.id}`}
                     className="cursor-pointer flex-1"
                   >
-                    <span className="font-mono mr-2">#{problem.id}</span>
+                    <span className="font-mono mr-2">{getProblemNumber(problem)}</span>
                     {problem.title}
                   </Label>
                 </div>

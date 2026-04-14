@@ -23,6 +23,7 @@ export default function RegisterPage() {
   const [captcha, setCaptcha] = useState<CaptchaData | null>(null);
   const [canAccess, setCanAccess] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null);
+  const [blockedByCooldown, setBlockedByCooldown] = useState(false); // 是否因冷却期被阻止
   const [formData, setFormData] = useState({
     username: "",
     password: "",
@@ -31,9 +32,28 @@ export default function RegisterPage() {
   });
 
   useEffect(() => {
-    // 检查权限：只有站长可以访问注册页面
+    // 检查权限：只有站长可以访问注册页面，且登录后需等待10分钟
     const checkAuth = async () => {
       try {
+        // 检查冷却时间
+        const lastLogin = localStorage.getItem("lastLogin");
+        if (lastLogin) {
+          const loginTime = new Date(lastLogin).getTime();
+          const now = Date.now();
+          const elapsed = now - loginTime;
+          const COOLDOWN_MS = 10 * 60 * 1000; // 10分钟冷却
+          
+          if (elapsed < COOLDOWN_MS) {
+            // 还在冷却期内，不允许访问注册页面
+            setCanAccess(false);
+            setUserRole(null);
+            setBlockedByCooldown(true);
+            return;
+          }
+        }
+
+        setBlockedByCooldown(false);
+
         const res = await fetch("/api/auth/me");
         if (res.ok) {
           const data = await res.json();
@@ -56,6 +76,7 @@ export default function RegisterPage() {
       } catch {
         setCanAccess(false);
         setUserRole(null);
+        setBlockedByCooldown(false);
       }
     };
     checkAuth();
@@ -143,17 +164,38 @@ export default function RegisterPage() {
         <Card className="w-full max-w-md">
           <CardContent className="pt-6">
             <div className="text-center space-y-4">
-              <div className="mx-auto w-16 h-16 rounded-full bg-red-100 dark:bg-red-900/20 flex items-center justify-center">
-                <svg className="w-8 h-8 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                </svg>
-              </div>
-              <div>
-                <h2 className="text-2xl font-bold text-foreground">无权限</h2>
-                <p className="mt-2 text-muted-foreground">
-                  只有站长可以访问注册页面
-                </p>
-              </div>
+              {blockedByCooldown ? (
+                <>
+                  <div className="mx-auto w-16 h-16 rounded-full bg-amber-100 dark:bg-amber-900/20 flex items-center justify-center">
+                    <svg className="w-8 h-8 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h2 className="text-2xl font-bold text-foreground">请稍候</h2>
+                    <p className="mt-2 text-muted-foreground">
+                      登录后需等待10分钟方可访问注册页面
+                    </p>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      请使用"登录其他账号"切换到站长账号
+                    </p>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="mx-auto w-16 h-16 rounded-full bg-red-100 dark:bg-red-900/20 flex items-center justify-center">
+                    <svg className="w-8 h-8 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h2 className="text-2xl font-bold text-foreground">无权限</h2>
+                    <p className="mt-2 text-muted-foreground">
+                      只有站长可以访问注册页面
+                    </p>
+                  </div>
+                </>
+              )}
               <Button asChild className="w-full">
                 <Link href="/">返回首页</Link>
               </Button>

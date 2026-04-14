@@ -292,14 +292,9 @@ export function Navbar() {
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     {canLogout ? (
-                      <>
-                        <DropdownMenuItem onClick={handleLogout} className="text-red-600">
-                          退出登录
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => window.location.href = "/login"} className="text-blue-600">
-                          登录其他账号
-                        </DropdownMenuItem>
-                      </>
+                      <DropdownMenuItem onClick={handleLogout} className="text-red-600">
+                        退出登录
+                      </DropdownMenuItem>
                     ) : (
                       <TooltipProvider>
                         <Tooltip>
@@ -315,6 +310,9 @@ export function Navbar() {
                         </Tooltip>
                       </TooltipProvider>
                     )}
+                    <DropdownMenuItem onClick={() => window.location.href = "/login"} className="text-blue-600">
+                      登录其他账号
+                    </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
               </>
@@ -418,28 +416,16 @@ export function Navbar() {
                       </Link>
                     </Button>
                     {canLogout ? (
-                      <>
-                        <Button
-                          variant="ghost"
-                          onClick={() => {
-                            handleLogout();
-                            setIsMenuOpen(false);
-                          }}
-                          className="justify-start text-red-600"
-                        >
-                          退出登录
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          onClick={() => {
-                            window.location.href = "/login";
-                            setIsMenuOpen(false);
-                          }}
-                          className="justify-start text-blue-600"
-                        >
-                          登录其他账号
-                        </Button>
-                      </>
+                      <Button
+                        variant="ghost"
+                        onClick={() => {
+                          handleLogout();
+                          setIsMenuOpen(false);
+                        }}
+                        className="justify-start text-red-600"
+                      >
+                        退出登录
+                      </Button>
                     ) : (
                       <div className="flex items-center gap-2 px-3 py-2 text-muted-foreground">
                         <Clock className="h-4 w-4" />
@@ -447,6 +433,16 @@ export function Navbar() {
                         <span className="text-xs text-muted-foreground/60">登录后需等待10分钟</span>
                       </div>
                     )}
+                    <Button
+                      variant="ghost"
+                      onClick={() => {
+                        window.location.href = "/login";
+                        setIsMenuOpen(false);
+                      }}
+                      className="justify-start text-blue-600"
+                    >
+                      登录其他账号
+                    </Button>
                   </>
                 ) : (
                   <>

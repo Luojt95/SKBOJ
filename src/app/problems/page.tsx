@@ -195,11 +195,11 @@ export default function ProblemsPage() {
       const res = await fetch("/api/tags", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(tagForm),
+        body: JSON.stringify({ action: "create", ...tagForm }),
       });
       const data = await res.json();
       
-      if (data.success) {
+      if (data.tag) {
         toast.success("标签创建成功");
         setTagForm({ name: "", color: "#3b82f6" });
         await fetchTags();
@@ -248,8 +248,10 @@ export default function ProblemsPage() {
 
     setTagManageLoading(true);
     try {
-      const res = await fetch(`/api/tags?id=${tagId}`, {
-        method: "DELETE",
+      const res = await fetch("/api/tags", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "delete", id: tagId }),
       });
       const data = await res.json();
       
