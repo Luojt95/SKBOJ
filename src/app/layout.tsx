@@ -38,7 +38,7 @@ export default function RootLayout({
             <main className="flex-1">{children}</main>
             <footer className="border-t py-6 text-center text-sm text-muted-foreground">
               <div className="container mx-auto px-4">
-                <p>© 2026-2026 SKBOJ - OIer的乐土 | Powered By Luojt95 | All rights reserved.</p>
+                <p>2026 - 2026, ©SKBOJ - OIer的乐土 | Powered By Luojt95 | All rights reserved.</p>
               </div>
             </footer>
           </div>

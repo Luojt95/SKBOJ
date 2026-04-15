@@ -80,7 +80,7 @@ const features = [
   {
     icon: Code,
     title: "丰富题库",
-    description: "涵盖入门到进阶的算法题目，支持多种难度标签筛选",
+    description: "涵盖各个领域与难度的题目，支持多种难度标签筛选",
   },
   {
     icon: Trophy,
