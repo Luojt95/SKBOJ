@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { 
@@ -22,6 +22,7 @@ interface UserProfile {
   username: string;
   role: string;
   points?: number;
+  avatar?: string;
   lastCheckIn?: string;
   solvedEntry: number;
   solvedPopularMinus: number;
@@ -58,6 +59,7 @@ interface FollowUser {
     username: string;
     role: string;
     points?: number;
+    avatar?: string;
   };
   created_at: string;
 }
@@ -306,8 +308,9 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
         <CardContent className="pt-6">
           <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
             <Avatar className="h-24 w-24">
+              <AvatarImage src={user?.avatar} alt={user?.username} />
               <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white text-3xl">
-                {user.username[0].toUpperCase()}
+                {user?.username?.[0]?.toUpperCase() || "?"}
               </AvatarFallback>
             </Avatar>
             <div className="flex-1">
@@ -456,6 +459,7 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
                   <Card className="hover:bg-muted/50 transition-colors">
                     <CardContent className="py-3 flex items-center gap-3">
                       <Avatar className="h-10 w-10">
+                        <AvatarImage src={follow.user.avatar} alt={follow.user.username} />
                         <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white">
                           {follow.user.username[0].toUpperCase()}
                         </AvatarFallback>
@@ -491,6 +495,7 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
                   <Card className="hover:bg-muted/50 transition-colors">
                     <CardContent className="py-3 flex items-center gap-3">
                       <Avatar className="h-10 w-10">
+                        <AvatarImage src={follow.user.avatar} alt={follow.user.username} />
                         <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white">
                           {follow.user.username[0].toUpperCase()}
                         </AvatarFallback>

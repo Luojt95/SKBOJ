@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ArrowLeft, Send, Mail, Trash2, User } from "lucide-react";
@@ -19,6 +19,7 @@ interface Conversation {
     role: string;
     name_color?: string;
     points?: number;
+    avatar?: string;
   };
   lastMessage: {
     id: number;
@@ -51,6 +52,7 @@ interface OtherUser {
   role: string;
   name_color?: string;
   points?: number;
+  avatar?: string;
 }
 
 // 根据积分获取颜色
@@ -361,6 +363,7 @@ export default function MessagesPage() {
                           <div className="flex items-start gap-3">
                             <div className="relative">
                               <Avatar className="h-10 w-10">
+                                <AvatarImage src={conv.user.avatar} alt={conv.user.username} />
                                 <AvatarFallback className={userBgStyle}>
                                   {conv.user.username[0].toUpperCase()}
                                 </AvatarFallback>
@@ -418,6 +421,7 @@ export default function MessagesPage() {
                     <Link href={`/profile/${selectedUser.id}`}>
                       <div className="flex items-center gap-2 hover:underline">
                         <Avatar className="h-8 w-8">
+                          <AvatarImage src={selectedUser.avatar} alt={selectedUser.username} />
                           <AvatarFallback className={selectedUser.name_color ? nameBgStyles[selectedUser.name_color] : "bg-gradient-to-br from-blue-500 to-purple-600"}>
                             {selectedUser.username[0].toUpperCase()}
                           </AvatarFallback>

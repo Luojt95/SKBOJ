@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -24,6 +24,7 @@ interface Benben {
     username: string;
     role: string;
     points?: number;
+    avatar?: string;
   };
 }
 
@@ -85,7 +86,7 @@ const features = [
   {
     icon: Trophy,
     title: "在线比赛",
-    description: "支持OI/IOI赛制，实时排行榜，体验竞技乐趣",
+    description: "支持OI/IOI/CS赛制，实时排行榜，体验竞技乐趣",
   },
   {
     icon: Users,
@@ -553,6 +554,7 @@ export default function HomePage() {
                         <div className="flex items-start gap-3">
                           <Link href={`/profile/${benben.author_id}`}>
                             <Avatar className="h-10 w-10">
+                              <AvatarImage src={benben.author?.avatar} alt={benben.author?.username} />
                               <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600">
                                 {benben.author?.username?.[0]?.toUpperCase() || "?"}
                               </AvatarFallback>

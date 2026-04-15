@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Select,
   SelectContent,
@@ -36,6 +36,7 @@ interface UserData {
   solved_total: number;
   created_at: string;
   is_banned?: boolean;
+  avatar?: string;
 }
 
 interface Stats {
@@ -544,6 +545,7 @@ export default function UsersPage() {
                       <Link href={`/profile/${user.id}`}>
                         <div className="flex items-center gap-2">
                           <Avatar className="h-8 w-8">
+                            <AvatarImage src={user.avatar} alt={user.username} />
                             <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white text-xs">
                               {user.username[0].toUpperCase()}
                             </AvatarFallback>

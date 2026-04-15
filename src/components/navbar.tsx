@@ -12,7 +12,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Menu, X, Code, Trophy, Users, Bug, MessageSquare, Share2, Ticket, Home, Bell, Mail, Coins, HelpCircle, Clock } from "lucide-react";
 import { useLogoutCooldown } from "@/hooks/use-logout-cooldown";
@@ -23,6 +23,7 @@ interface User {
   username: string;
   role: string;
   points?: number;
+  avatar?: string;
 }
 
 const navItems = [
@@ -275,6 +276,7 @@ export function Navbar() {
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className="flex items-center space-x-2">
                       <Avatar className="h-8 w-8">
+                        <AvatarImage src={user.avatar} alt={user.username} />
                         <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white">
                           {user.username[0].toUpperCase()}
                         </AvatarFallback>
@@ -371,6 +373,7 @@ export function Navbar() {
                     <div className="flex items-center justify-between px-3 py-2">
                       <div className="flex items-center space-x-2">
                         <Avatar className="h-8 w-8">
+                          <AvatarImage src={user.avatar} alt={user.username} />
                           <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white">
                             {user.username[0].toUpperCase()}
                           </AvatarFallback>

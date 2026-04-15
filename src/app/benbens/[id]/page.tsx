@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
@@ -24,6 +24,7 @@ interface Benben {
     username: string;
     role: string;
     points?: number;
+    avatar?: string;
   };
 }
 
@@ -41,6 +42,7 @@ interface Reply {
     username: string;
     role: string;
     points?: number;
+    avatar?: string;
   };
   replyToUser?: {
     id: number;
@@ -291,6 +293,7 @@ export default function BenbenDetailPage({ params }: { params: Promise<{ id: str
           <div className="flex items-start gap-3">
             <Link href={`/profile/${benben.author_id}`}>
               <Avatar className="h-12 w-12">
+                <AvatarImage src={benben.author?.avatar} alt={benben.author?.username} />
                 <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600">
                   {benben.author?.username?.[0]?.toUpperCase() || "?"}
                 </AvatarFallback>
@@ -417,6 +420,7 @@ export default function BenbenDetailPage({ params }: { params: Promise<{ id: str
                     <div className="flex items-start gap-3">
                       <Link href={`/profile/${reply.author_id}`}>
                         <Avatar className="h-8 w-8">
+                          <AvatarImage src={reply.author?.avatar} alt={reply.author?.username} />
                           <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600">
                             {reply.author?.username?.[0]?.toUpperCase() || "?"}
                           </AvatarFallback>
