@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { ArrowLeft, Upload, Lock, User, Camera, Save } from "lucide-react";
 
@@ -223,15 +224,15 @@ export default function SettingsPage() {
               <div className="flex flex-col items-center gap-4">
                 <div className="relative">
                   <Avatar className="h-32 w-32">
-                    <AvatarImage src={user?.avatar} />
+                    <AvatarImage src={avatarPreview || user?.avatar} />
                     <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white text-4xl">
                       {user?.username[0].toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
                   {avatarPreview && (
-                    <Avatar className="h-32 w-32 absolute top-0 left-0">
-                      <AvatarImage src={avatarPreview} />
-                    </Avatar>
+                    <Badge variant="secondary" className="absolute -bottom-2 -right-2">
+                      新头像
+                    </Badge>
                   )}
                 </div>
 

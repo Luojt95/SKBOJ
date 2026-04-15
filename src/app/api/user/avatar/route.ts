@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { getSupabaseClient } from "@/storage/database/supabase-client";
-import { v4 as uuidv4 } from "uuid";
 
 // 上传头像
 export async function POST(request: NextRequest) {
@@ -33,53 +32,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "图片大小不能超过 2MB" }, { status: 400 });
     }
 
-    let avatarUrl: string;
-
-    // 将文件转换为 Buffer
+    // 直接使用 Base64 存储，简单可靠
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
-
-    // 生成文件名
-    const fileExtension = file.type.split("/")[1];
-    const fileName = `avatar-${user.id}-${uuidv4()}.${fileExtension}`;
-
-    // 上传到对象存储
-    // 这里使用 Supabase Storage，如果你使用其他对象存储服务，需要相应调整
-    try {
-      const { error: uploadError } = await getSupabaseClient()
-        .storage
-        .from("avatars")
-        .upload(fileName, buffer, {
-          contentType: file.type,
-          upsert: true,
-        });
-
-      if (uploadError) {
-        // 如果存储上传失败，使用 Base64 数据存储
-        console.warn("Storage upload failed, using Base64 storage:", uploadError.message);
-        const base64Data = `data:${file.type};base64,${buffer.toString("base64")}`;
-        avatarUrl = base64Data;
-      } else {
-        // 获取公共 URL
-        const { data: publicUrlData } = getSupabaseClient()
-          .storage
-          .from("avatars")
-          .getPublicUrl(fileName);
-
-        avatarUrl = publicUrlData.publicUrl;
-      }
-    } catch (storageError) {
-      console.error("Storage error:", storageError);
-      // 存储异常时使用 Base64
-      const base64Data = `data:${file.type};base64,${buffer.toString("base64")}`;
-      avatarUrl = base64Data;
-    }
+    const base64Data = `data:${file.type};base64,${buffer.toString("base64")}`;
 
     // 更新用户的头像URL
     const client = getSupabaseClient();
     const { error: updateError } = await client
       .from("users")
-      .update({ avatar: avatarUrl })
+      .update({ avatar: base64Data })
       .eq("id", user.id);
 
     if (updateError) {
@@ -87,9 +49,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "更新头像失败" }, { status: 500 });
     }
 
-    // 更新cookie
-    const updatedUser = { ...user, avatar: avatarUrl };
-    const response = NextResponse.json({ success: true, avatarUrl });
+    // 构建响应并设置 cookie
+    const updatedUser = { ...user, avatar: base64Data };
+    const response = NextResponse.json({ success: true, avatarUrl: base64Data });
     response.cookies.set("user", JSON.stringify(updatedUser), {
       httpOnly: true,
       secure: false,
