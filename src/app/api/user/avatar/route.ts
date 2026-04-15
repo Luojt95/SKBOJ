@@ -68,72 +68,37 @@ export async function POST(request: NextRequest) {
 
         avatarUrl = publicUrlData.publicUrl;
       }
-
-      // 更新用户的头像URL
-      const client = getSupabaseClient();
-      const { error: updateError } = await client
-        .from("users")
-        .update({ avatar: avatarUrl })
-        .eq("id", user.id);
-
-      if (updateError) {
-        console.error("Update avatar error:", updateError);
-        return NextResponse.json({ error: "更新头像失败" }, { status: 500 });
-      }
-
-      // 更新cookie
-      cookieStore.set(
-        "user",
-        JSON.stringify({
-          ...user,
-          avatar: avatarUrl,
-        }),
-        {
-          httpOnly: true,
-          secure: false,
-          sameSite: "lax",
-          maxAge: 60 * 60 * 24 * 7,
-          path: "/",
-        }
-      );
-
-      return NextResponse.json({ success: true, avatarUrl });
     } catch (storageError) {
       console.error("Storage error:", storageError);
       // 存储异常时使用 Base64
       const base64Data = `data:${file.type};base64,${buffer.toString("base64")}`;
       avatarUrl = base64Data;
-
-      // 更新用户的头像URL
-      const client = getSupabaseClient();
-      const { error: updateError } = await client
-        .from("users")
-        .update({ avatar: avatarUrl })
-        .eq("id", user.id);
-
-      if (updateError) {
-        console.error("Update avatar error:", updateError);
-        return NextResponse.json({ error: "更新头像失败" }, { status: 500 });
-      }
-
-      // 更新cookie
-      cookieStore.set(
-        "user",
-        JSON.stringify({
-          ...user,
-          avatar: avatarUrl,
-        }),
-        {
-          httpOnly: true,
-          secure: false,
-          sameSite: "lax",
-          maxAge: 60 * 60 * 24 * 7,
-          path: "/",
-        }
-      );
-
-      return NextResponse.json({ success: true, avatarUrl });
     }
+
+    // 更新用户的头像URL
+    const client = getSupabaseClient();
+    const { error: updateError } = await client
+      .from("users")
+      .update({ avatar: avatarUrl })
+      .eq("id", user.id);
+
+    if (updateError) {
+      console.error("Update avatar error:", updateError);
+      return NextResponse.json({ error: "更新头像失败" }, { status: 500 });
+    }
+
+    // 更新cookie
+    const updatedUser = { ...user, avatar: avatarUrl };
+    const response = NextResponse.json({ success: true, avatarUrl });
+    response.cookies.set("user", JSON.stringify(updatedUser), {
+      httpOnly: true,
+      secure: false,
+      sameSite: "lax",
+      maxAge: 60 * 60 * 24 * 7,
+      path: "/",
+    });
+
+    return response;
   } catch (error) {
     console.error("Upload avatar error:", error);
     return NextResponse.json({ error: "上传失败" }, { status: 500 });
