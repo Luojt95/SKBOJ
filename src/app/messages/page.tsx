@@ -445,13 +445,13 @@ export default function MessagesPage() {
                               className={`flex ${isOwn ? "justify-end" : "justify-start"}`}
                             >
                               <div
-                                className={`max-w-[70%] min-w-0 px-4 py-2 rounded-lg break-words ${
+                                className={`max-w-[70%] min-w-0 px-4 py-2 rounded-lg ${
                                   isOwn
                                     ? "bg-primary text-primary-foreground"
                                     : "bg-muted"
                                 }`}
                               >
-                                <p className="whitespace-pre-wrap break-all overflow-hidden">{msg.content}</p>
+                                <p className="whitespace-pre-wrap break-words overflow-hidden max-h-48 overflow-y-auto">{msg.content}</p>
                                 <p className={`text-xs mt-1 ${isOwn ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
                                   {formatDateTime(msg.created_at)}
                                 </p>
