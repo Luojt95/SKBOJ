@@ -186,6 +186,7 @@ export async function PUT(
         start_time: body.startTime,
         end_time: body.endTime,
         type: body.type,
+        div: body.div,
         problem_ids: body.problemIds,
         is_visible: body.isVisible,
       })

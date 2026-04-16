@@ -82,6 +82,7 @@ export async function POST(request: NextRequest) {
         problem_ids: body.problemIds || [],
         author_id: user.id,
         is_visible: body.isVisible ?? true,
+        div: body.div || "Div.4", // Div 等级
       })
       .select()
       .single();

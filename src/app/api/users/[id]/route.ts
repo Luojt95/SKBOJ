@@ -14,7 +14,7 @@ export async function GET(
     const { data: user, error } = await client
       .from("users")
       .select(`
-        id, username, role, points,
+        id, username, role, rating, points,
         solved_entry, solved_popular_minus, solved_popular,
         solved_popular_plus, solved_improve_plus, solved_provincial, solved_noi,
         created_at, bio
@@ -31,6 +31,7 @@ export async function GET(
       id: user.id,
       username: user.username,
       role: user.role,
+      rating: user.rating,
       points: user.points,
       solvedEntry: user.solved_entry,
       solvedPopularMinus: user.solved_popular_minus,

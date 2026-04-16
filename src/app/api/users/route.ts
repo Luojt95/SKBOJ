@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
     const { data: users, error: usersError } = await client
       .from("users")
       .select(`
-        id, username, role, created_at, 
+        id, username, role, rating, created_at, 
         name_color, total_rating, points,
         solved_entry, solved_popular_minus, solved_popular, 
         solved_popular_plus, solved_improve_plus, solved_provincial, solved_noi,

@@ -13,14 +13,16 @@ import { Separator } from "@/components/ui/separator";
 import { 
   User, MessageCircle, Users, Heart, 
   Code, Trophy, FileText, MessageSquare, Share2, Ticket,
-  Calendar, Coins
+  Calendar
 } from "lucide-react";
 import { toast } from "sonner";
+import { getRatingConfig } from "@/lib/rating";
 
 interface UserProfile {
   id: number;
   username: string;
   role: string;
+  rating?: number;
   points?: number;
   avatar?: string;
   lastCheckIn?: string;
@@ -58,6 +60,7 @@ interface FollowUser {
     id: number;
     username: string;
     role: string;
+    rating?: number;
     points?: number;
     avatar?: string;
   };
@@ -298,8 +301,6 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
 
   const userColorStyle = getPointsColor(user.points, user.role);
   const isOwnProfile = currentUser?.id === user.id;
-  const isSuperAdmin = user.role === "super_admin";
-  const displayPoints = isSuperAdmin ? "∞" : (user.points ?? 100);
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-5xl">
@@ -316,9 +317,16 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
             <div className="flex-1">
               <div className="flex items-center gap-3 mb-2">
                 <h1 className={`text-2xl font-bold ${userColorStyle}`}>{user.username}</h1>
-                <span className="text-sm text-muted-foreground">
-                  ({getPointsTitle(user.points, user.role)})
-                </span>
+                {/* Rating 显示 */}
+                {user.rating !== undefined && user.rating !== null && (
+                  <Badge
+                    variant="outline"
+                    className="font-mono"
+                    style={{ borderColor: getRatingConfig(user.rating).color, color: getRatingConfig(user.rating).color }}
+                  >
+                    {getRatingConfig(user.rating).label} {user.rating}
+                  </Badge>
+                )}
                 {user.role === "super_admin" && <Badge variant="destructive">站长</Badge>}
                 {user.role === "admin" && <Badge className="bg-orange-500">管理员</Badge>}
               </div>
@@ -326,10 +334,6 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
                 <div className="flex items-center gap-1">
                   <Calendar className="h-4 w-4" />
                   <span>注册于 {formatDate(user.createdAt)}</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <Coins className="h-4 w-4 text-amber-500" />
-                  <span className={`font-medium ${userColorStyle}`}>积分: {displayPoints}</span>
                 </div>
               </div>
               <div className="flex items-center gap-6 text-sm">
@@ -465,9 +469,20 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
                         </AvatarFallback>
                       </Avatar>
                       <div className="flex-1">
-                        <p className={`font-medium ${getPointsColor(follow.user.points, follow.user.role)}`}>
-                          {follow.user.username}
-                        </p>
+                        <div className="flex items-center gap-2">
+                          <p className={`font-medium ${getPointsColor(follow.user.points, follow.user.role)}`}>
+                            {follow.user.username}
+                          </p>
+                          {follow.user.rating !== undefined && follow.user.rating !== null && (
+                            <Badge
+                              variant="outline"
+                              className="text-xs font-mono h-5"
+                              style={{ borderColor: getRatingConfig(follow.user.rating).color, color: getRatingConfig(follow.user.rating).color }}
+                            >
+                              {follow.user.rating}
+                            </Badge>
+                          )}
+                        </div>
                         <p className="text-xs text-muted-foreground">
                           关注于 {formatDate(follow.created_at)}
                         </p>
@@ -501,9 +516,20 @@ export default function ProfilePage({ params }: { params: Promise<{ id: string }
                         </AvatarFallback>
                       </Avatar>
                       <div className="flex-1">
-                        <p className={`font-medium ${getPointsColor(follow.user.points, follow.user.role)}`}>
-                          {follow.user.username}
-                        </p>
+                        <div className="flex items-center gap-2">
+                          <p className={`font-medium ${getPointsColor(follow.user.points, follow.user.role)}`}>
+                            {follow.user.username}
+                          </p>
+                          {follow.user.rating !== undefined && follow.user.rating !== null && (
+                            <Badge
+                              variant="outline"
+                              className="text-xs font-mono h-5"
+                              style={{ borderColor: getRatingConfig(follow.user.rating).color, color: getRatingConfig(follow.user.rating).color }}
+                            >
+                              {follow.user.rating}
+                            </Badge>
+                          )}
+                        </div>
                         <p className="text-xs text-muted-foreground">
                           关注于 {formatDate(follow.created_at)}
                         </p>

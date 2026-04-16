@@ -24,7 +24,7 @@ export async function GET(
     // 获取用户信息
     const { data: user } = await client
       .from("users")
-      .select("id, username, role, points")
+      .select("id, username, role, rating, points")
       .eq("id", benben.author_id)
       .single();
 

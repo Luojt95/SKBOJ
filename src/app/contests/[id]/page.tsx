@@ -7,8 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ArrowLeft, Trophy, Clock, Play, Users, Edit, Trash2 } from "lucide-react";
+import { ArrowLeft, Trophy, Clock, Play, Users, Edit, Trash2, Calculator } from "lucide-react";
 import { toast } from "sonner";
+import { divConfig } from "@/lib/rating";
 
 interface Contest {
   id: number;
@@ -21,6 +22,8 @@ interface Contest {
   admin_threshold: number | null;
   problem_ids: number[];
   author_id: number;
+  div: string;
+  rating_calculated: boolean;
   users?: {
     id: number;
     username: string;
@@ -182,6 +185,30 @@ export default function ContestDetailPage() {
     }
   };
 
+  const handleCalculateRating = async () => {
+    if (!confirm("确定要计算这场比赛的 Rating 吗？此操作不可撤销。")) return;
+
+    try {
+      const res = await fetch("/api/contests/rating", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ contestId: contest.id }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        toast.success(data.message || "Rating 计算完成");
+        // 刷新页面
+        window.location.reload();
+      } else {
+        toast.error(data.error || data.message || "计算失败");
+      }
+    } catch {
+      toast.error("计算失败");
+    }
+  };
+
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="flex items-center justify-between mb-4">
@@ -236,6 +263,40 @@ export default function ContestDetailPage() {
                   ? "未开始"
                   : "已结束"}
               </Badge>
+
+              {/* Div 信息 */}
+              {contest.div && (
+                <Badge
+                  className={
+                    contest.div === "Div.1"
+                      ? "bg-purple-600"
+                      : contest.div === "Div.2"
+                      ? "bg-blue-600"
+                      : contest.div === "Div.3"
+                      ? "bg-green-600"
+                      : "bg-gray-500"
+                  }
+                >
+                  {contest.div}
+                  {contest.div !== "Div.4" ? "（计入Rating）" : "（不计Rating）"}
+                </Badge>
+              )}
+
+              {/* Rating 计算按钮（仅对管理员显示，且 Div.1-3 且比赛已结束且未计算） */}
+              {canEdit && contest.div !== "Div.4" && status === "ended" && !contest.rating_calculated && (
+                <Button variant="outline" size="sm" onClick={handleCalculateRating}>
+                  <Calculator className="h-4 w-4 mr-2" />
+                  计算Rating
+                </Button>
+              )}
+
+              {/* 已计算 Rating 提示 */}
+              {contest.div !== "Div.4" && contest.rating_calculated && (
+                <Badge variant="secondary">
+                  <Calculator className="h-3 w-3 mr-1" />
+                  Rating已计算
+                </Badge>
+              )}
             </div>
           </div>
           <div className="flex items-center gap-6 mt-2 text-muted-foreground">

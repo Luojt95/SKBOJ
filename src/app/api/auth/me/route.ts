@@ -31,6 +31,7 @@ export async function GET() {
         id: fullUser.id,
         username: fullUser.username,
         role: fullUser.role,
+        rating: fullUser.rating,
         points: fullUser.points,
         avatar: fullUser.avatar,
         bio: fullUser.bio,

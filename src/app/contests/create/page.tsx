@@ -16,9 +16,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Save, ArrowLeft, Info } from "lucide-react";
+import { Save, ArrowLeft, Info, Trophy } from "lucide-react";
 import Link from "next/link";
 import { categoryConfig } from "@/lib/constants";
+import { divConfig } from "@/lib/rating";
 
 interface Problem {
   id: number;
@@ -47,6 +48,7 @@ export default function CreateContestPage() {
     type: "oi",
     format: "OI",
     adminThreshold: "",
+    div: "Div.4",
     isVisible: true,
   });
   const [selectedProblems, setSelectedProblems] = useState<number[]>([]);
@@ -200,17 +202,60 @@ export default function CreateContestPage() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="flex items-center space-x-2 pt-8">
-                <Checkbox
-                  id="isVisible"
-                  checked={formData.isVisible}
-                  onCheckedChange={(checked) =>
-                    setFormData({ ...formData, isVisible: checked as boolean })
+              <div className="space-y-2">
+                <Label>Div 等级</Label>
+                <Select
+                  value={formData.div}
+                  onValueChange={(value) =>
+                    setFormData({ ...formData, div: value })
                   }
-                />
-                <Label htmlFor="isVisible">公开可见</Label>
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Div.1">Div.1（最高等级）</SelectItem>
+                    <SelectItem value="Div.2">Div.2（中高等级）</SelectItem>
+                    <SelectItem value="Div.3">Div.3（中等等级）</SelectItem>
+                    <SelectItem value="Div.4">Div.4（入门，不计Rating）</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
+
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="isVisible"
+                checked={formData.isVisible}
+                onCheckedChange={(checked) =>
+                  setFormData({ ...formData, isVisible: checked as boolean })
+                }
+              />
+              <Label htmlFor="isVisible">公开可见</Label>
+            </div>
+
+            {/* Div 说明 */}
+            {formData.div !== "Div.4" ? (
+              <div className="p-3 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg">
+                <div className="flex items-center gap-2 text-blue-800 dark:text-blue-200 mb-1">
+                  <Trophy className="h-4 w-4" />
+                  <span className="font-medium text-sm">Div {formData.div} 会计入 Rating</span>
+                </div>
+                <p className="text-xs text-blue-700 dark:text-blue-300">
+                  比赛结束后，根据排名计算并更新参赛者的 Rating
+                </p>
+              </div>
+            ) : (
+              <div className="p-3 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-lg">
+                <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400 mb-1">
+                  <Trophy className="h-4 w-4" />
+                  <span className="font-medium text-sm">Div.4 不计入 Rating</span>
+                </div>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  适合入门比赛，不会影响参赛者的 Rating
+                </p>
+              </div>
+            )}
 
             {/* CS赛制额外配置 */}
             {formData.format === "CS" && (

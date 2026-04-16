@@ -8,11 +8,10 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { ArrowLeft, Upload, Lock, User, Camera, Save } from "lucide-react";
+import { ArrowLeft, Check, Lock, User } from "lucide-react";
 
 interface User {
   id: number;
@@ -26,12 +25,7 @@ export default function SettingsPage() {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // 头像相关
-  const [avatarFile, setAvatarFile] = useState<File | null>(null);
-  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
-  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
-
-  // 简介相关
+  // 个人简介相关
   const [bio, setBio] = useState("");
   const [isSavingBio, setIsSavingBio] = useState(false);
 
@@ -59,53 +53,6 @@ export default function SettingsPage() {
       router.push("/login");
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setAvatarFile(file);
-
-      // 创建预览
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setAvatarPreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const handleAvatarUpload = async () => {
-    if (!avatarFile) {
-      toast.error("请选择头像文件");
-      return;
-    }
-
-    setIsUploadingAvatar(true);
-    try {
-      const formData = new FormData();
-      formData.append("avatar", avatarFile);
-
-      const res = await fetch("/api/user/avatar", {
-        method: "POST",
-        body: formData,
-      });
-
-      const data = await res.json();
-
-      if (res.ok) {
-        toast.success("头像上传成功");
-        setAvatarFile(null);
-        setAvatarPreview(null);
-        fetchUser();
-      } else {
-        toast.error(data.error || "上传失败");
-      }
-    } catch {
-      toast.error("上传失败");
-    } finally {
-      setIsUploadingAvatar(false);
     }
   };
 
@@ -195,13 +142,9 @@ export default function SettingsPage() {
         <div className="w-24" /> {/* 占位，保持居中 */}
       </div>
 
-      <Tabs defaultValue="avatar" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="avatar" className="flex items-center gap-2">
-            <Camera className="h-4 w-4" />
-            头像设置
-          </TabsTrigger>
-          <TabsTrigger value="bio" className="flex items-center gap-2">
+      <Tabs defaultValue="profile" className="space-y-6">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="profile" className="flex items-center gap-2">
             <User className="h-4 w-4" />
             个人简介
           </TabsTrigger>
@@ -211,72 +154,8 @@ export default function SettingsPage() {
           </TabsTrigger>
         </TabsList>
 
-        {/* 头像设置 */}
-        <TabsContent value="avatar">
-          <Card>
-            <CardHeader>
-              <CardTitle>头像设置</CardTitle>
-              <CardDescription>
-                上传您的个人头像，支持 JPG、PNG、GIF、WebP 格式，最大 2MB
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="flex flex-col items-center gap-4">
-                <div className="relative">
-                  <Avatar className="h-32 w-32">
-                    <AvatarImage src={avatarPreview || user?.avatar} />
-                    <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white text-4xl">
-                      {user?.username[0].toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  {avatarPreview && (
-                    <Badge variant="secondary" className="absolute -bottom-2 -right-2">
-                      新头像
-                    </Badge>
-                  )}
-                </div>
-
-                <div className="flex items-center gap-4">
-                  <Label
-                    htmlFor="avatar-upload"
-                    className="cursor-pointer"
-                  >
-                    <div className="flex items-center gap-2 px-4 py-2 border rounded-lg hover:bg-muted transition-colors">
-                      <Upload className="h-4 w-4" />
-                      选择图片
-                    </div>
-                  </Label>
-                  <Input
-                    id="avatar-upload"
-                    type="file"
-                    accept="image/jpeg,image/png,image/gif,image/webp"
-                    onChange={handleAvatarChange}
-                    className="hidden"
-                  />
-
-                  {avatarFile && (
-                    <Button
-                      onClick={handleAvatarUpload}
-                      disabled={isUploadingAvatar}
-                    >
-                      <Save className="h-4 w-4 mr-2" />
-                      {isUploadingAvatar ? "上传中..." : "保存头像"}
-                    </Button>
-                  )}
-                </div>
-
-                {avatarFile && (
-                  <p className="text-sm text-muted-foreground">
-                    已选择: {avatarFile.name} ({(avatarFile.size / 1024).toFixed(2)} KB)
-                  </p>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
         {/* 个人简介 */}
-        <TabsContent value="bio">
+        <TabsContent value="profile">
           <Card>
             <CardHeader>
               <CardTitle>个人简介</CardTitle>
@@ -305,7 +184,7 @@ export default function SettingsPage() {
                   onClick={handleBioSave}
                   disabled={isSavingBio}
                 >
-                  <Save className="h-4 w-4 mr-2" />
+                  <Check className="h-4 w-4 mr-2" />
                   {isSavingBio ? "保存中..." : "保存简介"}
                 </Button>
               </div>
@@ -363,7 +242,7 @@ export default function SettingsPage() {
                   onClick={handlePasswordChange}
                   disabled={isChangingPassword}
                 >
-                  <Save className="h-4 w-4 mr-2" />
+                  <Check className="h-4 w-4 mr-2" />
                   {isChangingPassword ? "修改中..." : "修改密码"}
                 </Button>
               </div>

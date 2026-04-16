@@ -27,11 +27,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Checkbox } from "@/components/ui/checkbox";
+import { getRatingConfig } from "@/lib/rating";
 
 interface UserData {
   id: number;
   username: string;
   role: string;
+  rating?: number;
   points: number;
   solved_total: number;
   created_at: string;
@@ -550,12 +552,22 @@ export default function UsersPage() {
                               {user.username[0].toUpperCase()}
                             </AvatarFallback>
                           </Avatar>
-                          <span className={`font-medium ${getPointsColor(user.points || 0, user.role)}`}>
-                            {user.username}
-                          </span>
-                          <span className="text-xs text-muted-foreground">
-                            ({getPointsTitle(user.points || 0, user.role)})
-                          </span>
+                          <div className="flex flex-col">
+                            <div className="flex items-center gap-1">
+                              <span className={`font-medium ${getPointsColor(user.points || 0, user.role)}`}>
+                                {user.username}
+                              </span>
+                              {user.rating !== undefined && user.rating !== null && (
+                                <Badge
+                                  variant="outline"
+                                  className="text-xs font-mono h-5"
+                                  style={{ borderColor: getRatingConfig(user.rating).color, color: getRatingConfig(user.rating).color }}
+                                >
+                                  {user.rating}
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
                         </div>
                       </Link>
                     </TableCell>

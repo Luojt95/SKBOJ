@@ -14,9 +14,10 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Menu, X, Code, Trophy, Users, Bug, MessageSquare, Share2, Ticket, Home, Bell, Mail, Coins, HelpCircle, Clock } from "lucide-react";
+import { Menu, X, Code, Trophy, Users, Bug, MessageSquare, Share2, Ticket, Home, Bell, Mail, HelpCircle, Clock } from "lucide-react";
 import { useLogoutCooldown } from "@/hooks/use-logout-cooldown";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { getRatingConfig } from "@/lib/rating";
 
 interface User {
   id: number;
@@ -24,6 +25,7 @@ interface User {
   role: string;
   points?: number;
   avatar?: string;
+  rating?: number;
 }
 
 const navItems = [
@@ -107,27 +109,31 @@ export function Navbar() {
     }
   }, [user]);
 
-  // 检查是否可以显示注册按钮（站长或之前是站长）
+  // 检查是否可以显示注册按钮（冷却期外任何人都可以注册）
   useEffect(() => {
     const checkCanShowRegister = () => {
       if (typeof window !== "undefined") {
-        const canShow = user?.role === "super_admin" || localStorage.getItem("previousUserRole") === "super_admin";
-        setCanShowRegister(canShow);
+        // 检查冷却时间
+        const lastLogin = localStorage.getItem("lastLogin");
+        if (lastLogin) {
+          const loginTime = new Date(lastLogin).getTime();
+          const now = Date.now();
+          const elapsed = now - loginTime;
+          const COOLDOWN_MS = 10 * 60 * 1000; // 10分钟冷却
+          
+          // 冷却期内不允许显示注册按钮
+          if (elapsed < COOLDOWN_MS) {
+            setCanShowRegister(false);
+            return;
+          }
+        }
+        
+        // 冷却期外，任何人都可以注册
+        setCanShowRegister(true);
       }
     };
     checkCanShowRegister();
   }, [user]);
-
-  // 监听自定义事件，用于刷新用户积分
-  useEffect(() => {
-    const handlePointsChange = () => {
-      refreshUser();
-    };
-    window.addEventListener("pointsChanged", handlePointsChange);
-    return () => {
-      window.removeEventListener("pointsChanged", handlePointsChange);
-    };
-  }, []);
 
   // 获取未读消息数量
   useEffect(() => {
@@ -190,7 +196,6 @@ export function Navbar() {
   };
 
   const userColorStyle = getPointsColor(user?.points, user?.role);
-  const displayPoints = user?.role === "super_admin" ? "∞" : (user?.points ?? 100);
   const canRegister = user?.role === "super_admin";
 
   return (
@@ -234,14 +239,6 @@ export function Navbar() {
           <div className="hidden md:flex items-center space-x-2">
             {user ? (
               <>
-                {/* 积分显示 */}
-                <Link href="/profile/${user.id}">
-                  <div className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400">
-                    <Coins className="h-4 w-4" />
-                    <span className="font-medium text-sm">{displayPoints}</span>
-                  </div>
-                </Link>
-
                 {/* 通知按钮 */}
                 <Link href="/notifications">
                   <Button variant="ghost" size="icon" className="relative">
@@ -282,6 +279,15 @@ export function Navbar() {
                         </AvatarFallback>
                       </Avatar>
                       <span className={`font-medium ${userColorStyle}`}>{user.username}</span>
+                      {user.rating !== undefined && user.rating !== null && (
+                        <Badge
+                          variant="outline"
+                          className="ml-1 text-xs font-mono"
+                          style={{ borderColor: getRatingConfig(user.rating).color, color: getRatingConfig(user.rating).color }}
+                        >
+                          {user.rating}
+                        </Badge>
+                      )}
                       {getRoleBadge(user.role)}
                     </Button>
                   </DropdownMenuTrigger>
@@ -380,10 +386,6 @@ export function Navbar() {
                         </Avatar>
                         <span className={`font-medium ${userColorStyle}`}>{user.username}</span>
                         {getRoleBadge(user.role)}
-                      </div>
-                      <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400">
-                        <Coins className="h-3 w-3" />
-                        <span className="font-medium text-xs">{displayPoints}</span>
                       </div>
                     </div>
                     <Button variant="ghost" asChild className="justify-start">

@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { ArrowLeft, Heart, MessageCircle, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { getRatingConfig } from "@/lib/rating";
 
 interface Benben {
   id: number;
@@ -23,6 +24,7 @@ interface Benben {
     id: number;
     username: string;
     role: string;
+    rating?: number;
     points?: number;
     avatar?: string;
   };
@@ -41,12 +43,14 @@ interface Reply {
     id: number;
     username: string;
     role: string;
+    rating?: number;
     points?: number;
     avatar?: string;
   };
   replyToUser?: {
     id: number;
     username: string;
+    rating?: number;
   };
 }
 
@@ -307,6 +311,15 @@ export default function BenbenDetailPage({ params }: { params: Promise<{ id: str
                 >
                   {benben.author?.username || "未知用户"}
                 </Link>
+                {benben.author?.rating !== undefined && benben.author?.rating !== null && (
+                  <Badge
+                    variant="outline"
+                    className="text-xs font-mono h-5"
+                    style={{ borderColor: getRatingConfig(benben.author.rating).color, color: getRatingConfig(benben.author.rating).color }}
+                  >
+                    {benben.author.rating}
+                  </Badge>
+                )}
                 {benben.author?.role === "admin" && (
                   <Badge className="bg-orange-500">管理员</Badge>
                 )}
@@ -434,6 +447,15 @@ export default function BenbenDetailPage({ params }: { params: Promise<{ id: str
                           >
                             {reply.author?.username || "未知用户"}
                           </Link>
+                          {reply.author?.rating !== undefined && reply.author?.rating !== null && (
+                            <Badge
+                              variant="outline"
+                              className="text-xs font-mono h-5"
+                              style={{ borderColor: getRatingConfig(reply.author.rating).color, color: getRatingConfig(reply.author.rating).color }}
+                            >
+                              {reply.author.rating}
+                            </Badge>
+                          )}
                           {reply.author?.role === "admin" && (
                             <Badge className="bg-orange-500 text-xs">管理员</Badge>
                           )}

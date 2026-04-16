@@ -11,12 +11,14 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ArrowLeft, Send, Mail, Trash2, User } from "lucide-react";
 import { toast } from "sonner";
+import { getRatingConfig } from "@/lib/rating";
 
 interface Conversation {
   user: {
     id: number;
     username: string;
     role: string;
+    rating?: number;
     name_color?: string;
     points?: number;
     avatar?: string;
@@ -50,6 +52,7 @@ interface OtherUser {
   id: number;
   username: string;
   role: string;
+  rating?: number;
   name_color?: string;
   points?: number;
   avatar?: string;
@@ -379,9 +382,20 @@ export default function MessagesPage() {
                             </div>
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center justify-between">
-                                <p className={`font-medium truncate ${colorClass}`}>
-                                  {conv.user.username}
-                                </p>
+                                <div className="flex items-center gap-2">
+                                  <p className={`font-medium truncate ${colorClass}`}>
+                                    {conv.user.username}
+                                  </p>
+                                  {conv.user.rating !== undefined && conv.user.rating !== null && (
+                                    <Badge
+                                      variant="outline"
+                                      className="text-xs font-mono h-5"
+                                      style={{ borderColor: getRatingConfig(conv.user.rating).color, color: getRatingConfig(conv.user.rating).color }}
+                                    >
+                                      {conv.user.rating}
+                                    </Badge>
+                                  )}
+                                </div>
                                 <Button
                                   variant="ghost"
                                   size="icon"
@@ -429,6 +443,15 @@ export default function MessagesPage() {
                         <span className={`font-medium ${getPointsColor(selectedUser.points, selectedUser.role)}`}>
                           {selectedUser.username}
                         </span>
+                        {selectedUser.rating !== undefined && selectedUser.rating !== null && (
+                          <Badge
+                            variant="outline"
+                            className="text-xs font-mono h-5"
+                            style={{ borderColor: getRatingConfig(selectedUser.rating).color, color: getRatingConfig(selectedUser.rating).color }}
+                          >
+                            {selectedUser.rating}
+                          </Badge>
+                        )}
                       </div>
                     </Link>
                   </div>

@@ -75,7 +75,7 @@ export async function GET(request: NextRequest) {
 
       const { data: users } = await client
         .from("users")
-        .select("id, username, role, points")
+        .select("id, username, role, rating, points")
         .in("id", allUserIds);
 
       const usersMap = new Map((users || []).map(u => [u.id, u]));

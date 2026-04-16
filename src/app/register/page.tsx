@@ -21,8 +21,7 @@ export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [captchaLoading, setCaptchaLoading] = useState(false);
   const [captcha, setCaptcha] = useState<CaptchaData | null>(null);
-  const [canAccess, setCanAccess] = useState(false);
-  const [userRole, setUserRole] = useState<string | null>(null);
+  const [isBlocked, setIsBlocked] = useState(false); // 是否被冷却期阻止
   const [formData, setFormData] = useState({
     username: "",
     password: "",
@@ -31,51 +30,19 @@ export default function RegisterPage() {
   });
 
   useEffect(() => {
-    // 检查是否在冷却期内，冷却期内不允许注册
-    const checkAuth = async () => {
-      try {
-        // 检查冷却时间
-        const lastLogin = localStorage.getItem("lastLogin");
-        if (lastLogin) {
-          const loginTime = new Date(lastLogin).getTime();
-          const now = Date.now();
-          const elapsed = now - loginTime;
-          const COOLDOWN_MS = 10 * 60 * 1000; // 10分钟冷却
-          
-          if (elapsed < COOLDOWN_MS) {
-            // 还在冷却期内，不允许访问注册页面
-            setCanAccess(false);
-            setUserRole(null);
-            return;
-          }
-        }
-
-        // 冷却期外，只有站长可以访问注册页面
-        const res = await fetch("/api/auth/me");
-        if (res.ok) {
-          const data = await res.json();
-          if (data.user?.role === "super_admin") {
-            setCanAccess(true);
-            setUserRole(data.user.role);
-            return;
-          }
-        }
-
-        // 检查localStorage中是否记录了之前的站长身份
-        const previousRole = localStorage.getItem("previousUserRole");
-        if (previousRole === "super_admin") {
-          setCanAccess(true);
-          setUserRole(previousRole);
-        } else {
-          setCanAccess(false);
-          setUserRole(null);
-        }
-      } catch {
-        setCanAccess(false);
-        setUserRole(null);
+    // 检查是否在冷却期内
+    const lastLogin = localStorage.getItem("lastLogin");
+    if (lastLogin) {
+      const loginTime = new Date(lastLogin).getTime();
+      const now = Date.now();
+      const elapsed = now - loginTime;
+      const COOLDOWN_MS = 10 * 60 * 1000; // 10分钟冷却
+      
+      if (elapsed < COOLDOWN_MS) {
+        // 还在冷却期内，阻止访问
+        setIsBlocked(true);
       }
-    };
-    checkAuth();
+    }
   }, []);
 
   // 获取验证码
@@ -156,19 +123,19 @@ export default function RegisterPage() {
 
   return (
     <div className="min-h-[calc(100vh-10rem)] flex items-center justify-center py-12 px-4">
-      {!canAccess ? (
+      {isBlocked ? (
         <Card className="w-full max-w-md">
           <CardContent className="pt-6">
             <div className="text-center space-y-4">
-              <div className="mx-auto w-16 h-16 rounded-full bg-red-100 dark:bg-red-900/20 flex items-center justify-center">
-                <svg className="w-8 h-8 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              <div className="mx-auto w-16 h-16 rounded-full bg-amber-100 dark:bg-amber-900/20 flex items-center justify-center">
+                <svg className="w-8 h-8 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
               <div>
-                <h2 className="text-2xl font-bold text-foreground">无权限</h2>
+                <h2 className="text-2xl font-bold text-foreground">请稍候</h2>
                 <p className="mt-2 text-muted-foreground">
-                  只有站长可以访问注册页面
+                  登录后需等待10分钟方可注册新账号
                 </p>
               </div>
               <Button asChild className="w-full">

@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Code, Trophy, Users, Zap, BookOpen, Rocket, MessageCircle, Heart, Send, Globe, UserPlus } from "lucide-react";
 import { toast } from "sonner";
+import { getRatingConfig } from "@/lib/rating";
 
 interface Benben {
   id: number;
@@ -25,6 +26,7 @@ interface Benben {
     role: string;
     points?: number;
     avatar?: string;
+    rating?: number;
   };
 }
 
@@ -191,8 +193,6 @@ export default function HomePage() {
         setCheckedIn(true);
         // 刷新每日限制
         await fetchDailyLimits();
-        // 触发积分变化事件，让导航栏更新积分显示
-        window.dispatchEvent(new CustomEvent("pointsChanged"));
       } else {
         toast.error(data.message || "签到失败");
       }
@@ -248,9 +248,6 @@ export default function HomePage() {
       setBenbens(prev => [data.benben, ...prev]);
       setNewBenben("");
       toast.success("发布成功");
-      
-      // 触发积分变化事件，让导航栏更新积分显示
-      window.dispatchEvent(new CustomEvent("pointsChanged"));
     } catch (error: any) {
       toast.error(error.message || "发布失败");
     } finally {
@@ -568,6 +565,15 @@ export default function HomePage() {
                               >
                                 {benben.author?.username || "未知用户"}
                               </Link>
+                              {benben.author?.rating !== undefined && benben.author?.rating !== null && (
+                                <Badge
+                                  variant="outline"
+                                  className="text-xs font-mono h-5 px-1"
+                                  style={{ borderColor: getRatingConfig(benben.author.rating).color, color: getRatingConfig(benben.author.rating).color }}
+                                >
+                                  {benben.author.rating}
+                                </Badge>
+                              )}
                               {benben.author?.role === "admin" && (
                                 <Badge className="bg-orange-500 text-xs">管理员</Badge>
                               )}

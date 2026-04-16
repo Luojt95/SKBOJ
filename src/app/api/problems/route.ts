@@ -48,16 +48,16 @@ export async function GET(request: NextRequest) {
 
     // 构建题目 -> 标签映射
     const tagsMap: Record<number, { id: number; name: string; color: string }[]> = {};
-    (problemTags || []).forEach(pt => {
+    (problemTags || []).forEach((pt: any) => {
       if (!tagsMap[pt.problem_id]) {
         tagsMap[pt.problem_id] = [];
       }
-      if (pt.tags && Array.isArray(pt.tags)) {
-        // tags 是关联查询返回的数组，取第一个元素
-        const tagData = pt.tags[0];
-        if (tagData && tagData.name && tagData.color) {
+      // 处理 Supabase 返回的关联查询结果
+      if (pt.tags) {
+        const tagData = Array.isArray(pt.tags) ? pt.tags[0] : pt.tags;
+        if (tagData && tagData.id && tagData.name && tagData.color) {
           tagsMap[pt.problem_id].push({
-            id: pt.tag_id,
+            id: tagData.id,
             name: tagData.name,
             color: tagData.color,
           });
