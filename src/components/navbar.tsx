@@ -17,7 +17,7 @@ import { Badge } from "@/components/ui/badge";
 import { Menu, X, Code, Trophy, Users, Bug, MessageSquare, Share2, Ticket, Home, Bell, Mail, HelpCircle, Clock } from "lucide-react";
 import { useLogoutCooldown } from "@/hooks/use-logout-cooldown";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { getRatingConfig } from "@/lib/rating";
+import { getUserNameColorByRatingAndRole, getRatingConfig } from "@/lib/rating";
 
 interface User {
   id: number;
@@ -39,25 +39,6 @@ const navItems = [
   { href: "/tickets", label: "工单", icon: Ticket },
   { href: "/help", label: "帮助中心", icon: HelpCircle },
 ];
-
-// 根据积分获取用户名颜色
-function getPointsColor(points: number | undefined, role: string | undefined): string {
-  // 站长和管理员紫色
-  if (role === "super_admin" || role === "admin") {
-    return "text-purple-500";
-  }
-
-  const p = points || 0;
-  
-  if (p <= 0) return "text-gray-500";        // 0积分：灰色
-  if (p <= 10) return "text-sky-400";        // 1-10：浅蓝色
-  if (p <= 20) return "text-blue-600";       // 11-20：深蓝色
-  if (p <= 50) return "text-green-500";      // 21-50：绿色
-  if (p <= 100) return "text-yellow-500";    // 51-100：黄色
-  if (p <= 200) return "text-orange-500";    // 101-200：橙色
-  if (p <= 500) return "text-red-500";       // 201-500：红色
-  return "text-amber-400";                    // 500+：亮金色
-}
 
 export function Navbar() {
   const pathname = usePathname();
@@ -195,7 +176,7 @@ export function Navbar() {
     }
   };
 
-  const userColorStyle = getPointsColor(user?.points, user?.role);
+  const userColorStyle = getUserNameColorByRatingAndRole(user?.rating, user?.role);
   const canRegister = user?.role === "super_admin";
 
   return (

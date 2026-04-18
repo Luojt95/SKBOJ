@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { ArrowLeft, Heart, MessageCircle, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { getRatingConfig } from "@/lib/rating";
+import { getUserNameColorByRatingAndRole, getRatingConfig } from "@/lib/rating";
 
 interface Benben {
   id: number;
@@ -58,25 +58,6 @@ interface User {
   id: number;
   username: string;
   role: string;
-}
-
-// 根据积分获取用户名颜色
-function getPointsColor(points: number | undefined, role: string | undefined): string {
-  // 站长和管理员紫色
-  if (role === "super_admin" || role === "admin") {
-    return "text-purple-500";
-  }
-
-  const p = points || 0;
-  
-  if (p <= 0) return "text-gray-500";        // 0积分：灰色
-  if (p <= 10) return "text-sky-400";        // 1-10：浅蓝色
-  if (p <= 20) return "text-blue-600";       // 11-20：深蓝色
-  if (p <= 50) return "text-green-500";      // 21-50：绿色
-  if (p <= 100) return "text-yellow-500";    // 51-100：黄色
-  if (p <= 200) return "text-orange-500";    // 101-200：橙色
-  if (p <= 500) return "text-red-500";       // 201-500：红色
-  return "text-amber-400";                    // 500+：亮金色
 }
 
 export default function BenbenDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -280,7 +261,7 @@ export default function BenbenDetailPage({ params }: { params: Promise<{ id: str
     );
   }
 
-  const authorColorStyle = getPointsColor(benben.author?.points, benben.author?.role);
+  const authorColorStyle = getUserNameColorByRatingAndRole(benben.author?.points, benben.author?.role);
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-3xl">
@@ -426,7 +407,7 @@ export default function BenbenDetailPage({ params }: { params: Promise<{ id: str
               </div>
             ) : (
               replies.map((reply) => {
-                const replyAuthorColorStyle = getPointsColor(reply.author?.points, reply.author?.role);
+                const replyAuthorColorStyle = getUserNameColorByRatingAndRole(reply.author?.points, reply.author?.role);
 
                 return (
                   <div key={reply.id} className="p-3 rounded-lg bg-muted/50">

@@ -27,7 +27,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Checkbox } from "@/components/ui/checkbox";
-import { getRatingConfig } from "@/lib/rating";
+import { getUserNameColorByRatingAndRole, getRatingConfig } from "@/lib/rating";
 
 interface UserData {
   id: number;
@@ -52,25 +52,6 @@ interface Pagination {
   pageSize: number;
   totalPages: number;
   total: number;
-}
-
-// 根据积分获取用户名颜色
-function getPointsColor(points: number, role: string): string {
-  // 站长和管理员紫色
-  if (role === "super_admin" || role === "admin") {
-    return "text-purple-500";
-  }
-
-  const p = points || 0;
-  
-  if (p <= 0) return "text-gray-500";        // 0积分：灰色
-  if (p <= 10) return "text-sky-400";        // 1-10：浅蓝色
-  if (p <= 20) return "text-blue-600";       // 11-20：深蓝色
-  if (p <= 50) return "text-green-500";      // 21-50：绿色
-  if (p <= 100) return "text-yellow-500";    // 51-100：黄色
-  if (p <= 200) return "text-orange-500";    // 101-200：橙色
-  if (p <= 500) return "text-red-500";       // 201-500：红色
-  return "text-amber-400";                    // 500+：亮金色
 }
 
 // 根据积分获取等级名
@@ -554,7 +535,7 @@ export default function UsersPage() {
                           </Avatar>
                           <div className="flex flex-col">
                             <div className="flex items-center gap-1">
-                              <span className={`font-medium ${getPointsColor(user.points || 0, user.role)}`}>
+                              <span className={`font-medium ${getUserNameColorByRatingAndRole(user.points || 0, user.role)}`}>
                                 {user.username}
                               </span>
                               {user.rating !== undefined && user.rating !== null && (
@@ -574,7 +555,7 @@ export default function UsersPage() {
                     <TableCell>
                       <div className="flex items-center gap-1">
                         <Coins className="h-4 w-4 text-amber-500" />
-                        <span className={`font-bold ${getPointsColor(user.points || 0, user.role)}`}>
+                        <span className={`font-bold ${getUserNameColorByRatingAndRole(user.points || 0, user.role)}`}>
                           {user.role === "super_admin" ? "∞" : (user.points || 0)}
                         </span>
                       </div>
@@ -710,7 +691,7 @@ export default function UsersPage() {
           <div className="space-y-4 py-4">
             <div className="flex items-center gap-2">
               <span className="text-muted-foreground">用户：</span>
-              <span className={`font-medium ${getPointsColor(selectedUser?.points || 0, selectedUser?.role || "")}`}>
+              <span className={`font-medium ${getUserNameColorByRatingAndRole(selectedUser?.points || 0, selectedUser?.role || "")}`}>
                 {selectedUser?.username}
               </span>
               <span className="text-muted-foreground">（当前积分：{selectedUser?.points || 0}）</span>

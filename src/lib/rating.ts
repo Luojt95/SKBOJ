@@ -1,10 +1,10 @@
 // Rating 颜色配置
 export const ratingConfig = {
-  gray: { min: 0, max: 500, label: "灰名", color: "#808080", bgColor: "bg-gray-500" },
-  green: { min: 501, max: 1000, label: "绿名", color: "#008000", bgColor: "bg-green-600" },
-  blue: { min: 1001, max: 1500, label: "蓝名", color: "#0000FF", bgColor: "bg-blue-600" },
-  orange: { min: 1501, max: 2000, label: "橙名", color: "#FFA500", bgColor: "bg-orange-500" },
-  red: { min: 2001, max: Infinity, label: "红名", color: "#FF0000", bgColor: "bg-red-600" },
+  gray: { min: 0, max: 500, label: "灰名", color: "#808080", bgColor: "bg-gray-500", textClass: "text-gray-500" },
+  green: { min: 501, max: 1000, label: "绿名", color: "#008000", bgColor: "bg-green-600", textClass: "text-green-600" },
+  blue: { min: 1001, max: 1500, label: "蓝名", color: "#0000FF", bgColor: "bg-blue-600", textClass: "text-blue-600" },
+  orange: { min: 1501, max: 2000, label: "橙名", color: "#FFA500", bgColor: "bg-orange-500", textClass: "text-orange-500" },
+  red: { min: 2001, max: Infinity, label: "红名", color: "#FF0000", bgColor: "bg-red-600", textClass: "text-red-600" },
 };
 
 // Div 配置（数字越小等级越高）
@@ -32,4 +32,19 @@ export function getUsernameColor(rating: number): string {
 // 获取用户名的颜色类名
 export function getUsernameColorClass(rating: number): string {
   return getRatingConfig(rating).bgColor;
+}
+
+// 根据 rating 和 role 获取用户名颜色类名
+// 管理员/站长使用特殊颜色，否则使用Rating颜色
+export function getUserNameColorByRatingAndRole(rating: number | undefined, role: string | undefined): string {
+  // 管理员和站长使用特殊颜色
+  if (role === "super_admin") {
+    return "text-purple-600 dark:text-purple-400";
+  }
+  if (role === "admin") {
+    return "text-orange-500";
+  }
+  // 普通用户使用Rating颜色
+  const r = rating ?? 0;
+  return getRatingConfig(r).textClass;
 }

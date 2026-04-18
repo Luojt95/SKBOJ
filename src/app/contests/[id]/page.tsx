@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ArrowLeft, Trophy, Clock, Play, Users, Edit, Trash2, Calculator } from "lucide-react";
 import { toast } from "sonner";
-import { divConfig } from "@/lib/rating";
+import { divConfig, getUserNameColorByRatingAndRole } from "@/lib/rating";
 
 interface Contest {
   id: number;
@@ -41,13 +41,14 @@ interface Participant {
   id: number;
   user_id: number;
   score: number;
-  users: { id: number; username: string; role: string };
+  users: { id: number; username: string; role: string; rating?: number };
 }
 
 interface User {
   id: number;
   username: string;
   role: string;
+  rating?: number;
 }
 
 const typeLabels: Record<string, string> = {
@@ -436,7 +437,7 @@ export default function ContestDetailPage() {
                               {p.users ? (
                                 <Link 
                                   href={`/profile/${p.users.id}`}
-                                  className="text-blue-600 hover:text-blue-800 dark:text-blue-400"
+                                  className={`hover:underline ${getUserNameColorByRatingAndRole(p.users.rating, p.users.role)}`}
                                 >
                                   {p.users.username}
                                 </Link>

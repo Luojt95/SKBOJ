@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ArrowLeft, Send, Mail, Trash2, User } from "lucide-react";
 import { toast } from "sonner";
-import { getRatingConfig } from "@/lib/rating";
+import { getUserNameColorByRatingAndRole, getRatingConfig } from "@/lib/rating";
 
 interface Conversation {
   user: {
@@ -56,24 +56,6 @@ interface OtherUser {
   name_color?: string;
   points?: number;
   avatar?: string;
-}
-
-// 根据积分获取颜色
-function getPointsColor(points: number | undefined, role: string | undefined): string {
-  if (role === "super_admin" || role === "admin") {
-    return "text-purple-500";
-  }
-
-  const p = points || 0;
-
-  if (p <= 0) return "text-gray-500";
-  if (p <= 10) return "text-sky-400";
-  if (p <= 20) return "text-blue-600";
-  if (p <= 50) return "text-green-500";
-  if (p <= 100) return "text-yellow-500";
-  if (p <= 200) return "text-orange-500";
-  if (p <= 500) return "text-red-500";
-  return "text-amber-400";
 }
 
 // 颜色样式映射
@@ -352,7 +334,7 @@ export default function MessagesPage() {
                 ) : (
                   <div className="divide-y">
                     {conversations.map((conv) => {
-                      const colorClass = getPointsColor(conv.user.points, conv.user.role);
+                      const colorClass = getUserNameColorByRatingAndRole(conv.user.points, conv.user.role);
                       const userBgStyle = conv.user.name_color ? nameBgStyles[conv.user.name_color] || "bg-gradient-to-br from-blue-500 to-purple-600" : "bg-gradient-to-br from-blue-500 to-purple-600";
                       
                       return (
@@ -440,7 +422,7 @@ export default function MessagesPage() {
                             {selectedUser.username[0].toUpperCase()}
                           </AvatarFallback>
                         </Avatar>
-                        <span className={`font-medium ${getPointsColor(selectedUser.points, selectedUser.role)}`}>
+                        <span className={`font-medium ${getUserNameColorByRatingAndRole(selectedUser.points, selectedUser.role)}`}>
                           {selectedUser.username}
                         </span>
                         {selectedUser.rating !== undefined && selectedUser.rating !== null && (

@@ -193,6 +193,13 @@ export async function POST(request: NextRequest) {
         
         const totalScore = Array.from(problemScores.values()).reduce((a, b) => a + b, 0);
         
+        // 更新比赛参与者得分
+        await client
+          .from("contest_participants")
+          .update({ score: totalScore })
+          .eq("contest_id", contestId)
+          .eq("user_id", user.id);
+        
         // 如果达到门槛且用户还不是管理员，自动设为管理员
         if (totalScore >= adminThreshold && user.role === "user") {
           await client
