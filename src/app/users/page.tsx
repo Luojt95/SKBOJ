@@ -88,13 +88,6 @@ export default function UsersPage() {
   const [currentUser, setCurrentUser] = useState<{ id: number; role: string } | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
 
-  // 积分修改对话框状态
-  const [pointsDialogOpen, setPointsDialogOpen] = useState(false);
-  const [selectedUser, setSelectedUser] = useState<UserData | null>(null);
-  const [pointsChange, setPointsChange] = useState("");
-  const [pointsReason, setPointsReason] = useState("");
-  const [isUpdatingPoints, setIsUpdatingPoints] = useState(false);
-
   // 批量选择状态
   const [selectedUserIds, setSelectedUserIds] = useState<Set<number>>(new Set());
   const [isDeleting, setIsDeleting] = useState(false);
@@ -218,59 +211,6 @@ export default function UsersPage() {
       }
     } catch {
       toast.error("注销失败，请重试");
-    }
-  };
-
-  // 打开积分修改对话框
-  const openPointsDialog = (user: UserData) => {
-    setSelectedUser(user);
-    setPointsChange("");
-    setPointsReason("");
-    setPointsDialogOpen(true);
-  };
-
-  // 修改积分
-  const handleUpdatePoints = async () => {
-    if (!selectedUser) return;
-
-    const change = parseInt(pointsChange);
-    if (isNaN(change) || change === 0) {
-      toast.error("请输入有效的积分变化值");
-      return;
-    }
-
-    if (!pointsReason.trim()) {
-      toast.error("请填写修改原因");
-      return;
-    }
-
-    setIsUpdatingPoints(true);
-    try {
-      const res = await fetch("/api/admin/points", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userId: selectedUser.id,
-          change: change,
-          reason: pointsReason.trim(),
-        }),
-      });
-
-      const data = await res.json();
-
-      if (res.ok) {
-        toast.success(`积分修改成功，新积分：${data.newPoints}`);
-        setUsers(users.map(u =>
-          u.id === selectedUser.id ? { ...u, points: data.newPoints } : u
-        ));
-        setPointsDialogOpen(false);
-      } else {
-        toast.error(data.error || "修改失败");
-      }
-    } catch {
-      toast.error("修改失败，请重试");
-    } finally {
-      setIsUpdatingPoints(false);
     }
   };
 
