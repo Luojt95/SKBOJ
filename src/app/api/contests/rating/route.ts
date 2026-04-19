@@ -43,6 +43,8 @@ function calculateRatingChange(
 // 根据排名计算选手的归一化得分
 function calculateScoreFromRank(rank: number, totalParticipants: number): number {
   if (totalParticipants === 0) return 0;
+  // 只有1人参赛，排名第1得满分
+  if (totalParticipants === 1) return 1;
   // 排名第1得1分，排名最后得0分，中间线性插值
   return (totalParticipants - rank) / (totalParticipants - 1);
 }
@@ -163,6 +165,12 @@ export async function POST(request: NextRequest) {
     // 计算每个用户的 Rating 变化
     const ratingChanges: Record<number, { oldRating: number; newRating: number; change: number; rank: number }> = {};
 
+    console.log(`[Rating Calc] Submissions count: ${submissions.length}`);
+    console.log(`[Rating Calc] Users count: ${users?.length}`);
+    console.log(`[Rating Calc] User ratings:`, userRatings);
+    console.log(`[Rating Calc] Average rating: ${averageRating}`);
+    console.log(`[Rating Calc] Sorted submissions:`, sortedSubmissions.map(s => ({userId: s.user_id, score: s.score, rank: s.rank})));
+
     sortedSubmissions.forEach((submission: any) => {
       const userId = submission.user_id;
       const currentRating = userRatings[userId] || 0;
@@ -179,6 +187,8 @@ export async function POST(request: NextRequest) {
       const kFactor = getKFactor(currentRating);
       const newRating = Math.round(currentRating + kFactor * (score - expectedScore));
 
+      console.log(`[Rating Calc] User ${userId}: current=${currentRating}, score=${score}, expected=${expectedScore}, k=${kFactor}, newRating=${newRating}`);
+
       ratingChanges[userId] = {
         oldRating: currentRating,
         newRating,
@@ -189,6 +199,7 @@ export async function POST(request: NextRequest) {
 
     // 更新所有用户的 Rating 并记录历史
     const updatePromises = Object.entries(ratingChanges).map(([userId, data]) => {
+      console.log(`[Rating Update] Updating user ${userId}: rating -> ${data.newRating}`);
       return Promise.all([
         // 更新用户 Rating
         client
@@ -209,7 +220,8 @@ export async function POST(request: NextRequest) {
       ]);
     });
 
-    await Promise.all(updatePromises);
+    const results = await Promise.all(updatePromises);
+    console.log(`[Rating Update] Results:`, results.map(r => ({success: !r[0].error, error: r[0].error, historyError: r[1].error})));
 
     // 标记比赛已计算 Rating
     await client
