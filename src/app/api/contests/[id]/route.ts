@@ -106,7 +106,7 @@ export async function GET(
       const userIds = participantsData.map(p => p.user_id);
       const { data: participantsUsers } = await client
         .from("users")
-        .select("id, username, role, name_color, total_rating")
+        .select("id, username, role, rating")
         .in("id", userIds);
       
       const usersMap = new Map((participantsUsers || []).map(u => [u.id, u]));

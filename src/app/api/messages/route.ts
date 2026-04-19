@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { getSupabaseClient } from "@/storage/database/supabase-client";
-import { checkUserPoints, deductUserPoints } from "@/lib/warning-check";
 import { checkUserCanPerformAction } from "@/lib/permission-check";
 import { checkDailyLimit, updateDailyLimit } from "@/lib/daily-limits";
 
@@ -38,7 +37,7 @@ export async function GET(request: NextRequest) {
       // 获取对方用户信息
       const { data: otherUser } = await client
         .from("users")
-        .select("id, username, role, rating, name_color, points")
+        .select("id, username, role, rating, name_color")
         .eq("id", targetId)
         .single();
 
@@ -88,7 +87,7 @@ export async function GET(request: NextRequest) {
       if (userIds.length > 0) {
         const { data: users } = await client
           .from("users")
-          .select("id, username, role, rating, name_color, points")
+          .select("id, username, role, rating, name_color")
           .in("id", userIds);
 
         const usersMap = new Map((users || []).map(u => [u.id, u]));
@@ -101,18 +100,19 @@ export async function GET(request: NextRequest) {
           .eq("is_read", false);
 
         const unreadMap = new Map<number, number>();
-        for (const item of (unreadCounts || [])) {
-          unreadMap.set(item.sender_id, (unreadMap.get(item.sender_id) || 0) + 1);
+        for (const uc of (unreadCounts || [])) {
+          unreadMap.set(uc.sender_id, (unreadMap.get(uc.sender_id) || 0) + 1);
         }
 
-        conversations = Array.from(conversationMap.entries()).map(([userId, lastMsg]) => ({
-          user: usersMap.get(userId) || { id: userId, username: "未知用户" },
-          lastMessage: lastMsg,
+        conversations = Array.from(conversationMap.entries()).map(([userId, msg]) => ({
+          user: usersMap.get(userId),
+          lastMessage: {
+            content: msg.content.length > 50 ? msg.content.substring(0, 50) + "..." : msg.content,
+            created_at: msg.created_at,
+            isMine: msg.sender_id === user.id
+          },
           unreadCount: unreadMap.get(userId) || 0
-        }));
-
-        // 按最新消息排序
-        conversations.sort((a, b) => 
+        })).sort((a, b) => 
           new Date(b.lastMessage.created_at).getTime() - new Date(a.lastMessage.created_at).getTime()
         );
       }
@@ -139,12 +139,8 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { receiverId, content } = body;
 
-    if (!receiverId || !content) {
-      return NextResponse.json({ error: "缺少参数" }, { status: 400 });
-    }
-
-    if (receiverId === user.id) {
-      return NextResponse.json({ error: "不能给自己发私信" }, { status: 400 });
+    if (!receiverId || !content?.trim()) {
+      return NextResponse.json({ error: "参数不完整" }, { status: 400 });
     }
 
     // 检查是否被禁言
@@ -157,12 +153,6 @@ export async function POST(request: NextRequest) {
     const limitCheck = await checkDailyLimit(user.id, "messages_sent", 5);
     if (!limitCheck.allowed) {
       return NextResponse.json({ error: limitCheck.reason }, { status: 403 });
-    }
-
-    // 检查积分
-    const pointsCheck = await checkUserPoints(user.id, "messages");
-    if (!pointsCheck.allowed) {
-      return NextResponse.json({ error: pointsCheck.reason }, { status: 403 });
     }
 
     const client = getSupabaseClient();
@@ -194,20 +184,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "发送失败" }, { status: 500 });
     }
 
-    // 扣除积分
-    await deductUserPoints(user.id, "messages", message.id);
-
     // 更新每日限制
     await updateDailyLimit(user.id, "messages_sent");
 
     // 获取发送者信息
     const { data: sender } = await client
       .from("users")
-      .select("id, username, role, rating, name_color")
+      .select("id, username, role, rating")
       .eq("id", user.id)
       .single();
 
-    return NextResponse.json({ 
+    return NextResponse.json({
       message: {
         ...message,
         sender
@@ -216,44 +203,5 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("Send message error:", error);
     return NextResponse.json({ error: "发送失败" }, { status: 500 });
-  }
-}
-
-// 删除私信会话
-export async function DELETE(request: NextRequest) {
-  try {
-    const cookieStore = await cookies();
-    const userCookie = cookieStore.get("user");
-
-    if (!userCookie) {
-      return NextResponse.json({ error: "请先登录" }, { status: 401 });
-    }
-
-    const user = JSON.parse(userCookie.value);
-    const searchParams = request.nextUrl.searchParams;
-    const withUserId = searchParams.get("with");
-    const client = getSupabaseClient();
-
-    if (!withUserId) {
-      return NextResponse.json({ error: "缺少参数" }, { status: 400 });
-    }
-
-    const targetId = parseInt(withUserId);
-
-    // 删除与该用户的所有消息（只删除自己发送的或接收的）
-    const { error } = await client
-      .from("private_messages")
-      .delete()
-      .or(`and(sender_id.eq.${user.id},receiver_id.eq.${targetId}),and(sender_id.eq.${targetId},receiver_id.eq.${user.id})`);
-
-    if (error) {
-      console.error("Delete messages error:", error);
-      return NextResponse.json({ error: "删除失败" }, { status: 500 });
-    }
-
-    return NextResponse.json({ success: true });
-  } catch (error) {
-    console.error("Delete messages error:", error);
-    return NextResponse.json({ error: "删除失败" }, { status: 500 });
   }
 }

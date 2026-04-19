@@ -116,10 +116,10 @@ export default function MaintenancePage() {
               </div>
             </div>
             <div>
-              <h3 className="font-semibold mb-2">积分系统</h3>
+              <h3 className="font-semibold mb-2">Rating 系统</h3>
               <div className="text-sm text-muted-foreground space-y-1">
-                <p>• 完成题目获得积分</p>
-                <p>• 积分决定用户等级和名称颜色</p>
+                <p>• 通过比赛获得 Rating</p>
+                <p>• Rating 决定用户等级和名称颜色</p>
               </div>
             </div>
           </div>

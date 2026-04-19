@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
     // 加密密码
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // 创建用户（默认为普通用户，初始100积分）
+    // 创建用户（默认为普通用户，初始Rating为0）
     const now = new Date().toISOString();
     const { data: user, error } = await client
       .from("users")
@@ -73,11 +73,7 @@ export async function POST(request: NextRequest) {
         password: hashedPassword,
         role: "user",
         name_color: "gray",
-        credit_rating: 100,
-        problem_rating: 0,
-        contest_rating: 0,
-        total_rating: 100,
-        points: 100, // 新用户初始100积分
+        rating: 0, // 新用户初始Rating为0
         solved_entry: 0,
         solved_popular_minus: 0,
         solved_popular: 0,
@@ -87,7 +83,7 @@ export async function POST(request: NextRequest) {
         solved_noi: 0,
         last_login: now, // 注册时也设置 last_login
       })
-      .select("id, username, role, name_color, created_at, points")
+      .select("id, username, role, name_color, created_at, rating")
       .single();
 
     if (error) {
@@ -106,7 +102,7 @@ export async function POST(request: NextRequest) {
         id: user.id,
         username: user.username,
         role: user.role,
-        points: user.points,
+        rating: user.rating,
         lastLogin: now,
       }),
       {

@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { getSupabaseClient } from "@/storage/database/supabase-client";
-import { addPoints, POINTS_REWARD } from "@/lib/points-system";
 
 // 审核题解（管理员）
 export async function PATCH(
@@ -59,17 +58,6 @@ export async function PATCH(
 
     if (error) {
       return NextResponse.json({ error: "审核失败" }, { status: 500 });
-    }
-
-    // 如果题解通过，给用户增加积分
-    if (wasPending && isNowApproved) {
-      await addPoints(
-        solution.user_id,
-        POINTS_REWARD.SOLUTION_APPROVED,
-        "题解审核通过",
-        "solution",
-        solution.id
-      );
     }
 
     return NextResponse.json({ 

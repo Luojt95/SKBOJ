@@ -182,8 +182,8 @@ export async function DELETE(
     deletePromises.push(client.from("tickets").delete().eq("user_id", userId));
     // 删除用户的参赛记录
     deletePromises.push(client.from("contest_participants").delete().eq("user_id", userId));
-    // 删除用户的积分历史
-    deletePromises.push(client.from("points_history").delete().eq("user_id", userId));
+    // 删除用户的Rating历史
+    deletePromises.push(client.from("rating_history").delete().eq("user_id", userId));
     // 删除用户的关注关系
     deletePromises.push(client.from("user_follows").delete().eq("follower_id", userId));
     deletePromises.push(client.from("user_follows").delete().eq("following_id", userId));

@@ -62,7 +62,7 @@ export async function banUser(
     return { success: false, message: "不能禁言站长" };
   }
 
-  // 禁言用户：积分清零、权限改为普通用户、设置禁言状态
+  // 禁言用户：权限改为普通用户、设置禁言状态
   const { error } = await client
     .from("users")
     .update({
@@ -70,7 +70,6 @@ export async function banUser(
       banned_at: new Date().toISOString(),
       ban_reason: reason,
       role: "user",  // 权限降级为普通用户
-      points: 0,    // 积分清零
     })
     .eq("id", targetUserId);
 

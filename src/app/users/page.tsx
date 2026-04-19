@@ -21,7 +21,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Users, Trophy, Code, User, UserX, RefreshCw, ChevronLeft, ChevronRight, Coins, Trash2, Check, Square, Ban } from "lucide-react";
+import { Users, Trophy, Code, User, UserX, RefreshCw, ChevronLeft, ChevronRight, Trash2, Check, Square, Ban } from "lucide-react";
 import { DialogDescription } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -54,7 +54,7 @@ interface Pagination {
   total: number;
 }
 
-// 根据积分获取等级名
+// 根据Rating获取等级名
 function getPointsTitle(points: number, role: string): string {
   if (role === "super_admin") return "站长";
   if (role === "admin") return "管理员";
@@ -443,11 +443,11 @@ export default function UsersPage() {
                   )}
                   <TableHead className="w-12">#</TableHead>
                   <TableHead>用户名</TableHead>
-                  <TableHead>积分</TableHead>
+                  <TableHead>Rating</TableHead>
                   <TableHead>做题数</TableHead>
                   <TableHead>权限</TableHead>
                   <TableHead>注册时间</TableHead>
-                  {currentUser?.role === "super_admin" && <TableHead className="w-32">操作</TableHead>}
+                  {currentUser?.role === "super_admin" && <TableHead className="w-24">操作</TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -474,31 +474,17 @@ export default function UsersPage() {
                             </AvatarFallback>
                           </Avatar>
                           <div className="flex flex-col">
-                            <div className="flex items-center gap-1">
-                              <span className={`font-medium ${getUserNameColorByRatingAndRole(user.points || 0, user.role)}`}>
-                                {user.username}
-                              </span>
-                              {user.rating !== undefined && user.rating !== null && (
-                                <Badge
-                                  variant="outline"
-                                  className="text-xs font-mono h-5"
-                                  style={{ borderColor: getRatingConfig(user.rating).color, color: getRatingConfig(user.rating).color }}
-                                >
-                                  {user.rating}
-                                </Badge>
-                              )}
-                            </div>
+                            <span className={`font-medium ${getUserNameColorByRatingAndRole(user.rating, user.role)}`}>
+                              {user.username}
+                            </span>
                           </div>
                         </div>
                       </Link>
                     </TableCell>
                     <TableCell>
-                      <div className="flex items-center gap-1">
-                        <Coins className="h-4 w-4 text-amber-500" />
-                        <span className={`font-bold ${getUserNameColorByRatingAndRole(user.points || 0, user.role)}`}>
-                          {user.role === "super_admin" ? "∞" : (user.points || 0)}
-                        </span>
-                      </div>
+                      <span className={`font-bold ${getRatingConfig(user.rating || 0).textClass}`}>
+                        {user.rating || 0}
+                      </span>
                     </TableCell>
                     <TableCell>
                       <span className="font-medium">{user.solved_total || 0}</span>
@@ -531,14 +517,6 @@ export default function UsersPage() {
                         <div className="flex gap-1">
                           {currentUser.id !== user.id && user.role !== "super_admin" && (
                             <>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => openPointsDialog(user)}
-                                title="修改积分"
-                              >
-                                <Coins className="h-4 w-4" />
-                              </Button>
                               <Button
                                 variant={user.is_banned ? "outline" : "secondary"}
                                 size="sm"
@@ -622,54 +600,6 @@ export default function UsersPage() {
         </CardContent>
       </Card>
 
-      {/* 积分修改对话框 */}
-      <Dialog open={pointsDialogOpen} onOpenChange={setPointsDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>修改用户积分</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="flex items-center gap-2">
-              <span className="text-muted-foreground">用户：</span>
-              <span className={`font-medium ${getUserNameColorByRatingAndRole(selectedUser?.points || 0, selectedUser?.role || "")}`}>
-                {selectedUser?.username}
-              </span>
-              <span className="text-muted-foreground">（当前积分：{selectedUser?.points || 0}）</span>
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">积分变化值</label>
-              <input
-                type="number"
-                className="w-full p-2 border rounded-md"
-                placeholder="正数增加，负数减少"
-                value={pointsChange}
-                onChange={(e) => setPointsChange(e.target.value)}
-              />
-              <p className="text-xs text-muted-foreground">
-                例：输入 10 增加10积分，输入 -10 减少10积分
-              </p>
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">修改原因</label>
-              <textarea
-                className="w-full p-2 border rounded-md min-h-[80px] resize-none"
-                placeholder="请输入修改原因（用户可见）"
-                value={pointsReason}
-                onChange={(e) => setPointsReason(e.target.value)}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setPointsDialogOpen(false)}>
-              取消
-            </Button>
-            <Button onClick={handleUpdatePoints} disabled={isUpdatingPoints}>
-              {isUpdatingPoints ? "处理中..." : "确认修改"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
       {/* 禁言对话框 */}
       <Dialog open={banDialogOpen} onOpenChange={setBanDialogOpen}>
         <DialogContent>
@@ -679,7 +609,7 @@ export default function UsersPage() {
               禁言用户
             </DialogTitle>
             <DialogDescription>
-              禁言后该用户的积分将被清零，权限降级为普通用户，且无法发犇犇、私信、讨论、分享和提交工单。
+              禁言后该用户的权限将降级为普通用户，且无法发犇犇、私信、讨论、分享和提交工单。
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">

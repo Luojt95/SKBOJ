@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { cookies } from "next/headers";
 import { getSupabaseClient } from "@/storage/database/supabase-client";
-import { checkUserPoints, deductUserPoints } from "@/lib/warning-check";
 import { checkUserCanPerformAction } from "@/lib/permission-check";
 import { checkDailyLimit, updateDailyLimit } from "@/lib/daily-limits";
 
@@ -30,7 +28,7 @@ export async function GET() {
 
       const { data: users } = await client
         .from("users")
-        .select("id, username, role")
+        .select("id, username, role, rating")
         .in("id", authorIds);
 
       const { data: problems } = problemIds.length > 0 
@@ -57,7 +55,7 @@ export async function GET() {
 // 创建讨论
 export async function POST(request: NextRequest) {
   try {
-    const cookieStore = await cookies();
+    const cookieStore = await import("next/headers").then(m => m.cookies());
     const userCookie = cookieStore.get("user");
 
     if (!userCookie) {
@@ -88,12 +86,6 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 检查积分（发布讨论需要20积分）
-    const pointsCheck = await checkUserPoints(user.id, "discussions");
-    if (!pointsCheck.allowed) {
-      return NextResponse.json({ error: pointsCheck.reason }, { status: 403 });
-    }
-    
     const client = getSupabaseClient();
 
     console.log("Creating discussion with:", {
@@ -121,13 +113,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "发布失败", details: error.message }, { status: 500 });
     }
 
-    // 扣除积分并获取新积分
-    const deductResult = await deductUserPoints(
-      user.id,
-      isReply ? "discussion_reply" : "discussions",
-      discussion.id
-    );
-
     // 更新每日限制
     if (!isReply) {
       await updateDailyLimit(user.id, "discussions_created");
@@ -135,29 +120,10 @@ export async function POST(request: NextRequest) {
       await updateDailyLimit(user.id, "replies_created");
     }
 
-    // 更新 cookie 中的积分
-    if (deductResult.success && deductResult.newPoints !== undefined) {
-      const cookieStore = await cookies();
-      cookieStore.set(
-        "user",
-        JSON.stringify({
-          ...user,
-          points: deductResult.newPoints === Infinity ? undefined : deductResult.newPoints,
-        }),
-        {
-          httpOnly: true,
-          secure: false,
-          sameSite: "lax",
-          maxAge: 60 * 60 * 24 * 7,
-          path: "/",
-        }
-      );
-    }
-
     // 获取用户信息
     const { data: userData } = await client
       .from("users")
-      .select("id, username, role, points")
+      .select("id, username, role, rating")
       .eq("id", user.id)
       .single();
 
@@ -165,8 +131,7 @@ export async function POST(request: NextRequest) {
       discussion: {
         ...discussion,
         users: userData
-      },
-      newPoints: deductResult.newPoints
+      }
     });
   } catch (error) {
     console.error("Create discussion error:", error);

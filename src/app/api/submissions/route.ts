@@ -216,10 +216,6 @@ export async function POST(request: NextRequest) {
             related_type: "contest",
             related_id: contestId,
           });
-          
-          // 增加积分（成为管理员+50）
-          const { addPoints, POINTS_REWARD } = await import("@/lib/points-system");
-          await addPoints(user.id, POINTS_REWARD.BECOME_ADMIN, "成为管理员");
         }
       }
     }

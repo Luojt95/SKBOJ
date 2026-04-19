@@ -328,7 +328,7 @@ export default function HomePage() {
                 onClick={handleCheckIn}
                 disabled={checkingIn || checkedIn}
               >
-                {checkingIn ? "签到中..." : checkedIn ? "今日已打卡" : "每日打卡 (+10积分)"}
+                {checkingIn ? "签到中..." : checkedIn ? "今日已打卡" : "每日打卡"}
               </Button>
             </div>
 
