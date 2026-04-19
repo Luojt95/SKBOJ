@@ -37,12 +37,9 @@ export function getUsernameColorClass(rating: number): string {
 // 根据 rating 和 role 获取用户名颜色类名
 // 管理员/站长使用特殊颜色，否则使用Rating颜色
 export function getUserNameColorByRatingAndRole(rating: number | undefined, role: string | undefined): string {
-  // 管理员和站长使用特殊颜色
-  if (role === "super_admin") {
+  // 管理员和站长使用紫色
+  if (role === "super_admin" || role === "admin") {
     return "text-purple-600 dark:text-purple-400";
-  }
-  if (role === "admin") {
-    return "text-orange-500";
   }
   // 普通用户使用Rating颜色
   const r = rating ?? 0;
