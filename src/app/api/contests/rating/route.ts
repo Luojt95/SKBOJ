@@ -142,8 +142,8 @@ export async function POST(request: NextRequest) {
     
     // 按分数排序（降序）
     const sortedSubmissions = [...submissions].sort((a: any, b: any) => {
-      const scoreA = a.final_score || 0;
-      const scoreB = b.final_score || 0;
+      const scoreA = a.score || 0;
+      const scoreB = b.score || 0;
       return scoreB - scoreA;
     });
 
@@ -151,8 +151,8 @@ export async function POST(request: NextRequest) {
     let currentRank = 1;
     sortedSubmissions.forEach((s: any, index: number) => {
       if (index > 0) {
-        const prevScore = sortedSubmissions[index - 1].final_score || 0;
-        const currentScore = s.final_score || 0;
+        const prevScore = sortedSubmissions[index - 1].score || 0;
+        const currentScore = s.score || 0;
         if (currentScore < prevScore) {
           currentRank = index + 1;
         }
@@ -216,6 +216,34 @@ export async function POST(request: NextRequest) {
       .from("contests")
       .update({ rating_calculated: true })
       .eq("id", contestId);
+
+    // 更新当前用户的 cookie（让导航栏显示新的 Rating）
+    const { data: updatedUser } = await client
+      .from("users")
+      .select("id, username, role, rating, points, avatar")
+      .eq("id", user.id)
+      .single();
+
+    if (updatedUser) {
+      cookieStore.set(
+        "user",
+        JSON.stringify({
+          id: updatedUser.id,
+          username: updatedUser.username,
+          role: updatedUser.role,
+          rating: updatedUser.rating,
+          points: updatedUser.points,
+          avatar: updatedUser.avatar,
+        }),
+        {
+          httpOnly: true,
+          secure: false,
+          sameSite: "lax",
+          maxAge: 60 * 60 * 24 * 7,
+          path: "/",
+        }
+      );
+    }
 
     return NextResponse.json({
       success: true,

@@ -266,7 +266,7 @@ export function Navbar() {
                           className="ml-1 text-xs font-mono"
                           style={{ borderColor: getRatingConfig(user.rating).color, color: getRatingConfig(user.rating).color }}
                         >
-                          {user.rating}
+                          {user.rating ?? 0}
                         </Badge>
                       )}
                       {getRoleBadge(user.role)}

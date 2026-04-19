@@ -172,8 +172,8 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // CS赛制：检查是否达到管理员门槛
-    if (contestId && contestFormat === "CS" && adminThreshold !== null) {
+    // 检查是否更新比赛参与者得分（CS、OI、IOI赛制都更新）
+    if (contestId && (contestFormat === "CS" || contestFormat === "OI" || contestFormat === "IOI")) {
       // 计算用户在比赛中的总分
       const { data: contestSubmissions } = await client
         .from("submissions")
@@ -199,6 +199,36 @@ export async function POST(request: NextRequest) {
           .update({ score: totalScore })
           .eq("contest_id", contestId)
           .eq("user_id", user.id);
+      } else {
+        // 如果没有提交，确保得分为0
+        await client
+          .from("contest_participants")
+          .update({ score: 0 })
+          .eq("contest_id", contestId)
+          .eq("user_id", user.id);
+      }
+    }
+
+    // CS赛制：检查是否达到管理员门槛
+    if (contestId && (contestFormat === "CS" || contestFormat === "IOI") && adminThreshold !== null) {
+      // 计算用户在比赛中的总分
+      const { data: contestSubmissions } = await client
+        .from("submissions")
+        .select("problem_id, score")
+        .eq("user_id", user.id)
+        .eq("contest_id", contestId);
+
+      if (contestSubmissions && contestSubmissions.length > 0) {
+        // 取每道题的最高分
+        const problemScores = new Map<number, number>();
+        for (const sub of contestSubmissions) {
+          const current = problemScores.get(sub.problem_id) || 0;
+          if ((sub.score || 0) > current) {
+            problemScores.set(sub.problem_id, sub.score || 0);
+          }
+        }
+        
+        const totalScore = Array.from(problemScores.values()).reduce((a, b) => a + b, 0);
         
         // 如果达到门槛且用户还不是管理员，自动设为管理员
         if (totalScore >= adminThreshold && user.role === "user") {
