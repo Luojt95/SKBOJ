@@ -141,71 +141,75 @@ export async function POST(request: NextRequest) {
       let ratingDelta = 0;
 
       // ============ 首战加成 ============
+      // Div.1最难，首战加成最高；Div.3最简单，首战加成最少
       if (isFirstContest) {
-        // 首战基础加分：无论排名如何，至少+100分
-        ratingDelta += 100;
+        // 首战基础加分：无论排名如何，至少+50分
+        ratingDelta += 50;
         
-        // 首战表现加分
+        // 首战表现加分（Div.1 > Div.2 > Div.3）
         if (rank === 1) {
-          // 首战AK：额外+400~600分（视Div难度）
-          if (div === "Div.1") ratingDelta += 400;
-          else if (div === "Div.2") ratingDelta += 500;
-          else ratingDelta += 600;
-        } else if (rankPercent <= 0.25) {
-          // 首战前25%：额外+300~500分
-          if (div === "Div.1") ratingDelta += 300;
-          else if (div === "Div.2") ratingDelta += 400;
+          // 首战AK：额外+500~1500分（视Div难度）
+          if (div === "Div.1") ratingDelta += 1500;
+          else if (div === "Div.2") ratingDelta += 700;
           else ratingDelta += 500;
+        } else if (rankPercent <= 0.25) {
+          // 首战前25%：额外+400~1000分
+          if (div === "Div.1") ratingDelta += 1000;
+          else if (div === "Div.2") ratingDelta += 500;
+          else ratingDelta += 400;
         } else if (rankPercent <= 0.5) {
-          // 首战前50%：额外+200~300分
-          if (div === "Div.1") ratingDelta += 200;
-          else if (div === "Div.2") ratingDelta += 250;
-          else ratingDelta += 300;
+          // 首战前50%：额外+200~500分
+          if (div === "Div.1") ratingDelta += 500;
+          else if (div === "Div.2") ratingDelta += 300;
+          else ratingDelta += 200;
         } else {
-          // 首战后50%：额外+100分
-          ratingDelta += 100;
+          // 首战后50%：额外+50~200分
+          if (div === "Div.1") ratingDelta += 200;
+          else if (div === "Div.2") ratingDelta += 100;
+          else ratingDelta += 50;
         }
       } else {
         // 非首战，根据Div和排名计算
+        // Div.1最难，AK加分最多；Div.3最简单，AK加分最少
         if (totalParticipants === 1) {
           // 单人比赛（AK）
-          if (currentRating < 1000) ratingDelta = 400;
-          else if (currentRating < 1500) ratingDelta = 300;
-          else ratingDelta = 200;
+          if (div === "Div.1") ratingDelta = currentRating < 1500 ? 1500 : 1000;
+          else if (div === "Div.2") ratingDelta = currentRating < 1500 ? 700 : 500;
+          else ratingDelta = currentRating < 1500 ? 500 : 300;
         } else if (rank === 1) {
           // AK
           if (div === "Div.1") {
-            ratingDelta = currentRating < 1500 ? 200 : 150;
+            ratingDelta = currentRating < 1500 ? 1500 : 1000;
           } else if (div === "Div.2") {
-            ratingDelta = currentRating < 1500 ? 350 : 250;
+            ratingDelta = currentRating < 1500 ? 700 : 500;
           } else {
-            ratingDelta = currentRating < 1500 ? 450 : 350;
+            ratingDelta = currentRating < 1500 ? 500 : 300;
           }
         } else if (rankPercent <= 0.1) {
           // 前10%
-          if (div === "Div.1") ratingDelta = currentRating < 1500 ? 120 : 80;
-          else if (div === "Div.2") ratingDelta = currentRating < 1500 ? 200 : 150;
-          else ratingDelta = currentRating < 1500 ? 280 : 220;
+          if (div === "Div.1") ratingDelta = currentRating < 1500 ? 600 : 400;
+          else if (div === "Div.2") ratingDelta = currentRating < 1500 ? 350 : 250;
+          else ratingDelta = currentRating < 1500 ? 250 : 150;
         } else if (rankPercent <= 0.25) {
           // 前25%
-          if (div === "Div.1") ratingDelta = currentRating < 1500 ? 60 : 30;
-          else if (div === "Div.2") ratingDelta = currentRating < 1500 ? 120 : 80;
-          else ratingDelta = currentRating < 1500 ? 180 : 130;
+          if (div === "Div.1") ratingDelta = currentRating < 1500 ? 300 : 200;
+          else if (div === "Div.2") ratingDelta = currentRating < 1500 ? 200 : 120;
+          else ratingDelta = currentRating < 1500 ? 150 : 80;
         } else if (rankPercent <= 0.5) {
           // 前50%
-          if (div === "Div.1") ratingDelta = currentRating < 1500 ? 20 : 0;
-          else if (div === "Div.2") ratingDelta = currentRating < 1500 ? 50 : 20;
-          else ratingDelta = currentRating < 1500 ? 80 : 40;
+          if (div === "Div.1") ratingDelta = currentRating < 1500 ? 100 : 50;
+          else if (div === "Div.2") ratingDelta = currentRating < 1500 ? 80 : 30;
+          else ratingDelta = currentRating < 1500 ? 50 : 0;
         } else if (rankPercent <= 0.75) {
           // 中间25%：扣分
-          if (div === "Div.1") ratingDelta = currentRating < 1500 ? -30 : -60;
-          else if (div === "Div.2") ratingDelta = currentRating < 1500 ? -50 : -80;
-          else ratingDelta = currentRating < 1500 ? -70 : -100;
+          if (div === "Div.1") ratingDelta = currentRating < 1500 ? -200 : -350;
+          else if (div === "Div.2") ratingDelta = currentRating < 1500 ? -150 : -250;
+          else ratingDelta = currentRating < 1500 ? -100 : -180;
         } else {
           // 后25%：大扣分
-          if (div === "Div.1") ratingDelta = currentRating < 1500 ? -80 : -120;
-          else if (div === "Div.2") ratingDelta = currentRating < 1500 ? -120 : -180;
-          else ratingDelta = currentRating < 1500 ? -160 : -220;
+          if (div === "Div.1") ratingDelta = currentRating < 1500 ? -400 : -600;
+          else if (div === "Div.2") ratingDelta = currentRating < 1500 ? -300 : -450;
+          else ratingDelta = currentRating < 1500 ? -200 : -350;
         }
       }
 
