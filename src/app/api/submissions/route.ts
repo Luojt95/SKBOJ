@@ -173,13 +173,19 @@ export async function POST(request: NextRequest) {
     }
 
     // 检查是否更新比赛参与者得分（CS、OI、IOI赛制都更新）
-    if (contestId && (contestFormat === "CS" || contestFormat === "OI" || contestFormat === "IOI")) {
+    // 比赛format可能为null，默认当作IOI处理
+    const effectiveFormat = contestFormat || "IOI";
+    if (contestId && (effectiveFormat === "CS" || effectiveFormat === "OI" || effectiveFormat === "IOI")) {
+      console.log(`[Score Update] Updating score for contest ${contestId}, format: ${effectiveFormat}`);
+      
       // 计算用户在比赛中的总分
       const { data: contestSubmissions } = await client
         .from("submissions")
         .select("problem_id, score")
         .eq("user_id", user.id)
         .eq("contest_id", contestId);
+
+      console.log(`[Score Update] User submissions:`, contestSubmissions);
 
       if (contestSubmissions && contestSubmissions.length > 0) {
         // 取每道题的最高分
@@ -192,21 +198,31 @@ export async function POST(request: NextRequest) {
         }
         
         const totalScore = Array.from(problemScores.values()).reduce((a, b) => a + b, 0);
+        console.log(`[Score Update] Calculated total score: ${totalScore}`);
         
         // 更新比赛参与者得分
-        await client
+        const { error: updateError } = await client
           .from("contest_participants")
           .update({ score: totalScore })
           .eq("contest_id", contestId)
           .eq("user_id", user.id);
+        
+        if (updateError) {
+          console.error(`[Score Update] Error updating score:`, updateError);
+        } else {
+          console.log(`[Score Update] Successfully updated score to ${totalScore}`);
+        }
       } else {
         // 如果没有提交，确保得分为0
+        console.log(`[Score Update] No submissions found, setting score to 0`);
         await client
           .from("contest_participants")
           .update({ score: 0 })
           .eq("contest_id", contestId)
           .eq("user_id", user.id);
       }
+    } else {
+      console.log(`[Score Update] Skipped - contestId: ${contestId}, format: ${contestFormat}`);
     }
 
     // CS赛制：检查是否达到管理员门槛
