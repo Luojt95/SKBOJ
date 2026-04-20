@@ -3,18 +3,81 @@ import { cookies } from "next/headers";
 import { getSupabaseClient } from "@/storage/database/supabase-client";
 
 /**
- * SKBOJ Rating 计算系统
+ * Codeforces 风格 Rating 计算系统
  * 
- * Div难度等级（从难到易）：
- * - Div.1: 最难，高手专场，AK +100~200
- * - Div.2: 中等，进阶选手，AK +200~400
- * - Div.3: 入门，新手友好，AK +300~500
- * - Div.4: Unrated（不计算Rating）
- * 
- * 首战加成：
- * - 无论排名如何，首战基础+100分
- * - 表现好的首战可以+500~1000+
+ * 算法要点：
+ * - 实际得分 S_act = N - rank
+ * - 期望得分 S_exp = Σ 1/(1 + 10^((Rj - Ri)/400))
+ * - K(p) = 50 + 130 * e^(-p/4)，p为已赛场次
+ * - Δ_raw = K(p) * (S_act - S_exp) / (N-1)
+ * - 保底机制：排名前2且Δ_raw < K(p)*0.12时强制Δ_raw = K(p)*0.12
+ * - 非对称修正：低分段只加不减，高分段加分难扣分狠
+ * - 扣分减速：超过-400时平方根衰减
+ * - 难度系数：Div1=1.1, Div2=1.0, Div3=0.9, Div4不更新
  */
+
+// 难度系数
+function getDivCoefficient(div: string | null): number {
+  if (div === "Div.1") return 1.1;
+  if (div === "Div.2") return 1.0;
+  if (div === "Div.3") return 0.9;
+  return 1.0; // 默认
+}
+
+// 计算K因子，p为已赛场次
+function getKFactor(contestsParticipated: number): number {
+  return 50 + 130 * Math.exp(-contestsParticipated / 4);
+}
+
+// 计算期望得分（对所有其他对手，排除自己）
+function calculateExpectedScore(myRating: number, myId: number, allRatings: { id: number; rating: number }[]): number {
+  let sum = 0;
+  for (const r of allRatings) {
+    if (r.id !== myId) { // 排除自己
+      sum += 1 / (1 + Math.pow(10, (r.rating - myRating) / 400));
+    }
+  }
+  return sum;
+}
+
+// 非对称修正
+function applyAsymmetricCorrection(delta: number, currentRating: number, divCoeff: number): number {
+  const d = divCoeff;
+
+  if (currentRating < 800) {
+    // 低分段：只加不减
+    if (delta > 0) {
+      return delta * (1 + (800 - currentRating) / 150) * d;
+    }
+    return 0;
+  } else if (currentRating < 1900) {
+    // 中分段
+    if (delta > 0) {
+      // 加分高倍率
+      return delta * (1 + (1900 - currentRating) / 150) * d;
+    } else {
+      // 减分平方加速（缓和）
+      return delta * (1 + Math.pow((currentRating - 800) / 500, 2)) / d;
+    }
+  } else {
+    // 高分段
+    if (delta > 0) {
+      // 加分阻尼
+      return delta / (1 + Math.pow((currentRating - 1900) / 400, 2)) * d;
+    } else {
+      // 减分立方加速
+      return delta * (5.84 + Math.pow((currentRating - 1900) / 150, 3)) / d;
+    }
+  }
+}
+
+// 扣分减速：超过-400时平方根衰减
+function applyDecayLimit(delta: number): number {
+  if (delta < -400) {
+    return -(400 + Math.sqrt(Math.abs(delta) - 400));
+  }
+  return delta;
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -35,6 +98,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "缺少比赛ID" }, { status: 400 });
     }
 
+    // 获取比赛信息
     const { data: contest, error: contestError } = await client
       .from("contests")
       .select("*")
@@ -45,14 +109,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "比赛不存在" }, { status: 404 });
     }
 
-    // Div.4 不计算 Rating
-    if (contest.div === "Div.4") {
-      return NextResponse.json({ 
-        error: "Div.4 不计入 Rating",
-        message: "Div.4 比赛不会影响参赛者的 Rating"
-      }, { status: 400 });
-    }
-
+    // 检查是否是管理员
     const { data: currentUser } = await client
       .from("users")
       .select("id, role")
@@ -63,6 +120,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "没有权限" }, { status: 403 });
     }
 
+    // Div.4 不计算 Rating
+    if (contest.div === "Div.4") {
+      return NextResponse.json({ 
+        error: "Div.4 不计入 Rating",
+        message: "Div.4 比赛不会影响参赛者的 Rating"
+      }, { status: 400 });
+    }
+
+    // 获取比赛的参赛者和他们的得分
     const { data: participants, error: participantsError } = await client
       .from("contest_participants")
       .select("*")
@@ -73,31 +139,28 @@ export async function POST(request: NextRequest) {
     }
 
     const userIds = participants.map((p: any) => p.user_id);
+    console.log(`[Rating] UserIds: ${userIds}`);
+    
     const { data: users, error: usersError } = await client
       .from("users")
-      .select("id, username, rating")
+      .select("id, username, rating, contests_participated")
       .in("id", userIds);
+
+    console.log(`[Rating] Found users: ${users?.length}, error: ${usersError}`);
+    console.log(`[Rating] Users:`, users?.map(u => ({id: u.id, username: u.username, rating: u.rating})));
 
     if (usersError) {
       return NextResponse.json({ error: "获取用户信息失败" }, { status: 500 });
     }
 
-    const userRatings: Record<number, number> = {};
-    const userNames: Record<number, string> = {};
+    // 建立用户映射
+    const userMap: Record<number, any> = {};
     users?.forEach((u: any) => {
-      userRatings[u.id] = u.rating || 0;
-      userNames[u.id] = u.username;
-    });
-
-    // 检查用户是否是首战（没有其他参赛记录）
-    const { data: allUserContests } = await client
-      .from("contest_participants")
-      .select("id")
-      .in("user_id", userIds);
-    
-    const userContestCount: Record<number, number> = {};
-    allUserContests?.forEach((p: any) => {
-      userContestCount[p.user_id] = (userContestCount[p.user_id] || 0) + 1;
+      userMap[u.id] = {
+        ...u,
+        rating: u.rating || 0,
+        contestsParticipated: u.contests_participated || 0
+      };
     });
 
     // 排序并分配排名
@@ -118,122 +181,83 @@ export async function POST(request: NextRequest) {
       prevScore = p.score || 0;
     });
 
-    const totalParticipants = sortedParticipants.length;
-    const div = contest.div || "Div.2"; // 默认Div.2
+    const N = sortedParticipants.length;
+    const divCoeff = getDivCoefficient(contest.div);
 
-    console.log(`[Rating] Contest ${contestId}, Div: ${div}, ${totalParticipants} participants`);
+    console.log(`[Rating] Contest ${contestId}, Div: ${contest.div}, d=${divCoeff}, N=${N}`);
+
+    // 构建所有用户Rating数组（用于计算期望得分）
+    const allRatings = Object.values(userMap).map(u => ({ id: u.id, rating: u.rating }));
 
     const ratingChanges: Record<number, { 
       oldRating: number; 
       newRating: number; 
       change: number; 
       rank: number;
+      sAct: number;
+      sExp: number;
+      k: number;
+      deltaRaw: number;
     }> = {};
 
     for (const participant of sortedParticipants) {
       const userId = participant.user_id;
-      const currentRating = userRatings[userId] || 0;
+      const userInfo = userMap[userId];
+      const currentRating = userInfo.rating;
       const rank = participant.rank;
-      const score = participant.score || 0;
-      const isFirstContest = (userContestCount[userId] || 0) <= 1;
-      const rankPercent = rank / totalParticipants;
+      const contestsParticipated = userInfo.contestsParticipated;
 
-      let ratingDelta = 0;
+      // 1. 实际得分 S_act = N - rank
+      const sAct = N - rank;
 
-      // ============ 首战加成 ============
-      // Div.1最难，首战加成最高；Div.3最简单，首战加成最少
-      if (isFirstContest) {
-        // 首战基础加分：无论排名如何，至少+50分
-        ratingDelta += 50;
-        
-        // 首战表现加分（Div.1 > Div.2 > Div.3）
-        if (rank === 1) {
-          // 首战AK：额外+500~1500分（视Div难度）
-          if (div === "Div.1") ratingDelta += 1500;
-          else if (div === "Div.2") ratingDelta += 700;
-          else ratingDelta += 500;
-        } else if (rankPercent <= 0.25) {
-          // 首战前25%：额外+400~1000分
-          if (div === "Div.1") ratingDelta += 1000;
-          else if (div === "Div.2") ratingDelta += 500;
-          else ratingDelta += 400;
-        } else if (rankPercent <= 0.5) {
-          // 首战前50%：额外+200~500分
-          if (div === "Div.1") ratingDelta += 500;
-          else if (div === "Div.2") ratingDelta += 300;
-          else ratingDelta += 200;
-        } else {
-          // 首战后50%：额外+50~200分
-          if (div === "Div.1") ratingDelta += 200;
-          else if (div === "Div.2") ratingDelta += 100;
-          else ratingDelta += 50;
-        }
-      } else {
-        // 非首战，根据Div和排名计算
-        // Div.1最难，AK加分最多；Div.3最简单，AK加分最少
-        if (totalParticipants === 1) {
-          // 单人比赛（AK）
-          if (div === "Div.1") ratingDelta = currentRating < 1500 ? 1500 : 1000;
-          else if (div === "Div.2") ratingDelta = currentRating < 1500 ? 700 : 500;
-          else ratingDelta = currentRating < 1500 ? 500 : 300;
-        } else if (rank === 1) {
-          // AK
-          if (div === "Div.1") {
-            ratingDelta = currentRating < 1500 ? 1500 : 1000;
-          } else if (div === "Div.2") {
-            ratingDelta = currentRating < 1500 ? 700 : 500;
-          } else {
-            ratingDelta = currentRating < 1500 ? 500 : 300;
-          }
-        } else if (rankPercent <= 0.1) {
-          // 前10%
-          if (div === "Div.1") ratingDelta = currentRating < 1500 ? 600 : 400;
-          else if (div === "Div.2") ratingDelta = currentRating < 1500 ? 350 : 250;
-          else ratingDelta = currentRating < 1500 ? 250 : 150;
-        } else if (rankPercent <= 0.25) {
-          // 前25%
-          if (div === "Div.1") ratingDelta = currentRating < 1500 ? 300 : 200;
-          else if (div === "Div.2") ratingDelta = currentRating < 1500 ? 200 : 120;
-          else ratingDelta = currentRating < 1500 ? 150 : 80;
-        } else if (rankPercent <= 0.5) {
-          // 前50%
-          if (div === "Div.1") ratingDelta = currentRating < 1500 ? 100 : 50;
-          else if (div === "Div.2") ratingDelta = currentRating < 1500 ? 80 : 30;
-          else ratingDelta = currentRating < 1500 ? 50 : 0;
-        } else if (rankPercent <= 0.75) {
-          // 中间25%：扣分
-          if (div === "Div.1") ratingDelta = currentRating < 1500 ? -200 : -350;
-          else if (div === "Div.2") ratingDelta = currentRating < 1500 ? -150 : -250;
-          else ratingDelta = currentRating < 1500 ? -100 : -180;
-        } else {
-          // 后25%：大扣分
-          if (div === "Div.1") ratingDelta = currentRating < 1500 ? -400 : -600;
-          else if (div === "Div.2") ratingDelta = currentRating < 1500 ? -300 : -450;
-          else ratingDelta = currentRating < 1500 ? -200 : -350;
-        }
+      // 2. 期望得分 S_exp
+      const sExp = calculateExpectedScore(currentRating, userId, allRatings);
+
+      // 3. K因子
+      const k = getKFactor(contestsParticipated);
+
+      // 4. 基础变化量
+      let deltaRaw = k * (sAct - sExp) / (N - 1);
+
+      // 5. 保底机制（仅排名前2且deltaRaw < K * 0.12）
+      if ((rank === 1 || rank === 2) && deltaRaw < k * 0.12) {
+        deltaRaw = k * 0.12;
+        console.log(`[Rating] User ${userId}: 保底机制触发`);
       }
 
-      // 新手保护：Rating < 800 额外加分
-      if (currentRating < 800 && ratingDelta > 0) {
-        ratingDelta += 50;
-      }
+      // 6. 非对称修正
+      let delta = applyAsymmetricCorrection(deltaRaw, currentRating, divCoeff);
 
+      // 7. 扣分减速
+      delta = applyDecayLimit(delta);
+
+      // 8. 取整
+      const ratingDelta = Math.round(delta);
       const newRating = Math.max(0, currentRating + ratingDelta);
 
-      console.log(`[Rating] User ${userId} (${userNames[userId]}): rating=${currentRating}, rank=${rank}, isFirst=${isFirstContest}, delta=${ratingDelta}, newRating=${newRating}`);
+      console.log(`[Rating] User ${userId} (${userInfo.username}): rating=${currentRating}, rank=${rank}, S_act=${sAct}, S_exp=${sExp.toFixed(2)}, k=${k.toFixed(1)}, delta_raw=${deltaRaw.toFixed(2)}, delta=${ratingDelta}, newRating=${newRating}`);
 
       ratingChanges[userId] = {
         oldRating: currentRating,
         newRating,
         change: ratingDelta,
         rank,
+        sAct,
+        sExp,
+        k,
+        deltaRaw
       };
     }
 
     // 更新数据库
     const updatePromises = Object.entries(ratingChanges).map(([userId, data]) => {
       return Promise.all([
-        client.from("users").update({ rating: data.newRating }).eq("id", parseInt(userId)),
+        // 更新用户Rating和已赛场次
+        client.from("users").update({ 
+          rating: data.newRating,
+          contests_participated: (userMap[parseInt(userId)].contestsParticipated || 0) + 1
+        }).eq("id", parseInt(userId)),
+        // 记录Rating历史
         client.from("rating_history").insert({
           user_id: parseInt(userId),
           contest_id: contestId,
@@ -247,6 +271,7 @@ export async function POST(request: NextRequest) {
 
     await Promise.all(updatePromises);
 
+    // 标记比赛已计算Rating
     await client.from("contests").update({ rating_calculated: true }).eq("id", contestId);
 
     // 更新cookie
@@ -279,13 +304,14 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: `已为 ${sortedParticipants.length} 位参赛者计算 Rating（${div}）`,
+      message: `已为 ${N} 位参赛者计算 Rating（${contest.div}）`,
       data: {
-        totalParticipants: sortedParticipants.length,
-        div,
+        totalParticipants: N,
+        div: contest.div,
+        divCoefficient: divCoeff,
         changes: Object.entries(ratingChanges).map(([userId, data]) => ({
           userId: parseInt(userId),
-          username: userNames[parseInt(userId)],
+          username: userMap[parseInt(userId)]?.username,
           ...data,
         })),
       },
