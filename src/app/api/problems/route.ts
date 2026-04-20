@@ -41,27 +41,47 @@ export async function GET(request: NextRequest) {
 
     // 获取所有题目的标签
     const problemIds = (problems || []).map(p => p.id);
-    const { data: problemTags } = await client
-      .from("problem_tags")
-      .select("problem_id, tag_id, tags(name, color)")
-      .in("problem_id", problemIds);
+    
+    let problemTags: any[] = [];
+    if (problemIds.length > 0) {
+      // 先获取 problem_tags 记录
+      const { data: ptData, error: ptError } = await client
+        .from("problem_tags")
+        .select("problem_id, tag_id")
+        .in("problem_id", problemIds);
+      
+      if (ptData && ptData.length > 0) {
+        // 获取所有标签ID
+        const tagIds = ptData.map((pt: any) => pt.tag_id);
+        
+        // 获取标签详情
+        const { data: tagsData } = await client
+          .from("tags")
+          .select("id, name, color")
+          .in("id", tagIds);
+        
+        // 构建标签映射
+        const tagMap: Record<number, { id: number; name: string; color: string }> = {};
+        (tagsData || []).forEach((t: any) => {
+          tagMap[t.id] = t;
+        });
+        
+        // 构建 problem_tags 结果
+        problemTags = ptData.map((pt: any) => ({
+          problem_id: pt.problem_id,
+          tag: tagMap[pt.tag_id]
+        }));
+      }
+    }
 
     // 构建题目 -> 标签映射
     const tagsMap: Record<number, { id: number; name: string; color: string }[]> = {};
-    (problemTags || []).forEach((pt: any) => {
+    problemTags.forEach((pt: any) => {
       if (!tagsMap[pt.problem_id]) {
         tagsMap[pt.problem_id] = [];
       }
-      // 处理 Supabase 返回的关联查询结果
-      if (pt.tags) {
-        const tagData = Array.isArray(pt.tags) ? pt.tags[0] : pt.tags;
-        if (tagData && tagData.id && tagData.name && tagData.color) {
-          tagsMap[pt.problem_id].push({
-            id: tagData.id,
-            name: tagData.name,
-            color: tagData.color,
-          });
-        }
+      if (pt.tag) {
+        tagsMap[pt.problem_id].push(pt.tag);
       }
     });
 
