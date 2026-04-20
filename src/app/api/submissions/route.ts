@@ -198,12 +198,15 @@ export async function POST(request: NextRequest) {
         }
         
         const totalScore = Array.from(problemScores.values()).reduce((a, b) => a + b, 0);
-        console.log(`[Score Update] Calculated total score: ${totalScore}`);
+        console.log(`[Score Update] Calculated total score: ${totalScore}, problem scores: ${JSON.stringify(Object.fromEntries(problemScores))}`);
         
-        // 更新比赛参与者得分
+        // 更新比赛参与者得分和问题得分
         const { error: updateError } = await client
           .from("contest_participants")
-          .update({ score: totalScore })
+          .update({ 
+            score: totalScore,
+            problem_scores: Object.fromEntries(problemScores)
+          })
           .eq("contest_id", contestId)
           .eq("user_id", user.id);
         

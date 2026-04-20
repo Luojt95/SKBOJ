@@ -91,7 +91,8 @@ export async function GET(
       .select(`
         id,
         user_id,
-        score
+        score,
+        problem_scores
       `)
       .eq("contest_id", contestId)
       .order("score", { ascending: false });
