@@ -101,6 +101,10 @@ export default function ProblemsPage() {
       if (selectedTags.length > 0) {
         params.set("tags", selectedTags.join(","));
       }
+      // 如果是管理员，传递 is_admin 参数以获取所有题目和标签
+      if (user && (user.role === "admin" || user.role === "super_admin")) {
+        params.set("is_admin", "true");
+      }
       
       const res = await fetch(`/api/problems?${params.toString()}`);
       const data = await res.json();
