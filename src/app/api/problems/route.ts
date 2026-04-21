@@ -217,12 +217,23 @@ export async function POST(request: NextRequest) {
         .insert(problemTagRecords);
     }
 
+    // 获取题目的标签
+    const { data: problemTagsData } = await client
+      .from("problem_tags")
+      .select("tag_id, tags(id, name, color)")
+      .eq("problem_id", problem.id);
+    
+    const tags = (problemTagsData || []).map((pt: any) => {
+      const tagData = Array.isArray(pt.tags) ? pt.tags[0] : pt.tags;
+      return tagData;
+    }).filter(Boolean);
+
     // 更新每日限制（管理员需要更新，站长不需要）
     if (user.role === "admin") {
       await updateDailyLimit(user.id, "problems_created");
     }
 
-    return NextResponse.json({ problem });
+    return NextResponse.json({ problem: { ...problem, tags } });
   } catch (error) {
     console.error("Create problem error:", error);
     return NextResponse.json({ error: "创建题目失败: " + ((error as Error).message || "未知错误") }, { status: 500 });

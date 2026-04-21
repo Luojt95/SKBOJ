@@ -269,130 +269,22 @@ export default function ContestDetailPage() {
     </div>
   );
 
-  // 首页内容
+  // 首页内容（只显示比赛描述）
   const renderHomeTab = () => (
-    <>
-      <Card className="mb-6">
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-2xl">{contest.title}</CardTitle>
-            <div className="flex items-center gap-2 flex-wrap">
-              <Badge variant="outline">
-                {formatLabels[contest.format] || contest.type || "未知赛制"}
-              </Badge>
-              {contest.format === "CS" && contest.admin_threshold && (
-                <Badge className="bg-amber-500">
-                  管理员门槛：{contest.admin_threshold}分
-                </Badge>
-              )}
-              <Badge
-                className={
-                  status === "ongoing"
-                    ? "bg-green-500"
-                    : status === "upcoming"
-                    ? "bg-blue-500"
-                    : "bg-gray-500"
-                }
-              >
-                {status === "ongoing"
-                  ? "进行中"
-                  : status === "upcoming"
-                  ? "未开始"
-                  : "已结束"}
-              </Badge>
-
-              {contest.div && (
-                <Badge
-                  className={
-                    contest.div === "Div.1"
-                      ? "bg-purple-600"
-                      : contest.div === "Div.2"
-                      ? "bg-blue-600"
-                      : contest.div === "Div.3"
-                      ? "bg-green-600"
-                      : "bg-gray-500"
-                  }
-                >
-                  {contest.div}
-                  {contest.div !== "Div.4" ? "（计入Rating）" : "（不计Rating）"}
-                </Badge>
-              )}
-
-              {canEdit && contest.div !== "Div.4" && status === "ended" && !contest.rating_calculated && (
-                <Button variant="outline" size="sm" onClick={handleCalculateRating}>
-                  <Calculator className="h-4 w-4 mr-2" />
-                  计算Rating
-                </Button>
-              )}
-
-              {contest.div !== "Div.4" && contest.rating_calculated && (
-                <Badge variant="secondary">
-                  <Calculator className="h-3 w-3 mr-1" />
-                  Rating已计算
-                </Badge>
-              )}
-            </div>
+    <Card>
+      <CardHeader>
+        <CardTitle>比赛说明</CardTitle>
+      </CardHeader>
+      <CardContent>
+        {contest.description ? (
+          <div className="prose dark:prose-invert max-w-none">
+            <p className="whitespace-pre-wrap">{contest.description}</p>
           </div>
-          <div className="flex items-center gap-6 mt-2 text-muted-foreground">
-            <span className="flex items-center gap-1">
-              <Clock className="h-4 w-4" />
-              {formatTime(contest.start_time)} - {formatTime(contest.end_time)}
-            </span>
-            <span className="flex items-center gap-1">
-              <Users className="h-4 w-4" />
-              {participants.length} 人参与
-            </span>
-            {contest.users && (
-              <span className="flex items-center gap-1">
-                创建者：
-                <Link 
-                  href={`/profile/${contest.users.id}`}
-                  className="text-blue-600 hover:text-blue-800 dark:text-blue-400"
-                >
-                  {contest.users.username}
-                </Link>
-              </span>
-            )}
-          </div>
-        </CardHeader>
-        <CardContent>
-          {contest.description && (
-            <div className="prose dark:prose-invert max-w-none">
-              <p className="whitespace-pre-wrap">{contest.description}</p>
-            </div>
-          )}
-          {contest.format === "CS" && contest.admin_threshold && (
-            <div className="mt-4 p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg">
-              <p className="text-sm text-amber-800 dark:text-amber-200">
-                <strong>CS赛制：</strong>参赛者在比赛中达到 <strong>{contest.admin_threshold}分</strong> 将自动成为管理员！
-              </p>
-            </div>
-          )}
-          {user && (
-            <div className="mt-4">
-              {isParticipant ? (
-                <div className="flex items-center gap-2 text-green-600">
-                  <Badge className="bg-green-500">已报名</Badge>
-                  <span className="text-sm text-muted-foreground">正在比赛中，加油！</span>
-                </div>
-              ) : status === "ongoing" ? (
-                <Button onClick={handleJoin}>
-                  <Play className="h-4 w-4 mr-2" />
-                  参加比赛
-                </Button>
-              ) : status === "upcoming" ? (
-                <Button onClick={handleJoin}>
-                  <Play className="h-4 w-4 mr-2" />
-                  立即报名
-                </Button>
-              ) : (
-                <Badge variant="secondary">比赛已结束</Badge>
-              )}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    </>
+        ) : (
+          <p className="text-muted-foreground">暂无比赛说明</p>
+        )}
+      </CardContent>
+    </Card>
   );
 
   // 题目列表内容
@@ -560,6 +452,130 @@ export default function ContestDetailPage() {
           </div>
         )}
       </div>
+
+      {/* 比赛重要信息（始终显示在顶部） */}
+      <Card className="mb-4">
+        <CardHeader className="pb-2">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-2xl">{contest.title}</CardTitle>
+            <div className="flex items-center gap-2 flex-wrap">
+              <Badge variant="outline">
+                {formatLabels[contest.format] || contest.type || "未知赛制"}
+              </Badge>
+              {contest.format === "CS" && contest.admin_threshold && (
+                <Badge className="bg-amber-500">
+                  管理员门槛：{contest.admin_threshold}分
+                </Badge>
+              )}
+              <Badge
+                className={
+                  status === "ongoing"
+                    ? "bg-green-500"
+                    : status === "upcoming"
+                    ? "bg-blue-500"
+                    : "bg-gray-500"
+                }
+              >
+                {status === "ongoing"
+                  ? "进行中"
+                  : status === "upcoming"
+                  ? "未开始"
+                  : "已结束"}
+              </Badge>
+
+              {contest.div && (
+                <Badge
+                  className={
+                    contest.div === "Div.1"
+                      ? "bg-purple-600"
+                      : contest.div === "Div.2"
+                      ? "bg-blue-600"
+                      : contest.div === "Div.3"
+                      ? "bg-green-600"
+                      : "bg-gray-500"
+                  }
+                >
+                  {contest.div}
+                  {contest.div !== "Div.4" ? "（计入Rating）" : "（不计Rating）"}
+                </Badge>
+              )}
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center gap-6 text-muted-foreground flex-wrap">
+            <span className="flex items-center gap-1">
+              <Clock className="h-4 w-4" />
+              {formatTime(contest.start_time)} - {formatTime(contest.end_time)}
+            </span>
+            <span className="flex items-center gap-1">
+              <Users className="h-4 w-4" />
+              {participants.length} 人参与
+            </span>
+            {contest.users && (
+              <span className="flex items-center gap-1">
+                创建者：
+                <Link 
+                  href={`/profile/${contest.users.id}`}
+                  className="text-blue-600 hover:text-blue-800 dark:text-blue-400"
+                >
+                  {contest.users.username}
+                </Link>
+              </span>
+            )}
+          </div>
+          
+          {/* CS赛制说明 */}
+          {contest.format === "CS" && contest.admin_threshold && (
+            <div className="mt-3 p-2 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg">
+              <p className="text-sm text-amber-800 dark:text-amber-200">
+                <strong>CS赛制：</strong>参赛者在比赛中达到 <strong>{contest.admin_threshold}分</strong> 将自动成为管理员！
+              </p>
+            </div>
+          )}
+          
+          {/* Rating计算按钮和状态 */}
+          <div className="flex items-center gap-3 mt-3">
+            {canEdit && contest.div !== "Div.4" && status === "ended" && !contest.rating_calculated && (
+              <Button variant="outline" size="sm" onClick={handleCalculateRating}>
+                <Calculator className="h-4 w-4 mr-2" />
+                计算Rating
+              </Button>
+            )}
+
+            {contest.div !== "Div.4" && contest.rating_calculated && (
+              <Badge variant="secondary">
+                <Calculator className="h-3 w-3 mr-1" />
+                Rating已计算
+              </Badge>
+            )}
+
+            {/* 报名按钮 */}
+            {user && (
+              <div className="ml-auto">
+                {isParticipant ? (
+                  <div className="flex items-center gap-2 text-green-600">
+                    <Badge className="bg-green-500">已报名</Badge>
+                    <span className="text-sm text-muted-foreground">正在比赛中，加油！</span>
+                  </div>
+                ) : status === "ongoing" ? (
+                  <Button onClick={handleJoin}>
+                    <Play className="h-4 w-4 mr-2" />
+                    参加比赛
+                  </Button>
+                ) : status === "upcoming" ? (
+                  <Button onClick={handleJoin}>
+                    <Play className="h-4 w-4 mr-2" />
+                    立即报名
+                  </Button>
+                ) : (
+                  <Badge variant="secondary">比赛已结束</Badge>
+                )}
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* 标签页 */}
       {renderTabs()}
