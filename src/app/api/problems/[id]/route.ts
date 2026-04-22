@@ -150,7 +150,9 @@ export async function GET(
       .select("tag_id, tags(id, name, color)")
       .eq("problem_id", parseInt(id));
     
-    problem.tags = (problemTags || []).map((pt: { tag_id: number; tags: { id: number; name: string; color: string } }) => pt.tags).filter(Boolean);
+    problem.tags = (problemTags || [])
+      .map((pt) => Array.isArray(pt.tags) ? pt.tags[0] : pt.tags)
+      .filter(Boolean);
 
     // 获取提交统计
     const { data: submissionStats } = await client
