@@ -147,10 +147,10 @@ export async function GET(
     // 获取题目的标签
     const { data: problemTags } = await client
       .from("problem_tags")
-      .select("tag_id, tags(name, color)")
+      .select("tag_id, tags(id, name, color)")
       .eq("problem_id", parseInt(id));
     
-    problem.tags = (problemTags || []).map(pt => pt.tags).filter(Boolean);
+    problem.tags = (problemTags || []).map((pt: { tag_id: number; tags: { id: number; name: string; color: string } }) => pt.tags).filter(Boolean);
 
     // 获取提交统计
     const { data: submissionStats } = await client

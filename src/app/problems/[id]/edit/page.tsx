@@ -139,6 +139,7 @@ export default function EditProblemPage() {
   // 标签相关状态
   const [allTags, setAllTags] = useState<Tag[]>([]);
   const [selectedTagIds, setSelectedTagIds] = useState<number[]>([]);
+  const [problemTags, setProblemTags] = useState<Tag[]>([]); // 存储题目的原始标签数据
   const [tagDialogOpen, setTagDialogOpen] = useState(false);
 
   useEffect(() => {
@@ -167,6 +168,7 @@ export default function EditProblemPage() {
           });
           // 设置已有的标签
           setSelectedTagIds((p.tags || []).map((t: Tag) => t.id));
+          setProblemTags(p.tags || []); // 保存原始标签数据
           setSamples(p.samples || [{ input: "", output: "" }]);
           setTestCases((p.test_cases || []).map((tc: any) => ({
             ...tc,
@@ -547,7 +549,8 @@ export default function EditProblemPage() {
             {selectedTagIds.length > 0 && (
               <div className="flex flex-wrap gap-1 mt-3">
                 {selectedTagIds.map(tagId => {
-                  const tag = allTags.find(t => t.id === tagId);
+                  // 优先从 problemTags 获取，否则从 allTags 获取
+                  const tag = problemTags.find(t => t.id === tagId) || allTags.find(t => t.id === tagId);
                   return tag ? (
                     <Badge
                       key={tag.id}
