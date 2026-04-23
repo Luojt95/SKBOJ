@@ -74,7 +74,7 @@ export default function GamePlayPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="fixed inset-0 flex items-center justify-center bg-background">
         <div className="animate-pulse text-muted-foreground">加载中...</div>
       </div>
     );
@@ -82,7 +82,7 @@ export default function GamePlayPage() {
 
   if (error || !game) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-background">
+      <div className="fixed inset-0 flex flex-col items-center justify-center bg-background">
         <h1 className="text-2xl font-bold mb-4">{error || "游戏不存在"}</h1>
         <Link href="/game">
           <Button>返回游戏中心</Button>
@@ -92,9 +92,9 @@ export default function GamePlayPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="fixed inset-0 bg-background flex flex-col">
       {/* 顶部导航 */}
-      <div className="flex items-center justify-between px-4 py-2 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <div className="flex-none flex items-center justify-between px-4 py-2 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 z-10">
         <div className="flex items-center gap-4">
           <Link href="/game">
             <Button variant="ghost" size="icon">
@@ -132,18 +132,18 @@ export default function GamePlayPage() {
         </div>
       </div>
 
-      {/* 游戏容器 */}
-      <div id="game-container" className="flex-1 bg-black">
+      {/* 游戏容器 - 占满整个剩余空间 */}
+      <div className="flex-1 bg-black relative">
         <iframe
           srcDoc={game.html_code}
-          className="w-full h-full border-0"
+          className="absolute inset-0 w-full h-full border-0"
           title={game.name}
           sandbox="allow-scripts allow-same-origin allow-forms allow-modals"
         />
       </div>
 
       {/* 操作提示 */}
-      <div className="fixed bottom-4 left-1/2 -translate-x-1/2 px-4 py-2 bg-black/80 text-white text-sm rounded-full opacity-50 hover:opacity-100 transition-opacity">
+      <div className="fixed bottom-4 left-1/2 -translate-x-1/2 px-4 py-2 bg-black/80 text-white text-sm rounded-full opacity-50 hover:opacity-100 transition-opacity z-20">
         按 ESC 退出全屏
       </div>
     </div>
