@@ -85,6 +85,13 @@ export async function POST(request: NextRequest) {
       console.warn("No test cases for problem:", problemId);
       return NextResponse.json({ error: "题目没有测试数据，请联系管理员添加" }, { status: 400 });
     }
+    
+    // 为每个测试点设置分数（如果未设置或为0，使用题目总分均分）
+    const scorePerCase = Math.floor(problemScore / testCases.length);
+    testCases = testCases.map((tc: any) => ({
+      ...tc,
+      score: (tc.score !== undefined && tc.score !== null && tc.score > 0) ? tc.score : scorePerCase,
+    }));
 
     console.log("Test cases count:", testCases.length, "Time limit:", problem.time_limit);
 
@@ -385,9 +392,28 @@ async function judgeCode(
   const maxTestCases = 30;
   const limitedTestCases = testCases.slice(0, maxTestCases);
   
-  // 重新计算每个测试点的分数（使用题目总分）
-  const scorePerCase = Math.floor(problemTotalScore / limitedTestCases.length);
-  limitedTestCases.forEach(tc => tc.score = scorePerCase);
+  // 计算测试点分数：优先使用原有分数，仅对未设置分数的测试点进行分配
+  const totalProblemScore = problemTotalScore;
+  let assignedScore = 0;
+  let unassignedCount = 0;
+  
+  limitedTestCases.forEach(tc => {
+    if (tc.score !== undefined && tc.score !== null && tc.score > 0) {
+      assignedScore += tc.score;
+    } else {
+      unassignedCount++;
+    }
+  });
+  
+  // 未分配分数的测试点均分剩余分数
+  const remainingScore = totalProblemScore - assignedScore;
+  const scorePerUnassigned = unassignedCount > 0 ? Math.floor(remainingScore / unassignedCount) : 0;
+  
+  limitedTestCases.forEach(tc => {
+    if (tc.score === undefined || tc.score === null || tc.score <= 0) {
+      tc.score = scorePerUnassigned;
+    }
+  });
   
   let totalScore = 0;
   let maxTime = 0;
