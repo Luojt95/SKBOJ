@@ -165,6 +165,7 @@ export async function POST(request: NextRequest) {
     // 验证时间限制和内存限制
     const timeLimit = Math.min(10000, Math.max(1, parseInt(body.timeLimit) || 1000));
     const memoryLimit = Math.min(1024, Math.max(1, parseInt(body.memoryLimit) || 256));
+    const score = Math.min(1000, Math.max(1, parseInt(body.score) || 100));
 
     // 获取该题库当前最大的 category_index
     const category = body.category || "P";
@@ -192,6 +193,7 @@ export async function POST(request: NextRequest) {
         difficulty: body.difficulty || "popular",
         time_limit: timeLimit,
         memory_limit: memoryLimit,
+        score: score,
         is_visible: body.isVisible ?? true,
         author_id: user.id,
         tags: body.tags || [],

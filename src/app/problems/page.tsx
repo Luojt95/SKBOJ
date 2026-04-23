@@ -38,6 +38,7 @@ interface Problem {
   difficulty: string;
   category: string;
   category_index: number | null;
+  score: number;
   tags: Tag[];
   author_id: number;
   is_visible: boolean;
@@ -585,8 +586,9 @@ export default function ProblemsPage() {
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
+                        <span className="text-xs text-muted-foreground">({problem.score || 100}分)</span>
                         {status && (
-                          <span className="text-sm text-blue-500 font-medium">{status.bestScore}分</span>
+                          <span className="text-sm text-blue-500 font-medium">得分: {status.bestScore}</span>
                         )}
                         {!problem.is_visible && (
                           <Badge variant="secondary">隐藏</Badge>

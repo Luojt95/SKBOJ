@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
     // 获取题目信息和测试数据
     const { data: problem, error: problemError } = await client
       .from("problems")
-      .select("test_cases, samples, time_limit, memory_limit")
+      .select("test_cases, samples, time_limit, memory_limit, score")
       .eq("id", problemId)
       .single();
 
@@ -66,6 +66,9 @@ export async function POST(request: NextRequest) {
     if (!problem) {
       return NextResponse.json({ error: "题目不存在" }, { status: 404 });
     }
+    
+    // 获取题目总分，默认100
+    const problemScore = problem.score || 100;
 
     // 使用测试数据，如果没有则使用样例
     let testCases = problem.test_cases || [];
@@ -73,7 +76,7 @@ export async function POST(request: NextRequest) {
       testCases = problem.samples.map((s: any, idx: number) => ({
         input: s.input || "",
         output: s.output || "",
-        score: Math.floor(100 / problem.samples.length),
+        score: Math.floor(problemScore / problem.samples.length),
       }));
     }
     
@@ -87,7 +90,7 @@ export async function POST(request: NextRequest) {
 
     // 真正评测代码
     console.log("Starting judge...");
-    const result = await judgeCode(code, language, testCases, problem.time_limit || 1000);
+    const result = await judgeCode(code, language, testCases, problem.time_limit || 1000, problemScore);
     console.log("Judge result:", result);
 
     // 保存提交记录
@@ -351,7 +354,8 @@ async function judgeCode(
   code: string,
   language: string,
   testCases: Array<{ input: string; output: string; score?: number }>,
-  timeLimit: number
+  timeLimit: number,
+  problemTotalScore: number = 100
 ): Promise<{
   status: string;
   score: number;
@@ -381,8 +385,8 @@ async function judgeCode(
   const maxTestCases = 30;
   const limitedTestCases = testCases.slice(0, maxTestCases);
   
-  // 重新计算每个测试点的分数
-  const scorePerCase = Math.floor(100 / limitedTestCases.length);
+  // 重新计算每个测试点的分数（使用题目总分）
+  const scorePerCase = Math.floor(problemTotalScore / limitedTestCases.length);
   limitedTestCases.forEach(tc => tc.score = scorePerCase);
   
   let totalScore = 0;

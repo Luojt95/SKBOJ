@@ -124,6 +124,7 @@ export default function CreateProblemPage() {
     difficulty: "popular",
     timeLimit: 1000,
     memoryLimit: 256,
+    score: 100,
     isVisible: true,
   });
   const [tags, setTags] = useState<string[]>([]);
@@ -304,6 +305,22 @@ export default function CreateProblemPage() {
                   }
                   placeholder="例如：A+B Problem"
                   required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="score">题目分数</Label>
+                <Input
+                  id="score"
+                  type="number"
+                  min={1}
+                  max={1000}
+                  value={formData.score}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      score: Math.min(1000, Math.max(1, parseInt(e.target.value) || 100)),
+                    })
+                  }
                 />
               </div>
               <div className="space-y-2">

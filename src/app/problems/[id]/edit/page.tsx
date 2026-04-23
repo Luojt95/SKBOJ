@@ -126,6 +126,7 @@ export default function EditProblemPage() {
     difficulty: "popular",
     timeLimit: 1000,
     memoryLimit: 256,
+    score: 100,
     isVisible: true,
   });
   const [tags, setTags] = useState<string[]>([]);
@@ -164,6 +165,7 @@ export default function EditProblemPage() {
             difficulty: p.difficulty || "popular",
             timeLimit: p.time_limit || 1000,
             memoryLimit: p.memory_limit || 256,
+            score: p.score || 100,
             isVisible: p.is_visible ?? true,
           });
           // 设置已有的标签
@@ -478,6 +480,22 @@ export default function EditProblemPage() {
                     setFormData({
                       ...formData,
                       memoryLimit: Math.min(1024, Math.max(1, parseInt(e.target.value) || 256)),
+                    })
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="score">题目分数</Label>
+                <Input
+                  id="score"
+                  type="number"
+                  min={1}
+                  max={1000}
+                  value={formData.score}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      score: Math.min(1000, Math.max(1, parseInt(e.target.value) || 100)),
                     })
                   }
                 />
