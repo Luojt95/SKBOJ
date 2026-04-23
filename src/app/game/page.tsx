@@ -95,7 +95,7 @@ export default function GameListPage() {
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-3">
           <Gamepad2 className="h-8 w-8 text-primary" />
-          <h1 className="text-3xl font-bold">游戏中心</h1>
+          <h1 className="text-3xl font-bold">SKBOJ游戏中心</h1>
         </div>
         {isAdmin && (
           <Link href="/game/manage">
