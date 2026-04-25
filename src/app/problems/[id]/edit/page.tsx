@@ -174,7 +174,7 @@ export default function EditProblemPage() {
           setSamples(p.samples || [{ input: "", output: "" }]);
           setTestCases((p.test_cases || []).map((tc: any) => ({
             ...tc,
-            score: tc.score || 10,
+            score: tc.score !== undefined && tc.score !== null ? tc.score : 10,
           })));
         }
 
