@@ -106,6 +106,7 @@ export default function HomePage() {
   const [dbError, setDbError] = useState<string | null>(null);
   const [dailyLimits, setDailyLimits] = useState<DailyLimits | null>(null);
   const [limitsLoading, setLimitsLoading] = useState(false);
+  const [siteConfig, setSiteConfig] = useState<{hero_subtitle?: string; hero_description?: string; notice?: string} | null>(null);
 
   useEffect(() => {
     // 检查登录状态
@@ -133,6 +134,20 @@ export default function HomePage() {
       }
     };
     checkAuth();
+    
+    // 获取站点配置
+    const fetchSiteConfig = async () => {
+      try {
+        const res = await fetch('/api/site-config');
+        if (res.ok) {
+          const data = await res.json();
+          setSiteConfig(data.config);
+        }
+      } catch (error) {
+        console.error('获取站点配置失败:', error);
+      }
+    };
+    fetchSiteConfig();
   }, []);
 
   const fetchDailyLimits = async () => {
@@ -319,7 +334,7 @@ export default function HomePage() {
               </span>
             </h1>
             <p className="text-xl md:text-2xl text-muted-foreground max-w-2xl">
-              OIer的乐土
+              {siteConfig?.hero_subtitle || 'OIer的乐土'}
             </p>
             <div className="flex flex-wrap justify-center gap-4 pt-4">
               <Button
