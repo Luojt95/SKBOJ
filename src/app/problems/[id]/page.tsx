@@ -510,7 +510,7 @@ export default function ProblemDetailPage() {
               <div className="flex gap-4 text-sm text-muted-foreground mt-2">
                 <span>时间限制: {problem.time_limit}ms</span>
                 <span>内存限制: {problem.memory_limit}MB</span>
-                <span>题目分值: {problem.test_cases.reduce((sum, tc) => sum + tc.score, 0)}分</span>
+                <span>题目分值: {(problem.test_cases || []).reduce((sum, tc) => sum + tc.score, 0)}分</span>
                 <span>提交: {(problem as any).submission_count || 0}</span>
                 <span>通过: {(problem as any).accepted_count || 0}</span>
               </div>

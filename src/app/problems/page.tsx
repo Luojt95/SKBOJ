@@ -586,7 +586,7 @@ export default function ProblemsPage() {
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="text-xs text-muted-foreground">({problem.test_cases.reduce((sum, tc) => sum + tc.score, 0)}分)</span>
+                        <span className="text-xs text-muted-foreground">({(problem.test_cases || []).reduce((sum, tc) => sum + tc.score, 0)}分)</span>
                         {status && (
                           <span className="text-sm text-blue-500 font-medium">得分: {status.bestScore}</span>
                         )}
