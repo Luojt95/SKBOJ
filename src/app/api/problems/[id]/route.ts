@@ -218,7 +218,6 @@ export async function PUT(
     // 验证时间限制和内存限制
     const timeLimit = Math.min(10000, Math.max(1, parseInt(body.timeLimit) || 1000));
     const memoryLimit = Math.min(1024, Math.max(1, parseInt(body.memoryLimit) || 256));
-    const score = Math.min(1000, Math.max(1, parseInt(body.score) || 100));
 
     const { data: updatedProblem, error } = await client
       .from("problems")
@@ -233,7 +232,6 @@ export async function PUT(
         difficulty: body.difficulty,
         time_limit: timeLimit,
         memory_limit: memoryLimit,
-        score: score,
         is_visible: body.isVisible,
         test_cases: body.testCases,
         updated_at: new Date().toISOString(),

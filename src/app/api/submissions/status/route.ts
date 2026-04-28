@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
       } else {
         // AC优先，然后按分数排序
         if (sub.status === "ac") {
-          problemStatus[pid] = { status: "ac", bestScore: sub.score || 100 };
+          problemStatus[pid] = { status: "ac", bestScore: sub.score || 0 };
         } else if (problemStatus[pid].status !== "ac") {
           if ((sub.score || 0) > problemStatus[pid].bestScore) {
             problemStatus[pid] = { status: sub.status, bestScore: sub.score || 0 };

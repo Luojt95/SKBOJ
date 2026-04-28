@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
     // 获取题目信息和测试数据
     const { data: problem, error: problemError } = await client
       .from("problems")
-      .select("test_cases, samples, time_limit, memory_limit, score")
+      .select("test_cases, samples, time_limit, memory_limit")
       .eq("id", problemId)
       .single();
 
@@ -67,16 +67,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "题目不存在" }, { status: 404 });
     }
     
-    // 获取题目总分，默认100
-    const problemScore = problem.score || 100;
-
-    // 使用测试数据，如果没有则使用样例
+    // 使用测试数据
     let testCases = problem.test_cases || [];
     if (testCases.length === 0 && problem.samples && problem.samples.length > 0) {
-      testCases = problem.samples.map((s: any, idx: number) => ({
+      testCases = problem.samples.map((s: any) => ({
         input: s.input || "",
         output: s.output || "",
-        score: Math.floor(problemScore / problem.samples.length),
       }));
     }
     
@@ -85,19 +81,12 @@ export async function POST(request: NextRequest) {
       console.warn("No test cases for problem:", problemId);
       return NextResponse.json({ error: "题目没有测试数据，请联系管理员添加" }, { status: 400 });
     }
-    
-    // 为每个测试点设置分数（如果未设置或为0，使用题目总分均分）
-    const scorePerCase = Math.floor(problemScore / testCases.length);
-    testCases = testCases.map((tc: any) => ({
-      ...tc,
-      score: (tc.score !== undefined && tc.score !== null && tc.score > 0) ? tc.score : scorePerCase,
-    }));
 
     console.log("Test cases count:", testCases.length, "Time limit:", problem.time_limit);
 
     // 真正评测代码
     console.log("Starting judge...");
-    const result = await judgeCode(code, language, testCases, problem.time_limit || 1000, problemScore);
+    const result = await judgeCode(code, language, testCases, problem.time_limit || 1000);
     console.log("Judge result:", result);
 
     // 保存提交记录
@@ -361,8 +350,7 @@ async function judgeCode(
   code: string,
   language: string,
   testCases: Array<{ input: string; output: string; score?: number }>,
-  timeLimit: number,
-  problemTotalScore: number = 100
+  timeLimit: number
 ): Promise<{
   status: string;
   score: number;
@@ -391,29 +379,6 @@ async function judgeCode(
   // 限制测试点数量，防止评测时间过长（上限30个）
   const maxTestCases = 30;
   const limitedTestCases = testCases.slice(0, maxTestCases);
-  
-  // 计算测试点分数：优先使用原有分数，仅对未设置分数的测试点进行分配
-  const totalProblemScore = problemTotalScore;
-  let assignedScore = 0;
-  let unassignedCount = 0;
-  
-  limitedTestCases.forEach(tc => {
-    if (tc.score !== undefined && tc.score !== null && tc.score > 0) {
-      assignedScore += tc.score;
-    } else {
-      unassignedCount++;
-    }
-  });
-  
-  // 未分配分数的测试点均分剩余分数
-  const remainingScore = totalProblemScore - assignedScore;
-  const scorePerUnassigned = unassignedCount > 0 ? Math.floor(remainingScore / unassignedCount) : 0;
-  
-  limitedTestCases.forEach(tc => {
-    if (tc.score === undefined || tc.score === null || tc.score <= 0) {
-      tc.score = scorePerUnassigned;
-    }
-  });
   
   let totalScore = 0;
   let maxTime = 0;
