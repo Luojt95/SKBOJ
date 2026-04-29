@@ -9,7 +9,14 @@ export async function GET(request: NextRequest) {
     const cookieStore = await cookies();
     const userCookie = cookieStore.get("user");
     const { searchParams } = new URL(request.url);
-    const isAdmin = searchParams.get("is_admin") === "true";
+    // 从 cookie 自动检测管理员身份
+    let userForAdmin = null;
+    if (userCookie) {
+      try {
+        userForAdmin = JSON.parse(userCookie.value);
+      } catch {}
+    }
+    const isAdmin = userForAdmin?.role === 'admin' || userForAdmin?.role === 'super_admin';
 
     let query = client
       .from("games")
