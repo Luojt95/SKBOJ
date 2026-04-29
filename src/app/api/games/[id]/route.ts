@@ -30,10 +30,28 @@ export async function GET(
       return NextResponse.json({ error: "游戏不存在" }, { status: 404 });
     }
 
-    // 非管理员只能看到可见的游戏
     const isAdmin = user && (user.role === "admin" || user.role === "super_admin");
+    
+    // 非管理员只能看到可见的游戏
     if (!game.is_visible && !isAdmin) {
       return NextResponse.json({ error: "游戏不存在" }, { status: 404 });
+    }
+
+    // 检查游戏类别权限
+    const categoryLevels: Record<string, number> = {
+      'FREE': 0,
+      'D': 200,
+      'C': 500,
+      'B': 800,
+      'A': 1200,
+    };
+    const userRating = user?.rating || 0;
+    const requiredLevel = categoryLevels[game.category] || 0;
+    
+    if (!isAdmin && userRating < requiredLevel) {
+      return NextResponse.json({ 
+        error: `该游戏需要 Rating >= ${requiredLevel} 才能访问（当前: ${userRating}）` 
+      }, { status: 403 });
     }
 
     return NextResponse.json({ game });
@@ -66,7 +84,11 @@ export async function PUT(
     }
 
     const body = await request.json();
-    const { name, description, html_code, thumbnail, is_visible } = body;
+    const { name, description, html_code, thumbnail, is_visible, category } = body;
+
+    // 验证类别
+    const validCategories = ['FREE', 'D', 'C', 'B', 'A'];
+    const gameCategory = category && validCategories.includes(category) ? category : 'FREE';
 
     const { data: game, error } = await client
       .from("games")
@@ -76,6 +98,7 @@ export async function PUT(
         html_code: html_code ?? undefined,
         thumbnail: thumbnail ?? undefined,
         is_visible: is_visible ?? undefined,
+        category: gameCategory,
         updated_at: new Date().toISOString(),
       })
       .eq("id", parseInt(id))

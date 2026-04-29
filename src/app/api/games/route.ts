@@ -6,6 +6,8 @@ import { getSupabaseClient } from "@/storage/database/supabase-client";
 export async function GET(request: NextRequest) {
   try {
     const client = getSupabaseClient();
+    const cookieStore = await cookies();
+    const userCookie = cookieStore.get("user");
     const { searchParams } = new URL(request.url);
     const isAdmin = searchParams.get("is_admin") === "true";
 
@@ -26,7 +28,30 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "获取游戏列表失败" }, { status: 500 });
     }
 
-    return NextResponse.json({ games: games || [] });
+    // 根据用户 Rating 过滤可见游戏
+    let userRating = 0;
+    if (userCookie) {
+      try {
+        const user = JSON.parse(userCookie.value);
+        userRating = user.rating || 0;
+      } catch {}
+    }
+
+    // 类别等级映射
+    const categoryLevels: Record<string, number> = {
+      'FREE': 0,
+      'D': 200,
+      'C': 500,
+      'B': 800,
+      'A': 1200,
+    };
+
+    const filteredGames = games?.filter((game: any) => {
+      const requiredLevel = categoryLevels[game.category] || 0;
+      return userRating >= requiredLevel;
+    }) || [];
+
+    return NextResponse.json({ games: filteredGames, userRating });
   } catch (error) {
     console.error("Get games error:", error);
     return NextResponse.json({ error: "获取游戏列表失败" }, { status: 500 });
@@ -52,11 +77,15 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { name, description, html_code, thumbnail, is_visible } = body;
+    const { name, description, html_code, thumbnail, is_visible, category } = body;
 
     if (!name || !html_code) {
       return NextResponse.json({ error: "游戏名称和代码不能为空" }, { status: 400 });
     }
+
+    // 验证类别
+    const validCategories = ['FREE', 'D', 'C', 'B', 'A'];
+    const gameCategory = validCategories.includes(category) ? category : 'FREE';
 
     const { data: game, error } = await client
       .from("games")
@@ -66,6 +95,7 @@ export async function POST(request: NextRequest) {
         html_code,
         thumbnail: thumbnail || "",
         is_visible: is_visible ?? true,
+        category: gameCategory,
         created_by: user.id,
       })
       .select()

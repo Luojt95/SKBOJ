@@ -18,6 +18,7 @@ interface Game {
   html_code: string;
   thumbnail: string;
   is_visible: boolean;
+  category: string;
 }
 
 function GameManageContent() {
@@ -31,6 +32,7 @@ function GameManageContent() {
     html_code: "",
     thumbnail: "",
     is_visible: true,
+    category: "FREE",
   });
   const [isLoading, setIsLoading] = useState(false);
   const [isFetching, setIsFetching] = useState(!!editId);
@@ -84,6 +86,7 @@ function GameManageContent() {
         html_code: data.game.html_code,
         thumbnail: data.game.thumbnail || "",
         is_visible: data.game.is_visible,
+        category: data.game.category || "FREE",
       });
     } catch (error) {
       console.error("Fetch game error:", error);
@@ -194,6 +197,26 @@ function GameManageContent() {
                   onChange={(e) => setFormData({ ...formData, thumbnail: e.target.value })}
                   placeholder="https://example.com/image.png"
                 />
+              </div>
+
+              {/* 类别选择 */}
+              <div className="space-y-2">
+                <Label htmlFor="category">游戏类别</Label>
+                <select
+                  id="category"
+                  value={formData.category}
+                  onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <option value="FREE">FREE - 登录即可访问</option>
+                  <option value="D">D类 - Rating &gt;= 200</option>
+                  <option value="C">C类 - Rating &gt;= 500</option>
+                  <option value="B">B类 - Rating &gt;= 800</option>
+                  <option value="A">A类 - Rating &gt;= 1200</option>
+                </select>
+                <p className="text-xs text-muted-foreground">
+                  根据玩家 Rating 限制访问权限
+                </p>
               </div>
 
               <div className="flex items-center gap-3">

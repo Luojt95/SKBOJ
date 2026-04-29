@@ -13,14 +13,16 @@ interface Game {
   description: string;
   thumbnail: string;
   is_visible: boolean;
+  category: string;
   created_at: string;
 }
 
 export default function GameListPage() {
   const [games, setGames] = useState<Game[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [user, setUser] = useState<{ id: number; role: string } | null>(null);
+  const [user, setUser] = useState<{ id: number; role: string; rating?: number } | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [userRating, setUserRating] = useState(0);
 
   useEffect(() => {
     fetchData();
@@ -34,16 +36,14 @@ export default function GameListPage() {
         const userData = await userRes.json();
         setUser(userData.user);
         setIsAdmin(userData.user?.role === "admin" || userData.user?.role === "super_admin");
+        setUserRating(userData.user?.rating || 0);
       }
 
       // 获取游戏列表
-      const params = new URLSearchParams();
-      if (isAdmin) {
-        params.set("is_admin", "true");
-      }
-      const gamesRes = await fetch(`/api/games?${params.toString()}`);
+      const gamesRes = await fetch("/api/games");
       const gamesData = await gamesRes.json();
       setGames(gamesData.games || []);
+      setUserRating(gamesData.userRating || 0);
     } catch (error) {
       console.error("Failed to fetch data:", error);
     } finally {
@@ -143,11 +143,19 @@ export default function GameListPage() {
               </div>
               
               <CardHeader>
-                <div className="flex items-start justify-between">
+                <div className="flex items-start justify-between gap-2">
                   <CardTitle className="text-xl">{game.name}</CardTitle>
-                  {!game.is_visible && (
-                    <Badge variant="secondary" className="text-xs">隐藏</Badge>
-                  )}
+                  <div className="flex gap-1 flex-wrap justify-end">
+                    <Badge 
+                      variant={game.category === 'FREE' ? 'default' : game.category === 'A' ? 'destructive' : 'secondary'}
+                      className="text-xs"
+                    >
+                      {game.category}类
+                    </Badge>
+                    {!game.is_visible && (
+                      <Badge variant="outline" className="text-xs">隐藏</Badge>
+                    )}
+                  </div>
                 </div>
                 <CardDescription className="line-clamp-2">
                   {game.description || "暂无描述"}
