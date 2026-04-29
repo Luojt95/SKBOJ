@@ -37,21 +37,26 @@ export async function GET(request: NextRequest) {
       } catch {}
     }
 
-    // 类别等级映射
+    // 类别等级映射 (FREE=-1表示需要登录但不需要Rating)
     const categoryLevels: Record<string, number> = {
-      'FREE': 0,
+      'FREE': -1,  // 需要登录
       'D': 200,
       'C': 500,
       'B': 800,
       'A': 1200,
     };
 
+    const isLoggedIn = !!userCookie;
     const filteredGames = games?.filter((game: any) => {
-      const requiredLevel = categoryLevels[game.category] || 0;
-      return userRating >= requiredLevel;
+      const requiredLevel = categoryLevels[game.category] ?? 0;
+      // FREE类游戏需要登录，其他类别需要对应的Rating
+      if (requiredLevel === -1) {
+        return isLoggedIn;
+      }
+      return isLoggedIn && userRating >= requiredLevel;
     }) || [];
 
-    return NextResponse.json({ games: filteredGames, userRating });
+    return NextResponse.json({ games: filteredGames, userRating, isLoggedIn });
   } catch (error) {
     console.error("Get games error:", error);
     return NextResponse.json({ error: "获取游戏列表失败" }, { status: 500 });

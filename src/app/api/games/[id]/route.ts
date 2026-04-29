@@ -37,21 +37,29 @@ export async function GET(
       return NextResponse.json({ error: "游戏不存在" }, { status: 404 });
     }
 
-    // 检查游戏类别权限
+    // 检查游戏类别权限 (FREE=-1表示需要登录但不需要Rating)
     const categoryLevels: Record<string, number> = {
-      'FREE': 0,
+      'FREE': -1,
       'D': 200,
       'C': 500,
       'B': 800,
       'A': 1200,
     };
+    const isLoggedIn = !!user;
     const userRating = user?.rating || 0;
-    const requiredLevel = categoryLevels[game.category] || 0;
+    const requiredLevel = categoryLevels[game.category] ?? 0;
     
-    if (!isAdmin && userRating < requiredLevel) {
-      return NextResponse.json({ 
-        error: `该游戏需要 Rating >= ${requiredLevel} 才能访问（当前: ${userRating}）` 
-      }, { status: 403 });
+    // FREE类游戏需要登录，其他类别需要对应的Rating
+    if (!isAdmin) {
+      if (requiredLevel === -1) {
+        if (!isLoggedIn) {
+          return NextResponse.json({ error: "请先登录后再访问此游戏" }, { status: 401 });
+        }
+      } else if (userRating < requiredLevel) {
+        return NextResponse.json({ 
+          error: `该游戏需要 Rating >= ${requiredLevel} 才能访问（当前: ${userRating}）` 
+        }, { status: 403 });
+      }
     }
 
     return NextResponse.json({ game });
