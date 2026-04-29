@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSupabaseClient } from "@/storage/database/supabase-client";
+import { getAdminSupabaseClient } from "@/storage/database/supabase-client";
 
 export async function GET() {
   try {
-    const client = getSupabaseClient();
+    const client = getAdminSupabaseClient();
     
     const { data, error } = await client
       .from('site_config')
@@ -35,7 +35,7 @@ export async function GET() {
 
 export async function PUT(request: NextRequest) {
   try {
-    const client = getSupabaseClient();
+    const client = getAdminSupabaseClient();
     const body = await request.json();
     
     const { hero_subtitle, hero_description, notice } = body;
