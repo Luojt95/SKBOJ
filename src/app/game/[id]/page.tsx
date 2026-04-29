@@ -44,6 +44,12 @@ export default function GamePlayPage() {
         return;
       }
       
+      // 检查是否有权限访问
+      if (data.accessDenied) {
+        setError(`需要 ${data.requiredRating} 以上Rating才能访问此游戏`);
+        return;
+      }
+      
       setGame(data.game);
     } catch (error) {
       console.error("Fetch game error:", error);

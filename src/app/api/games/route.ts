@@ -47,7 +47,9 @@ export async function GET(request: NextRequest) {
     };
 
     const isLoggedIn = !!userCookie;
+    // 管理员/站长可以看所有游戏
     const filteredGames = games?.filter((game: any) => {
+      if (isAdmin) return true; // 管理员看全部
       const requiredLevel = categoryLevels[game.category] ?? 0;
       // FREE类游戏需要登录，其他类别需要对应的Rating
       if (requiredLevel === -1) {
@@ -56,7 +58,7 @@ export async function GET(request: NextRequest) {
       return isLoggedIn && userRating >= requiredLevel;
     }) || [];
 
-    return NextResponse.json({ games: filteredGames, userRating, isLoggedIn });
+    return NextResponse.json({ games: filteredGames, userRating, isLoggedIn, isAdmin });
   } catch (error) {
     console.error("Get games error:", error);
     return NextResponse.json({ error: "获取游戏列表失败" }, { status: 500 });
