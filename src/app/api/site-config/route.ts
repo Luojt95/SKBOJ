@@ -40,7 +40,8 @@ export async function PUT(request: NextRequest) {
     
     const { hero_subtitle, hero_description, notice } = body;
     
-    const { data, error } = await client
+    // 先尝试更新
+    let { data, error } = await client
       .from('site_config')
       .update({
         hero_subtitle: hero_subtitle || 'OIer的乐土',
@@ -50,13 +51,33 @@ export async function PUT(request: NextRequest) {
       })
       .eq('id', 1)
       .select()
-      .single();
+      .limit(1);
+    
+    // 如果没有找到记录，插入新记录
+    if (!data || data.length === 0) {
+      const { data: insertData, error: insertError } = await client
+        .from('site_config')
+        .insert({
+          id: 1,
+          hero_subtitle: hero_subtitle || 'OIer的乐土',
+          hero_description: hero_description,
+          notice: notice
+        })
+        .select()
+        .limit(1);
+      
+      if (insertError) {
+        return NextResponse.json({ error: insertError.message }, { status: 500 });
+      }
+      
+      return NextResponse.json({ config: insertData[0] });
+    }
     
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
     
-    return NextResponse.json({ config: data });
+    return NextResponse.json({ config: data[0] });
   } catch (error) {
     console.error('Error updating site config:', error);
     return NextResponse.json(
