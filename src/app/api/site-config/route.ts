@@ -9,9 +9,9 @@ export async function GET() {
       .from('site_config')
       .select('*')
       .eq('id', 1)
-      .single();
+      .limit(1);
     
-    if (error) {
+    if (error || !data || data.length === 0) {
       // 如果没有配置，返回默认值
       return NextResponse.json({
         config: {
@@ -23,7 +23,7 @@ export async function GET() {
       });
     }
     
-    return NextResponse.json({ config: data });
+    return NextResponse.json({ config: data[0] });
   } catch (error) {
     console.error('Error fetching site config:', error);
     return NextResponse.json(
