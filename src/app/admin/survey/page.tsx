@@ -42,11 +42,7 @@ export default function SurveyManagePage() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    checkAdmin();
-    fetchSurveys();
-  }, []);
-
-  const checkAdmin = () => {
+    // 检查管理员权限
     try {
       const userCookie = document.cookie.split(';').find(c => c.trim().startsWith('user='));
       if (!userCookie) {
@@ -65,8 +61,11 @@ export default function SurveyManagePage() {
     } catch (e) {
       console.error('权限检查失败:', e);
       router.push('/');
+      return;
     }
-  };
+    // 获取问卷列表
+    fetchSurveys();
+  }, []);
 
   const fetchSurveys = async () => {
     try {
