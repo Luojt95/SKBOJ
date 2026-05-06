@@ -24,6 +24,21 @@ export default function SurveyPage() {
     fetchSurveys();
   }, []);
 
+  // 检查是否是管理员
+  const [isAdmin, setIsAdmin] = useState(false);
+  useEffect(() => {
+    try {
+      const userCookie = document.cookie.split(';').find(c => c.trim().startsWith('user='));
+      if (userCookie) {
+        const user = JSON.parse(decodeURIComponent(userCookie.split('=')[1]));
+        const roleStr = user.role || '';
+        if (roleStr.includes('admin') || roleStr === 'admin' || roleStr === 'super_admin') {
+          setIsAdmin(true);
+        }
+      }
+    } catch (e) {}
+  }, []);
+
   const fetchSurveys = async () => {
     try {
       const res = await fetch('/api/surveys?include_stats=true');
@@ -50,9 +65,18 @@ export default function SurveyPage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">问卷调查</h1>
-        <p className="text-gray-600">参与问卷调查，帮助我们做得更好</p>
+      <div className="mb-8 flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold mb-2">问卷调查</h1>
+          <p className="text-gray-600">参与问卷调查，帮助我们做得更好</p>
+        </div>
+        {isAdmin && (
+          <Link href="/admin/survey">
+            <button className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+              管理问卷
+            </button>
+          </Link>
+        )}
       </div>
 
       {surveys.length === 0 ? (
