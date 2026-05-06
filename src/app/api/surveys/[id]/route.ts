@@ -95,7 +95,9 @@ export async function PUT(
     }
     
     const user = JSON.parse(decodeURIComponent(userCookie.value));
-    if (!user.role?.includes('admin')) {
+    const isAdmin = user.role === 'admin' || user.role === 'super_admin' || 
+                    (typeof user.role === 'string' && user.role.includes('admin'));
+    if (!isAdmin) {
       return NextResponse.json({ error: '需要管理员权限' }, { status: 403 });
     }
     
@@ -180,7 +182,9 @@ export async function DELETE(
     }
     
     const user = JSON.parse(decodeURIComponent(userCookie.value));
-    if (!user.role?.includes('admin')) {
+    const isAdmin = user.role === 'admin' || user.role === 'super_admin' || 
+                    (typeof user.role === 'string' && user.role.includes('admin'));
+    if (!isAdmin) {
       return NextResponse.json({ error: '需要管理员权限' }, { status: 403 });
     }
     
