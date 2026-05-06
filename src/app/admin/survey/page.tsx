@@ -47,17 +47,25 @@ export default function SurveyManagePage() {
   }, []);
 
   const checkAdmin = () => {
-    const userCookie = document.cookie.split(';').find(c => c.trim().startsWith('user='));
-    if (!userCookie) {
-      router.push('/login');
-      return;
-    }
-    const user = JSON.parse(decodeURIComponent(userCookie.split('=')[1]));
-    if (!user.role?.includes('admin')) {
+    try {
+      const userCookie = document.cookie.split(';').find(c => c.trim().startsWith('user='));
+      if (!userCookie) {
+        router.push('/login');
+        return;
+      }
+      const userStr = userCookie.split('=')[1];
+      const user = JSON.parse(decodeURIComponent(userStr));
+      const roleStr = user.role || '';
+      const hasAdminAccess = roleStr.includes('admin') || roleStr === 'admin' || roleStr === 'super_admin';
+      if (!hasAdminAccess) {
+        router.push('/');
+        return;
+      }
+      setIsAdmin(true);
+    } catch (e) {
+      console.error('权限检查失败:', e);
       router.push('/');
-      return;
     }
-    setIsAdmin(true);
   };
 
   const fetchSurveys = async () => {
