@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Menu, X, Code, Trophy, Users, Bug, MessageSquare, Share2, Ticket, Home, Bell, Mail, HelpCircle, Clock } from "lucide-react";
+import { Menu, X, Code, Trophy, Users, Bug, MessageSquare, Share2, Ticket, Home, Bell, Mail, HelpCircle, Clock, ClipboardList } from "lucide-react";
 import { useLogoutCooldown } from "@/hooks/use-logout-cooldown";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { getUserNameColorByRatingAndRole, getRatingConfig } from "@/lib/rating";
@@ -37,6 +37,7 @@ const navItems = [
   { href: "/discussions", label: "讨论", icon: MessageSquare },
   { href: "/shares", label: "分享", icon: Share2 },
   { href: "/tickets", label: "工单", icon: Ticket },
+  { href: "/survey", label: "问卷", icon: ClipboardList },
   { href: "/help", label: "帮助中心", icon: HelpCircle },
 ];
 
