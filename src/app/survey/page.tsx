@@ -1,8 +1,20 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { FileText, BarChart3, Users, Plus, Edit2, Trash2, X } from 'lucide-react';
+import { useState, useEffect, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
+import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Plus, Edit, Trash2, BarChart3, Users, FileText, CheckCircle, XCircle } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface SurveyOption {
   id?: number;
@@ -14,8 +26,20 @@ interface SurveyQuestion {
   question_text: string;
   question_type: 'choice' | 'text';
   is_required: boolean;
-  display_order: number;
-  options?: SurveyOption[];
+  options: SurveyOption[];
+}
+
+interface FormOption {
+  id?: number;
+  option_text: string;
+}
+
+interface FormQuestion {
+  id?: number;
+  question_text: string;
+  question_type: 'choice' | 'text';
+  is_required: boolean;
+  options: FormOption[];
 }
 
 interface Survey {
@@ -24,69 +48,72 @@ interface Survey {
   description: string;
   is_active: boolean;
   is_anonymous: boolean;
+  created_at: string;
   question_count: number;
   answer_count: number;
-  created_at: string;
   questions?: SurveyQuestion[];
+  statistics?: Record<number, { total: number; options: Record<number, { count: number; percentage: number }> }>;
 }
 
-export default function SurveyPage() {
-  const router = useRouter();
+function SurveyContent() {
+  const searchParams = useSearchParams();
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [isClient, setIsClient] = useState(false);
   const [surveys, setSurveys] = useState<Survey[]>([]);
   const [loading, setLoading] = useState(true);
-  const [expandedSurvey, setExpandedSurvey] = useState<number | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [editingSurvey, setEditingSurvey] = useState<Survey | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
-
-  // 表单数据
   const [formData, setFormData] = useState({
     title: '',
     description: '',
     is_active: true,
     is_anonymous: false,
+    questions: [] as SurveyQuestion[]
   });
-  const [questions, setQuestions] = useState<SurveyQuestion[]>([]);
 
   useEffect(() => {
-    fetchSurveys();
-    checkAdmin();
-  }, []);
-
-  const checkAdmin = () => {
-    try {
-      const userCookie = document.cookie.split(';').find(c => c.trim().startsWith('user='));
-      if (userCookie) {
-        const user = JSON.parse(decodeURIComponent(userCookie.split('=')[1]));
-        const roleStr = user.role || '';
-        if (roleStr.includes('admin') || roleStr === 'admin' || roleStr === 'super_admin') {
-          setIsAdmin(true);
+    setIsClient(true);
+    // 通过 API 检查管理员权限
+    const checkAdmin = async () => {
+      try {
+        const res = await fetch('/api/auth/me');
+        if (res.ok) {
+          const data = await res.json();
+          const role = data.user?.role;
+          return role === 'admin' || role === 'super_admin' || (role && role.includes('admin'));
         }
+      } catch (e) {
+        console.error('Auth check error:', e);
       }
-    } catch (e) {}
-  };
-
-  const fetchSurveys = async () => {
-    try {
-      const res = await fetch('/api/surveys?include_stats=true');
-      const data = await res.json();
-      setSurveys(data.surveys || []);
-    } catch (error) {
-      console.error('获取问卷失败:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const toggleExpand = (surveyId: number) => {
-    setExpandedSurvey(expandedSurvey === surveyId ? null : surveyId);
-  };
+      return false;
+    };
+    
+    checkAdmin().then(admin => {
+      setIsAdmin(admin);
+    });
+    
+    // 获取问卷列表
+    fetch('/api/surveys')
+      .then(res => res.json())
+      .then(data => {
+        setSurveys(data.surveys || []);
+        setLoading(false);
+      })
+      .catch(() => {
+        toast.error('获取问卷失败');
+        setLoading(false);
+      });
+  }, [toast]);
 
   const openCreateModal = () => {
     setEditingSurvey(null);
-    setFormData({ title: '', description: '', is_active: true, is_anonymous: false });
-    setQuestions([{ question_text: '', question_type: 'choice', is_required: true, display_order: 0, options: [{ option_text: '' }] }]);
+    setFormData({
+      title: '',
+      description: '',
+      is_active: true,
+      is_anonymous: false,
+      questions: []
+    });
     setShowModal(true);
   };
 
@@ -97,31 +124,96 @@ export default function SurveyPage() {
       description: survey.description || '',
       is_active: survey.is_active,
       is_anonymous: survey.is_anonymous,
-    });
-    // 加载问卷详情
-    fetch(`/api/surveys/${survey.id}`).then(res => res.json()).then(data => {
-      if (data.survey && data.survey.questions) {
-        setQuestions(data.survey.questions.map((q: any, i: number) => ({
-          ...q,
-          display_order: i,
-          options: q.options || (q.question_type === 'choice' ? [{ option_text: '' }] : [])
-        })));
-      }
+      questions: survey.questions || []
     });
     setShowModal(true);
   };
 
+  const addQuestion = () => {
+    setFormData(prev => ({
+      ...prev,
+      questions: [...prev.questions, {
+        question_text: '',
+        question_type: 'choice',
+        is_required: true,
+        options: [{ option_text: '' }, { option_text: '' }]
+      }]
+    }));
+  };
+
+  const removeQuestion = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      questions: prev.questions.filter((_, i) => i !== index)
+    }));
+  };
+
+  const updateQuestion = (index: number, field: string, value: any) => {
+    setFormData(prev => ({
+      ...prev,
+      questions: prev.questions.map((q, i) => 
+        i === index ? { ...q, [field]: value } : q
+      )
+    }));
+  };
+
+  const addOption = (questionIndex: number) => {
+    setFormData(prev => ({
+      ...prev,
+      questions: prev.questions.map((q, i) => 
+        i === questionIndex ? { ...q, options: [...q.options, { option_text: '' }] } : q
+      )
+    }));
+  };
+
+  const removeOption = (questionIndex: number, optionIndex: number) => {
+    setFormData(prev => ({
+      ...prev,
+      questions: prev.questions.map((q, i) => 
+        i === questionIndex ? { ...q, options: q.options.filter((_, oi) => oi !== optionIndex) } : q
+      )
+    }));
+  };
+
+  const updateOption = (questionIndex: number, optionIndex: number, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      questions: prev.questions.map((q, i) => 
+        i === questionIndex ? { ...q, options: q.options.map((o, oi) => oi === optionIndex ? { ...o, option_text: value } : o) } : q
+      )
+    }));
+  };
+
   const handleSubmit = async () => {
     if (!formData.title.trim()) {
-      alert('请输入问卷标题');
+      toast.error('请输入问卷标题');
       return;
     }
-    if (questions.length === 0) {
-      alert('请至少添加一个题目');
+    if (formData.questions.length === 0) {
+      toast.error('请至少添加一道题目');
       return;
     }
 
-    setIsSubmitting(true);
+    // 验证题目
+    for (const q of formData.questions) {
+      if (!q.question_text.trim()) {
+        toast.error('请填写所有题目内容');
+        return;
+      }
+      if (q.question_type === 'choice' && q.options.length < 2) {
+        toast.error('选择题至少需要2个选项');
+        return;
+      }
+      if (q.question_type === 'choice') {
+        for (const o of q.options) {
+          if (!o.option_text.trim()) {
+            toast.error('请填写所有选项内容');
+            return;
+          }
+        }
+      }
+    }
+
     try {
       const url = editingSurvey ? `/api/surveys/${editingSurvey.id}` : '/api/surveys';
       const method = editingSurvey ? 'PUT' : 'POST';
@@ -129,409 +221,489 @@ export default function SurveyPage() {
       const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...formData, questions }),
+        body: JSON.stringify(formData)
       });
 
       if (res.ok) {
+        toast.success(editingSurvey ? '问卷已更新' : '问卷已创建');
         setShowModal(false);
-        fetchSurveys();
+        // 重新获取列表
+        const listRes = await fetch('/api/surveys');
+        const listData = await listRes.json();
+        setSurveys(listData.surveys || []);
       } else {
         const data = await res.json();
-        alert(data.error || '保存失败');
+        toast.error(data.error || '操作失败');
       }
-    } catch (error) {
-      alert('保存失败');
-    } finally {
-      setIsSubmitting(false);
+    } catch {
+      toast.error('操作失败');
     }
   };
 
-  const handleDelete = async (surveyId: number) => {
+  const deleteSurvey = async (id: number) => {
     if (!confirm('确定要删除这个问卷吗？')) return;
     
     try {
-      const res = await fetch(`/api/surveys/${surveyId}`, { method: 'DELETE' });
+      const res = await fetch(`/api/surveys/${id}`, { method: 'DELETE' });
       if (res.ok) {
-        fetchSurveys();
+        toast.success('问卷已删除');
+        setSurveys(prev => prev.filter(s => s.id !== id));
       } else {
-        alert('删除失败');
+        toast.error('删除失败');
       }
-    } catch (error) {
-      alert('删除失败');
+    } catch {
+      toast.error('删除失败');
     }
   };
 
-  const addQuestion = () => {
-    setQuestions([...questions, {
-      question_text: '',
-      question_type: 'choice',
-      is_required: true,
-      display_order: questions.length,
-      options: [{ option_text: '' }]
-    }]);
-  };
-
-  const updateQuestion = (index: number, field: string, value: any) => {
-    const newQuestions = [...questions];
-    (newQuestions[index] as any)[field] = value;
-    if (field === 'question_type' && value === 'text') {
-      newQuestions[index].options = [];
-    } else if (field === 'question_type' && value === 'choice' && (!newQuestions[index].options || newQuestions[index].options.length === 0)) {
-      newQuestions[index].options = [{ option_text: '' }];
-    }
-    setQuestions(newQuestions);
-  };
-
-  const addOption = (qIndex: number) => {
-    const newQuestions = [...questions];
-    newQuestions[qIndex].options = [...(newQuestions[qIndex].options || []), { option_text: '' }];
-    setQuestions(newQuestions);
-  };
-
-  const updateOption = (qIndex: number, oIndex: number, value: string) => {
-    const newQuestions = [...questions];
-    newQuestions[qIndex].options![oIndex].option_text = value;
-    setQuestions(newQuestions);
-  };
-
-  const removeOption = (qIndex: number, oIndex: number) => {
-    const newQuestions = [...questions];
-    newQuestions[qIndex].options = newQuestions[qIndex].options!.filter((_, i) => i !== oIndex);
-    setQuestions(newQuestions);
-  };
-
-  const removeQuestion = (index: number) => {
-    setQuestions(questions.filter((_, i) => i !== index));
-  };
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
+  if (!isClient) return null;
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="mb-8 flex justify-between items-center">
+    <div className="container mx-auto py-8 px-4">
+      <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-3xl font-bold mb-2">问卷调查</h1>
-          <p className="text-gray-600">参与问卷调查，帮助我们做得更好</p>
+          <h1 className="text-3xl font-bold">问卷中心</h1>
+          <p className="text-muted-foreground mt-1">参与问卷调查</p>
         </div>
         {isAdmin && (
-          <button
-            onClick={openCreateModal}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2"
-          >
-            <Plus className="h-5 w-5" />
+          <Button onClick={openCreateModal}>
+            <Plus className="w-4 h-4 mr-2" />
             创建问卷
-          </button>
+          </Button>
         )}
       </div>
 
-      {surveys.length === 0 ? (
-        <div className="text-center py-12 bg-gray-50 rounded-lg">
-          <FileText className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-          <p className="text-gray-500">暂无问卷</p>
-          {isAdmin && (
-            <button
-              onClick={openCreateModal}
-              className="mt-4 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
-            >
-              创建第一个问卷
-            </button>
-          )}
-        </div>
+      {loading ? (
+        <div className="text-center py-12 text-muted-foreground">加载中...</div>
+      ) : surveys.length === 0 ? (
+        <Card className="text-center py-12">
+          <CardContent>
+            <FileText className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+            <p className="text-muted-foreground">暂无问卷</p>
+          </CardContent>
+        </Card>
       ) : (
-        <div className="space-y-6">
-          {surveys.map((survey) => (
-            <div key={survey.id} className="bg-white rounded-lg shadow-md overflow-hidden">
-              <div 
-                className="p-6 cursor-pointer hover:bg-gray-50 transition-colors"
-                onClick={() => toggleExpand(survey.id)}
-              >
-                <div className="flex justify-between items-start">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-2">
-                      <h2 className="text-xl font-semibold">{survey.title}</h2>
-                      {!survey.is_active && (
-                        <span className="bg-red-100 text-red-700 px-2 py-0.5 rounded text-xs">已关闭</span>
-                      )}
-                      {survey.is_anonymous && (
-                        <span className="bg-purple-100 text-purple-700 px-2 py-0.5 rounded text-xs">匿名</span>
-                      )}
-                    </div>
-                    {survey.description && (
-                      <p className="text-gray-600 mb-4">{survey.description}</p>
-                    )}
-                    <div className="flex flex-wrap gap-4 text-sm text-gray-500">
-                      <span className="flex items-center gap-1">
-                        <FileText className="h-4 w-4" />
-                        {survey.question_count} 个题目
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Users className="h-4 w-4" />
-                        {survey.answer_count} 人已回答
-                      </span>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    {isAdmin && (
-                      <>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); openEditModal(survey); }}
-                          className="p-2 text-gray-600 hover:text-blue-600"
-                        >
-                          <Edit2 className="h-5 w-5" />
-                        </button>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); handleDelete(survey.id); }}
-                          className="p-2 text-gray-600 hover:text-red-600"
-                        >
-                          <Trash2 className="h-5 w-5" />
-                        </button>
-                      </>
-                    )}
-                    <button
-                      onClick={(e) => { e.stopPropagation(); router.push(`/survey/${survey.id}`); }}
-                      className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-                    >
-                      {survey.answer_count > 0 ? '查看/继续回答' : '立即参与'}
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {expandedSurvey === survey.id && survey.questions && survey.questions.length > 0 && (
-                <div className="border-t bg-gray-50 p-6">
-                  <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                    <BarChart3 className="h-5 w-5" />
-                    问卷统计
-                  </h3>
-                  <div className="space-y-6">
-                    {survey.questions.map((question: any, qIndex: number) => (
-                      <div key={question.id} className="bg-white rounded-lg p-4">
-                        <p className="font-medium mb-3">
-                          {qIndex + 1}. {question.question_text}
-                          {question.is_required && <span className="text-red-500 ml-1">*</span>}
-                          <span className="ml-2 text-xs bg-gray-200 text-gray-700 px-2 py-0.5 rounded">
-                            {question.question_type === 'choice' ? '客观题' : '主观题'}
-                          </span>
-                        </p>
-                        
-                        {question.question_type === 'choice' && question.option_stats && (
-                          <div className="space-y-2">
-                            {question.option_stats.map((option: any) => {
-                              const percentage = option.percentage || 0;
-                              return (
-                                <div key={option.id} className="flex items-center gap-3">
-                                  <div className="flex-1">
-                                    <div className="flex justify-between text-sm mb-1">
-                                      <span>{option.option_text}</span>
-                                      <span className="text-gray-500">
-                                        {option.count} 票 ({percentage}%)
-                                      </span>
-                                    </div>
-                                    <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                                      <div
-                                        className="h-full bg-blue-500 rounded-full transition-all duration-300"
-                                        style={{ width: `${percentage}%` }}
-                                      />
-                                    </div>
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        )}
-                        
-                        {question.question_type === 'text' && (
-                          <p className="text-gray-500 text-sm">
-                            已有 {question.answer_count || 0} 人回答
-                          </p>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
+        <div className="grid gap-4">
+          {surveys.map(survey => (
+            <SurveyCard 
+              key={survey.id} 
+              survey={survey} 
+              isAdmin={isAdmin}
+              onEdit={() => openEditModal(survey)}
+              onDelete={() => deleteSurvey(survey.id)}
+            />
           ))}
         </div>
       )}
 
-      {/* 创建/编辑问卷弹窗 */}
-      {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center">
-              <h2 className="text-xl font-bold">{editingSurvey ? '编辑问卷' : '创建问卷'}</h2>
-              <button onClick={() => setShowModal(false)} className="text-gray-500 hover:text-gray-700">
-                <X className="h-6 w-6" />
-              </button>
+      {/* 创建/编辑弹窗 */}
+      <Dialog open={showModal} onOpenChange={setShowModal}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{editingSurvey ? '编辑问卷' : '创建问卷'}</DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div>
+              <Label>问卷标题 *</Label>
+              <Input 
+                value={formData.title}
+                onChange={e => setFormData(prev => ({ ...prev, title: e.target.value }))}
+                placeholder="请输入问卷标题"
+                className="mt-1"
+              />
             </div>
             
-            <div className="p-6 space-y-6">
-              {/* 基本信息 */}
-              <div>
-                <label className="block text-sm font-medium mb-1">问卷标题 *</label>
-                <input
-                  type="text"
-                  value={formData.title}
-                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  className="w-full border rounded-lg px-3 py-2"
-                  placeholder="请输入问卷标题"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium mb-1">问卷描述</label>
-                <textarea
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  className="w-full border rounded-lg px-3 py-2"
-                  rows={3}
-                  placeholder="请输入问卷描述（可选）"
-                />
-              </div>
-              
-              <div className="flex gap-6">
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={formData.is_active}
-                    onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
-                  />
-                  <span>开启问卷</span>
-                </label>
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={formData.is_anonymous}
-                    onChange={(e) => setFormData({ ...formData, is_anonymous: e.target.checked })}
-                  />
-                  <span>匿名问卷</span>
-                </label>
-              </div>
+            <div>
+              <Label>问卷描述</Label>
+              <Textarea 
+                value={formData.description}
+                onChange={e => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                placeholder="请输入问卷描述（可选）"
+                className="mt-1"
+              />
+            </div>
 
-              {/* 题目列表 */}
-              <div>
-                <div className="flex justify-between items-center mb-3">
-                  <label className="font-medium">题目列表</label>
-                  <button
-                    onClick={addQuestion}
-                    className="text-blue-600 hover:text-blue-700 text-sm"
-                  >
-                    + 添加题目
-                  </button>
-                </div>
-                
-                <div className="space-y-4">
-                  {questions.map((q, qIndex) => (
-                    <div key={qIndex} className="border rounded-lg p-4 bg-gray-50">
-                      <div className="flex justify-between items-start mb-3">
-                        <span className="font-medium">题目 {qIndex + 1}</span>
-                        <button
-                          onClick={() => removeQuestion(qIndex)}
-                          className="text-red-500 hover:text-red-700"
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-2">
+                <Switch 
+                  checked={formData.is_active}
+                  onCheckedChange={checked => setFormData(prev => ({ ...prev, is_active: checked }))}
+                />
+                <Label>开启问卷</Label>
+              </div>
+              
+              <div className="flex items-center space-x-2">
+                <Switch 
+                  checked={formData.is_anonymous}
+                  onCheckedChange={checked => setFormData(prev => ({ ...prev, is_anonymous: checked }))}
+                />
+                <Label>匿名模式</Label>
+              </div>
+            </div>
+
+            <div>
+              <div className="flex justify-between items-center mb-2">
+                <Label>题目</Label>
+                <Button variant="outline" size="sm" onClick={addQuestion}>
+                  <Plus className="w-4 h-4 mr-1" />
+                  添加题目
+                </Button>
+              </div>
+              
+              {formData.questions.length === 0 && (
+                <p className="text-sm text-muted-foreground text-center py-4">暂无题目，点击上方按钮添加</p>
+              )}
+              
+              {formData.questions.map((question, qIndex) => (
+                <Card key={qIndex} className="mb-3">
+                  <CardContent className="pt-4">
+                    <div className="flex justify-between items-start mb-2">
+                      <span className="text-sm font-medium">题目 {qIndex + 1}</span>
+                      <div className="flex items-center space-x-2">
+                        <Select 
+                          value={question.question_type}
+                          onValueChange={v => updateQuestion(qIndex, 'question_type', v)}
                         >
-                          删除
-                        </button>
+                          <SelectTrigger className="w-24">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="choice">客观题</SelectItem>
+                            <SelectItem value="text">主观题</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => removeQuestion(qIndex)}
+                        >
+                          <Trash2 className="w-4 h-4 text-red-500" />
+                        </Button>
                       </div>
-                      
-                      <textarea
-                        value={q.question_text}
-                        onChange={(e) => updateQuestion(qIndex, 'question_text', e.target.value)}
-                        className="w-full border rounded-lg px-3 py-2 mb-3"
-                        rows={2}
-                        placeholder="请输入题目内容"
+                    </div>
+                    
+                    <Input 
+                      value={question.question_text}
+                      onChange={e => updateQuestion(qIndex, 'question_text', e.target.value)}
+                      placeholder="请输入题目内容"
+                      className="mb-2"
+                    />
+                    
+                    <div className="flex items-center space-x-2 mb-3">
+                      <Switch 
+                        checked={question.is_required}
+                        onCheckedChange={checked => updateQuestion(qIndex, 'is_required', checked)}
                       />
-                      
-                      <div className="flex gap-4 mb-3">
-                        <label className="flex items-center gap-2">
-                          <input
-                            type="radio"
-                            checked={q.question_type === 'choice'}
-                            onChange={() => updateQuestion(qIndex, 'question_type', 'choice')}
-                          />
-                          <span>客观题（选择题）</span>
-                        </label>
-                        <label className="flex items-center gap-2">
-                          <input
-                            type="radio"
-                            checked={q.question_type === 'text'}
-                            onChange={() => updateQuestion(qIndex, 'question_type', 'text')}
-                          />
-                          <span>主观题（文本）</span>
-                        </label>
+                      <Label className="text-sm">必填</Label>
+                    </div>
+                    
+                    {question.question_type === 'choice' && (
+                      <div className="space-y-2 pl-4">
+                        {question.options.map((option, oIndex) => (
+                          <div key={oIndex} className="flex items-center space-x-2">
+                            <span className="text-sm text-muted-foreground">{String.fromCharCode(65 + oIndex)}.</span>
+                            <Input 
+                              value={option.option_text}
+                              onChange={e => updateOption(qIndex, oIndex, e.target.value)}
+                              placeholder="选项内容"
+                              className="flex-1"
+                            />
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              onClick={() => removeOption(qIndex, oIndex)}
+                              disabled={question.options.length <= 2}
+                            >
+                              <XCircle className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        ))}
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => addOption(qIndex)}
+                          className="text-sm"
+                        >
+                          <Plus className="w-3 h-3 mr-1" />
+                          添加选项
+                        </Button>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowModal(false)}>取消</Button>
+            <Button onClick={handleSubmit}>
+              {editingSurvey ? '保存修改' : '创建问卷'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+function SurveyCard({ survey, isAdmin, onEdit, onDelete }: { 
+  survey: Survey; 
+  isAdmin: boolean;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  const [activeTab, setActiveTab] = useState<'detail' | 'stats'>('detail');
+  const [showStats, setShowStats] = useState(false);
+  const [statistics, setStatistics] = useState<Record<number, { total: number; options: Record<number, { count: number; percentage: number }> }> | null>(null);
+  const [answers, setAnswers] = useState<any[]>([]);
+  const [userAnswers, setUserAnswers] = useState<Record<number, { type: string; optionId?: number; text?: string }>>({});
+  const [submitted, setSubmitted] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [loadingStats, setLoadingStats] = useState(false);
+
+  useEffect(() => {
+    // 通过 API 检查登录状态
+    fetch('/api/auth/me').then(res => {
+      if (res.ok) {
+        setIsLoggedIn(true);
+      }
+    }).catch(() => {});
+  }, []);
+
+  const loadStats = async () => {
+    setLoadingStats(true);
+    try {
+      const res = await fetch(`/api/surveys/${survey.id}?include_stats=true`);
+      const data = await res.json();
+      if (data.survey) {
+        setStatistics(data.survey.statistics);
+        setAnswers(data.survey.answers || []);
+      }
+    } catch {
+      toast.error('加载统计失败');
+    }
+    setLoadingStats(false);
+  };
+
+  const handleTabChange = async (tab: string) => {
+    setActiveTab(tab as 'detail' | 'stats');
+    if (tab === 'stats' && !statistics) {
+      await loadStats();
+    }
+  };
+
+  const handleAnswer = (questionId: number, type: string, value: any) => {
+    setUserAnswers(prev => ({ ...prev, [questionId]: { type, ...value } }));
+  };
+
+  const submitAnswers = async () => {
+    // 验证必填
+    for (const q of survey.questions || []) {
+      if (q.is_required && q.id) {
+        const answer = userAnswers[q.id];
+        if (!answer || (q.question_type === 'choice' && !answer.optionId) || (q.question_type === 'text' && !answer.text?.trim())) {
+          toast.error('请完成所有必填题目');
+          return;
+        }
+      }
+    }
+
+    try {
+      const res = await fetch(`/api/surveys/${survey.id}/submit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ answers: userAnswers })
+      });
+
+      if (res.ok) {
+        setSubmitted(true);
+        toast.success('提交成功');
+      } else {
+        const data = await res.json();
+        toast.error(data.error || '提交失败');
+      }
+    } catch {
+      toast.error('提交失败');
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <div className="flex justify-between items-start">
+          <div>
+            <CardTitle className="text-xl">{survey.title}</CardTitle>
+            {survey.description && (
+              <p className="text-sm text-muted-foreground mt-1">{survey.description}</p>
+            )}
+          </div>
+          <div className="flex items-center space-x-2">
+            <Badge variant={survey.is_active ? 'default' : 'secondary'}>
+              {survey.is_active ? '进行中' : '已结束'}
+            </Badge>
+            {survey.is_anonymous && (
+              <Badge variant="outline">匿名</Badge>
+            )}
+            {isAdmin && (
+              <div className="flex items-center space-x-1">
+                <Button variant="ghost" size="sm" onClick={onEdit}>
+                  <Edit className="w-4 h-4" />
+                </Button>
+                <Button variant="ghost" size="sm" onClick={onDelete}>
+                  <Trash2 className="w-4 h-4 text-red-500" />
+                </Button>
+              </div>
+            )}
+          </div>
+        </div>
+        <div className="flex items-center space-x-4 text-sm text-muted-foreground mt-2">
+          <span className="flex items-center">
+            <FileText className="w-4 h-4 mr-1" />
+            {survey.question_count} 道题
+          </span>
+          <span className="flex items-center">
+            <Users className="w-4 h-4 mr-1" />
+            {survey.answer_count} 人已答
+          </span>
+        </div>
+      </CardHeader>
+      
+      <CardContent>
+        <Tabs value={activeTab} onValueChange={handleTabChange}>
+          <TabsList>
+            <TabsTrigger value="detail">问卷详情</TabsTrigger>
+            <TabsTrigger value="stats">
+              <BarChart3 className="w-4 h-4 mr-1" />
+              统计
+            </TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="detail" className="mt-4">
+            {!isLoggedIn ? (
+              <p className="text-center text-muted-foreground py-4">请先登录后再作答</p>
+            ) : submitted ? (
+              <div className="text-center py-4">
+                <CheckCircle className="w-12 h-12 mx-auto text-green-500 mb-2" />
+                <p className="text-lg font-medium">您已提交过此问卷</p>
+              </div>
+            ) : !survey.is_active ? (
+              <p className="text-center text-muted-foreground py-4">问卷已结束</p>
+            ) : (
+              <div className="space-y-6">
+                {survey.questions?.map((q, qIndex) => (
+                  <div key={q.id} className="space-y-2">
+                    <div className="font-medium">
+                      {qIndex + 1}. {q.question_text}
+                      {q.is_required && <span className="text-red-500">*</span>}
+                    </div>
+                    
+                    {q.question_type === 'choice' ? (
+                      <div className="space-y-2 pl-4">
+                        {q.options?.map((opt: any, oIndex: number) => (
+                          <label key={oIndex} className="flex items-center space-x-2 cursor-pointer">
+                            <input
+                              type="radio"
+                              name={`q-${qIndex}`}
+                              checked={userAnswers[qIndex]?.optionId === oIndex}
+                              onChange={() => handleAnswer(qIndex, 'choice', { optionId: oIndex, option_text: opt.option_text })}
+                              className="w-4 h-4"
+                            />
+                            <span>{String.fromCharCode(65 + oIndex)}. {opt.option_text}</span>
+                          </label>
+                        ))}
+                      </div>
+                    ) : (
+                      <Textarea
+                        value={userAnswers[qIndex]?.text || ''}
+                        onChange={e => handleAnswer(qIndex, 'text', { text: e.target.value })}
+                        placeholder="请输入您的回答"
+                        className="mt-2"
+                      />
+                    )}
+                  </div>
+                ))}
+                
+                {survey.questions && survey.questions.length > 0 && (
+                  <Button onClick={submitAnswers} className="w-full">
+                    提交问卷
+                  </Button>
+                )}
+              </div>
+            )}
+          </TabsContent>
+          
+          <TabsContent value="stats" className="mt-4">
+            {loadingStats ? (
+              <p className="text-center text-muted-foreground py-4">加载中...</p>
+            ) : statistics ? (
+              <div className="space-y-6">
+                <p className="text-sm text-muted-foreground">
+                  共 {answers.length} 人作答
+                </p>
+                
+                {survey.questions?.map((q, qIndex) => {
+                  const stats = statistics[q.id || 0];
+                  return (
+                    <div key={q.id} className="space-y-3">
+                      <div className="font-medium">
+                        {qIndex + 1}. {q.question_text}
+                        {q.is_required && <Badge variant="outline" className="ml-2 text-xs">必填</Badge>}
                       </div>
                       
-                      <label className="flex items-center gap-2 mb-3">
-                        <input
-                          type="checkbox"
-                          checked={q.is_required}
-                          onChange={(e) => updateQuestion(qIndex, 'is_required', e.target.checked)}
-                        />
-                        <span>必填</span>
-                      </label>
-                      
-                      {q.question_type === 'choice' && (
+                      {q.question_type === 'choice' && stats && (
                         <div className="space-y-2 pl-4">
-                          <label className="text-sm text-gray-600">选项（客观题）</label>
-                          {q.options?.map((opt, oIndex) => (
-                            <div key={oIndex} className="flex gap-2">
-                              <input
-                                type="text"
-                                value={opt.option_text}
-                                onChange={(e) => updateOption(qIndex, oIndex, e.target.value)}
-                                className="flex-1 border rounded px-2 py-1"
-                                placeholder={`选项 ${oIndex + 1}`}
-                              />
-                              <button
-                                onClick={() => removeOption(qIndex, oIndex)}
-                                className="text-red-500 hover:text-red-700"
-                              >
-                                删除
-                              </button>
-                            </div>
-                          ))}
-                          <button
-                            onClick={() => addOption(qIndex)}
-                            className="text-blue-600 hover:text-blue-700 text-sm"
-                          >
-                            + 添加选项
-                          </button>
+                          {q.options?.map((opt: any, oIndex: number) => {
+                            const optStats = stats.options?.[opt.id];
+                            const percentage = optStats?.percentage || 0;
+                            return (
+                              <div key={opt.id} className="space-y-1">
+                                <div className="flex justify-between text-sm">
+                                  <span>{String.fromCharCode(65 + oIndex)}. {opt.option_text}</span>
+                                  <span className="text-muted-foreground">{percentage.toFixed(1)}% ({optStats?.count || 0})</span>
+                                </div>
+                                <div className="w-full bg-muted rounded-full h-2">
+                                  <div 
+                                    className="bg-primary h-2 rounded-full transition-all"
+                                    style={{ width: `${percentage}%` }}
+                                  />
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                      
+                      {q.question_type === 'text' && (
+                        <div className="pl-4 space-y-2">
+                          {answers
+                            .filter(a => a.question_id === q.id && a.answer_text)
+                            .map((a, ai) => (
+                              <div key={a.id} className="text-sm p-2 bg-muted rounded">
+                                {survey.is_anonymous ? `回答 ${ai + 1}` : a.users?.username || '匿名'}: {a.answer_text}
+                              </div>
+                            ))}
                         </div>
                       )}
                     </div>
-                  ))}
-                  
-                  {questions.length === 0 && (
-                    <p className="text-gray-500 text-center py-4">暂无题目，请点击上方添加</p>
-                  )}
-                </div>
+                  );
+                })}
               </div>
-            </div>
-            
-            <div className="sticky bottom-0 bg-gray-50 border-t px-6 py-4 flex justify-end gap-3">
-              <button
-                onClick={() => setShowModal(false)}
-                className="px-4 py-2 border rounded-lg hover:bg-gray-100"
-              >
-                取消
-              </button>
-              <button
-                onClick={handleSubmit}
-                disabled={isSubmitting}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
-              >
-                {isSubmitting ? '保存中...' : '保存问卷'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
+            ) : (
+              <p className="text-center text-muted-foreground py-4">暂无统计数据</p>
+            )}
+          </TabsContent>
+        </Tabs>
+      </CardContent>
+    </Card>
+  );
+}
+
+export default function SurveyPage() {
+  return (
+    <Suspense fallback={<div className="flex justify-center items-center min-h-screen"><p>加载中...</p></div>}>
+      <SurveyContent />
+    </Suspense>
   );
 }
