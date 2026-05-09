@@ -5,14 +5,30 @@ export async function GET(request: NextRequest) {
   try {
     const client = await getAdminSupabaseClient();
     const searchParams = request.nextUrl.searchParams;
-    const includeStats = searchParams.get('include_stats') === 'true';
+    const isAdmin = searchParams.get('is_admin') === 'true';
     
-    // 获取所有问卷
-    const { data: surveys, error } = await client
+    // 检查 cookie 获取管理员身份
+    const userCookie = request.cookies.get('user');
+    let userIsAdmin = false;
+    if (userCookie) {
+      try {
+        const user = JSON.parse(decodeURIComponent(userCookie.value));
+        userIsAdmin = user.role === 'admin' || user.role === 'super_admin' || 
+                      (typeof user.role === 'string' && user.role.includes('admin'));
+      } catch {}
+    }
+    
+    // 获取问卷列表（管理员看所有，普通用户只看活跃的）
+    const query = client
       .from('surveys')
       .select('*')
-      .eq('is_active', true)
       .order('created_at', { ascending: false });
+    
+    if (!(isAdmin || userIsAdmin)) {
+      query.eq('is_active', true);
+    }
+    
+    const { data: surveys, error } = await query;
     
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
@@ -22,11 +38,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ surveys: [] });
     }
     
-    if (!includeStats) {
-      return NextResponse.json({ surveys });
-    }
-    
-    // 获取每个问卷的回答统计
+    // 为每个问卷获取题目数量和回答人数
     const surveysWithStats = await Promise.all(
       surveys.map(async (survey) => {
         // 获取题目数量
@@ -35,57 +47,42 @@ export async function GET(request: NextRequest) {
           .select('*', { count: 'exact', head: true })
           .eq('survey_id', survey.id);
         
-        // 获取回答人数
-        const { count: answerCount } = await client
-          .from('survey_answers')
-          .select('user_id', { count: 'exact', head: true })
-          .eq('question_id', 
-            client.from('survey_questions').select('id').eq('survey_id', survey.id)
-          );
+        // 获取回答人数（通过 survey_questions 关联）
+        const { data: questionIds } = await client
+          .from('survey_questions')
+          .select('id')
+          .eq('survey_id', survey.id);
         
-        // 获取各题目的回答统计
+        let answerCount = 0;
+        if (questionIds && questionIds.length > 0) {
+          const qIds = questionIds.map((q: any) => q.id);
+          // 获取不重复的 user_id 数量
+          const { data: answers } = await client
+            .from('survey_answers')
+            .select('user_id')
+            .in('question_id', qIds);
+          
+          if (answers) {
+            const uniqueUsers = new Set(answers.map((a: any) => a.user_id));
+            answerCount = uniqueUsers.size;
+          }
+        }
+        
+        // 获取题目和选项
         const { data: questions } = await client
           .from('survey_questions')
           .select(`
-            id, question_text, question_type,
-            survey_options (id, option_text)
+            id, question_text, question_type, is_required, display_order,
+            survey_options (id, option_text, display_order)
           `)
           .eq('survey_id', survey.id)
           .order('display_order');
         
-        let questionStats = [];
-        if (questions) {
-          questionStats = await Promise.all(
-            questions.map(async (q: any) => {
-              if (q.question_type === 'text') {
-                // 主观题：获取回答数量
-                const { count } = await client
-                  .from('survey_answers')
-                  .select('*', { count: 'exact', head: true })
-                  .eq('question_id', q.id);
-                return { ...q, answer_count: count };
-              } else {
-                // 客观题：获取每个选项的选择数量
-                const optionStats = await Promise.all(
-                  (q.survey_options || []).map(async (opt: any) => {
-                    const { count } = await client
-                      .from('survey_answers')
-                      .select('*', { count: 'exact', head: true })
-                      .eq('selected_option_id', opt.id);
-                    return { ...opt, count: count || 0 };
-                  })
-                );
-                return { ...q, option_stats: optionStats };
-              }
-            })
-          );
-        }
-        
         return {
           ...survey,
           question_count: questionCount || 0,
-          answer_count: answerCount || 0,
-          questions: questionStats
+          answer_count: answerCount,
+          questions: questions || []
         };
       })
     );
