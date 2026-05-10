@@ -223,13 +223,13 @@ importers:
         specifier: ^0.16.8
         version: 0.16.8
       '@types/node':
-        specifier: ^20
+        specifier: ^20.19.30
         version: 20.19.30
       '@types/pg':
         specifier: ^8.16.0
         version: 8.16.0
       '@types/react':
-        specifier: ^19
+        specifier: ^19.2.10
         version: 19.2.10
       '@types/react-dom':
         specifier: ^19
