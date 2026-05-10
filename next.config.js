@@ -11,10 +11,6 @@ const nextConfig = {
   },
   // Vercel部署优化
   output: 'standalone',
-  // 禁用 Turbopack，使用 Webpack 构建
-  experimental: {
-    turbo: undefined,
-  },
 };
 
 module.exports = nextConfig;
