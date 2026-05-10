@@ -3,8 +3,8 @@
 ## 完整环境变量（复制保存）
 
 ```
-COZE_SUPABASE_URL=https://br-right-bate-93441c3e.supabase2.aidap-global.cn-beijing.volces.com
-COZE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJyLXJpZ2h0LWJhdGUtOTM0NDFjM2UiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTc0MDc5NjQ1NSwiZXhwIjoyMDU2MzcyNDU1fQ.eZxE5gLFFnvBDdgPyU3cFVkGHx0UdMQMWbxPNxx5cRk
+coze_supabase_url=https://br-right-bate-93441c3e.supabase2.aidap-global.cn-beijing.volces.com
+coze_supabase_anon_key=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJyLXJpZ2h0LWJhdGUtOTM0NDFjM2UiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTc0MDc5NjQ1NSwiZXhwIjoyMDU2MzcyNDU1fQ.eZxE5gLFFnvBDdgPyU3cFVkGHx0UdMQMWbxPNxx5cRk
 ```
 
 ## 快速部署方式

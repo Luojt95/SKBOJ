@@ -21,24 +21,24 @@ export async function GET() {
   };
 
   // 检查环境变量
-  const supabaseUrl = process.env.COZE_SUPABASE_URL;
-  const supabaseKey = process.env.COZE_SUPABASE_ANON_KEY;
+  const supabaseUrl = process.env.coze_supabase_url;
+  const supabaseKey = process.env.coze_supabase_anon_key;
 
   if (supabaseUrl) {
     diagnosis.supabase.url.set = true;
     diagnosis.supabase.url.value = supabaseUrl;
     diagnosis.supabase.url.prefix = supabaseUrl.substring(0, 40) + '...';
-    diagnosis.steps.push('✅ COZE_SUPABASE_URL 已设置');
+    diagnosis.steps.push('✅ coze_supabase_url 已设置');
   } else {
-    diagnosis.errors.push('❌ COZE_SUPABASE_URL 未设置');
+    diagnosis.errors.push('❌ coze_supabase_url 未设置');
   }
 
   if (supabaseKey) {
     diagnosis.supabase.anonKey.set = true;
     diagnosis.supabase.anonKey.prefix = supabaseKey.substring(0, 20) + '...';
-    diagnosis.steps.push('✅ COZE_SUPABASE_ANON_KEY 已设置');
+    diagnosis.steps.push('✅ coze_supabase_anon_key 已设置');
   } else {
-    diagnosis.errors.push('❌ COZE_SUPABASE_ANON_KEY 未设置');
+    diagnosis.errors.push('❌ coze_supabase_anon_key 未设置');
   }
 
   // 如果环境变量都设置了，测试连接
@@ -82,7 +82,7 @@ export async function GET() {
 
   if (foundOthers.length > 0) {
     diagnosis.steps.push(`⚠️ 发现其他 Supabase 环境变量: ${foundOthers.join(', ')}`);
-    diagnosis.steps.push('   请使用 COZE_SUPABASE_URL 和 COZE_SUPABASE_ANON_KEY');
+    diagnosis.steps.push('   请使用 coze_supabase_url 和 coze_supabase_anon_key');
   }
 
   return NextResponse.json(diagnosis);

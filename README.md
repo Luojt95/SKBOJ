@@ -23,8 +23,8 @@ git push -u origin main
 在 Vercel 项目设置中添加以下环境变量：
 
 ```
-COZE_SUPABASE_URL=https://br-right-bate-93441c3e.supabase2.aidap-global.cn-beijing.volces.com
-COZE_SUPABASE_ANON_KEY=<完整key见下方>
+coze_supabase_url=https://br-right-bate-93441c3e.supabase2.aidap-global.cn-beijing.volces.com
+coze_supabase_anon_key=<完整key见下方>
 ```
 
 ### 4. 部署

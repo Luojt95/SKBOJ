@@ -10,14 +10,14 @@ interface SupabaseCredentials {
 }
 
 function loadEnv(): void {
-  if (envLoaded || (process.env.COZE_SUPABASE_URL && process.env.COZE_SUPABASE_ANON_KEY)) {
+  if (envLoaded || (process.env.coze_supabase_url && process.env.coze_supabase_anon_key)) {
     return;
   }
 
   try {
     try {
       require('dotenv').config();
-      if (process.env.COZE_SUPABASE_URL && process.env.COZE_SUPABASE_ANON_KEY) {
+      if (process.env.coze_supabase_url && process.env.coze_supabase_anon_key) {
         envLoaded = true;
         return;
       }
@@ -64,7 +64,7 @@ except Exception as e:
 
     envLoaded = true;
     console.log('[Supabase] Environment variables loaded');
-    console.log('[Supabase] URL:', process.env.COZE_SUPABASE_URL?.substring(0, 30) + '...');
+    console.log('[Supabase] url:', process.env.coze_supabase_url?.substring(0, 30) + '...');
   } catch (error) {
     console.error('[Supabase] Failed to load env:', error);
   }
@@ -73,16 +73,16 @@ except Exception as e:
 function getSupabaseCredentials(): SupabaseCredentials {
   loadEnv();
 
-  const url = process.env.COZE_SUPABASE_URL;
-  const anonKey = process.env.COZE_SUPABASE_ANON_KEY;
+  const url = process.env.coze_supabase_url;
+  const anonKey = process.env.coze_supabase_anon_key;
 
   if (!url) {
-    console.error('[Supabase] COZE_SUPABASE_URL is not set');
-    throw new Error('COZE_SUPABASE_URL is not set');
+    console.error('[Supabase] coze_supabase_url is not set');
+    throw new Error('coze_supabase_url is not set');
   }
   if (!anonKey) {
-    console.error('[Supabase] COZE_SUPABASE_ANON_KEY is not set');
-    throw new Error('COZE_SUPABASE_ANON_KEY is not set');
+    console.error('[Supabase] coze_supabase_anon_key is not set');
+    throw new Error('coze_supabase_anon_key is not set');
   }
 
   return { url, anonKey };

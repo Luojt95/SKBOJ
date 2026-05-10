@@ -21,8 +21,8 @@ export async function GET() {
       connected: false,
     },
     env: {
-      hasUrl: !!process.env.COZE_SUPABASE_URL,
-      hasKey: !!process.env.COZE_SUPABASE_ANON_KEY,
+      hasUrl: !!process.env.coze_supabase_url,
+      hasKey: !!process.env.coze_supabase_anon_key,
     },
   };
 
