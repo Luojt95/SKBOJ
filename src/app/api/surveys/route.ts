@@ -158,9 +158,9 @@ export async function POST(request: NextRequest) {
         const createdQ = (createdQuestions || [])[i];
         
         if (q.question_type === 'choice' && q.options && q.options.length > 0) {
-          const optionsToInsert = q.options.map((opt: string, optIndex: number) => ({
+          const optionsToInsert = q.options.map((opt: string | { option_text: string }, optIndex: number) => ({
             question_id: createdQ.id,
-            option_text: opt,
+            option_text: typeof opt === "string" ? opt : opt.option_text,
             display_order: optIndex
           }));
           

@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
         const followerIds = follows.map(f => f.follower_id);
         const { data: users } = await client
           .from("users")
-          .select("id, username, role, rating, name_color, points")
+          .select("id, username, role, rating, name_color, points, avatar")
           .in("id", followerIds);
 
         const usersMap = new Map((users || []).map(u => [u.id, u]));
@@ -72,7 +72,7 @@ export async function GET(request: NextRequest) {
         const followingIds = follows.map(f => f.following_id);
         const { data: users } = await client
           .from("users")
-          .select("id, username, role, rating, name_color, points")
+          .select("id, username, role, rating, name_color, points, avatar")
           .in("id", followingIds);
 
         const usersMap = new Map((users || []).map(u => [u.id, u]));
