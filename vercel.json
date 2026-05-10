@@ -4,9 +4,5 @@
   "devCommand": "pnpm run dev",
   "installCommand": "pnpm install",
   "framework": "nextjs",
-  "regions": ["hkg1"],
-  "env": {
-    "coze_supabase_url": "@coze_supabase_url",
-    "coze_supabase_anon_key": "@coze_supabase_anon_key"
-  }
+  "regions": ["hkg1"]
 }
