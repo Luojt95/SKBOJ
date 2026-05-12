@@ -11,8 +11,14 @@ const nextConfig = {
   },
   output: 'standalone',
   typescript: {
-    // 强烈建议仅在迁移或调试时临时开启，完成后请恢复类型检查
     ignoreBuildErrors: true,
+  },
+  webpack: (config) => {
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      '@': './src',
+    };
+    return config;
   },
 };
 
