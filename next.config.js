@@ -13,12 +13,11 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-  webpack: (config) => {
-    config.resolve.alias = {
-      ...config.resolve.alias,
+  // Turbopack 配置（Next.js 16 默认）
+  turbopack: {
+    resolveAlias: {
       '@': './src',
-    };
-    return config;
+    },
   },
 };
 
