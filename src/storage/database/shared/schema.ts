@@ -312,9 +312,9 @@ export const healthCheck = pgTable("health_check", {
 // ==================== Zod Schemas ====================
 const { createInsertSchema } = createSchemaFactory({ coerce: { date: true } });
 
-export const insertUserSchema = createInsertSchema(users).pick({
-  username: true,
-  password: true,
+export const insertUserSchema = z.object({
+  username: z.string().min(1),
+  password: z.string().min(1),
 });
 
 export const loginUserSchema = z.object({
@@ -329,58 +329,70 @@ export const registerUserSchema = z.object({
   superAdminCode: z.string().optional(),
 });
 
-export const insertProblemSchema = createInsertSchema(problems).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
+export const insertProblemSchema = z.object({
+  title: z.string().min(1),
+  description: z.string().optional(),
+  inputFormat: z.string().optional(),
+  outputFormat: z.string().optional(),
+  samples: z.any().optional(),
+  hint: z.string().optional(),
+  category: z.string().default("P"),
+  categoryIndex: z.number().optional(),
+  difficulty: z.string().default("easy"),
+  timeLimit: z.number().default(1000),
+  memoryLimit: z.number().default(256),
+  isVisible: z.boolean().default(true),
+  authorId: z.number(),
+  tags: z.any().optional(),
+  testCases: z.any().optional(),
 });
 
-export const insertSubmissionSchema = createInsertSchema(submissions).omit({
-  id: true,
-  createdAt: true,
+export const insertSubmissionSchema = createInsertSchema(submissions, {
+  id: z.undefined(),
+  createdAt: z.undefined(),
 });
 
-export const insertSolutionSchema = createInsertSchema(solutions).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
+export const insertSolutionSchema = createInsertSchema(solutions, {
+  id: z.undefined(),
+  createdAt: z.undefined(),
+  updatedAt: z.undefined(),
 });
 
-export const insertContestSchema = createInsertSchema(contests).omit({
-  id: true,
-  createdAt: true,
+export const insertContestSchema = createInsertSchema(contests, {
+  id: z.undefined(),
+  createdAt: z.undefined(),
 });
 
-export const insertDiscussionSchema = createInsertSchema(discussions).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
+export const insertDiscussionSchema = createInsertSchema(discussions, {
+  id: z.undefined(),
+  createdAt: z.undefined(),
+  updatedAt: z.undefined(),
 });
 
-export const insertCodeShareSchema = createInsertSchema(codeShares).omit({
-  id: true,
-  createdAt: true,
+export const insertCodeShareSchema = createInsertSchema(codeShares, {
+  id: z.undefined(),
+  createdAt: z.undefined(),
 });
 
-export const insertTicketSchema = createInsertSchema(tickets).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
+export const insertTicketSchema = createInsertSchema(tickets, {
+  id: z.undefined(),
+  createdAt: z.undefined(),
+  updatedAt: z.undefined(),
 });
 
-export const insertBenbenSchema = createInsertSchema(benbens).omit({
-  id: true,
-  createdAt: true,
+export const insertBenbenSchema = createInsertSchema(benbens, {
+  id: z.undefined(),
+  createdAt: z.undefined(),
 });
 
-export const insertNotificationSchema = createInsertSchema(notifications).omit({
-  id: true,
-  createdAt: true,
+export const insertNotificationSchema = createInsertSchema(notifications, {
+  id: z.undefined(),
+  createdAt: z.undefined(),
 });
 
-export const insertPrivateMessageSchema = createInsertSchema(privateMessages).omit({
-  id: true,
-  createdAt: true,
+export const insertPrivateMessageSchema = createInsertSchema(privateMessages, {
+  id: z.undefined(),
+  createdAt: z.undefined(),
 });
 
 // ==================== TypeScript Types ====================

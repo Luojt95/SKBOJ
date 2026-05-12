@@ -10,15 +10,6 @@ const nextConfig = {
     ],
   },
   output: 'standalone',
-  typescript: {
-    ignoreBuildErrors: true,
-  },
-  // Turbopack 配置（Next.js 16 默认）
-  turbopack: {
-    resolveAlias: {
-      '@': './src',
-    },
-  },
 };
 
 module.exports = nextConfig;
