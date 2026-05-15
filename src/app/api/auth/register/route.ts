@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseClient } from "@/storage/database/supabase-client";
 import bcrypt from "bcryptjs";
-import { verifyCaptchaAnswer } from "@/app/api/captcha/route";
+import { verifyCaptchaAnswer } from "@/lib/captcha";
 import { cookies } from "next/headers";
 
 export async function POST(request: NextRequest) {

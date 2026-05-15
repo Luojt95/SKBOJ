@@ -5,7 +5,7 @@ import next from 'next';
 const port = parseInt(process.env.PORT || '5000', 10);
 const dev = process.env.NODE_ENV !== 'production';
 
-const app = next({ dev, port });
+const app = next({ dev, port, turbopack: false });
 const handle = app.getRequestHandler();
 
 app.prepare().then(() => {

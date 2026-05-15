@@ -1,18 +1,6 @@
 import { NextResponse } from "next/server";
 import { randomBytes } from "crypto";
-
-// 简单的内存缓存（生产环境可替换为Redis）
-const captchaStore = new Map<string, { answer: string; expires: number }>();
-
-// 定期清理过期验证码
-setInterval(() => {
-  const now = Date.now();
-  for (const [key, value] of captchaStore.entries()) {
-    if (value.expires < now) {
-      captchaStore.delete(key);
-    }
-  }
-}, 60000); // 每分钟清理一次
+import { getCaptchaStore } from "@/lib/captcha";
 
 // 生成随机三位数（100-999）
 function randomThreeDigits(): number {
@@ -23,7 +11,6 @@ function randomThreeDigits(): number {
 function generateCaptchaSvg(num1: number, num2: number): string {
   const expression = `${num1} × ${num2} = ?`;
   
-  // 生成干扰线和噪点
   let noiseLines = "";
   for (let i = 0; i < 5; i++) {
     const x1 = Math.random() * 200;
@@ -34,7 +21,6 @@ function generateCaptchaSvg(num1: number, num2: number): string {
     noiseLines += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${color}" stroke-width="1" opacity="0.5"/>`;
   }
   
-  // 生成噪点
   let noiseDots = "";
   for (let i = 0; i < 50; i++) {
     const x = Math.random() * 200;
@@ -64,24 +50,19 @@ function generateCaptchaSvg(num1: number, num2: number): string {
 
 export async function GET() {
   try {
-    // 生成两个三位数
     const num1 = randomThreeDigits();
     const num2 = randomThreeDigits();
     const answer = (num1 * num2).toString();
     
-    // 生成唯一token
     const token = randomBytes(16).toString("hex");
     
-    // 存储验证码答案（5分钟有效期）
+    const captchaStore = getCaptchaStore();
     captchaStore.set(token, {
       answer,
       expires: Date.now() + 5 * 60 * 1000,
     });
     
-    // 生成SVG图片
     const svg = generateCaptchaSvg(num1, num2);
-    
-    // Base64编码SVG
     const svgBase64 = Buffer.from(svg).toString("base64");
     
     return NextResponse.json({
@@ -93,29 +74,3 @@ export async function GET() {
     return NextResponse.json({ error: "生成验证码失败" }, { status: 500 });
   }
 }
-
-// 验证验证码
-export function verifyCaptcha(token: string, answer: string): boolean {
-  const stored = captchaStore.get(token);
-  
-  if (!stored) {
-    return false;
-  }
-  
-  // 检查是否过期
-  if (stored.expires < Date.now()) {
-    captchaStore.delete(token);
-    return false;
-  }
-  
-  // 验证答案
-  const isValid = stored.answer === answer.trim();
-  
-  // 验证后删除（一次性使用）
-  captchaStore.delete(token);
-  
-  return isValid;
-}
-
-// 导出验证函数供其他API使用
-export { verifyCaptcha as verifyCaptchaAnswer };
