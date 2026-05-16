@@ -41,7 +41,7 @@ function generateCaptchaSvg(num1: number, num2: number): string {
       ${noiseLines}
       ${noiseDots}
       <text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" 
-            font-family="Arial, sans-serif" font-size="24" font-weight="bold" fill="#333">
+            font-family="'Noto Sans CJK SC', 'Noto Sans SC', 'Noto Sans', Arial, sans-serif" font-size="24" font-weight="bold" fill="#333">
         ${expression}
       </text>
     </svg>
