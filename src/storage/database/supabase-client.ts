@@ -147,7 +147,7 @@ async function testConnection(): Promise<boolean> {
 // 获取使用 service role key 的客户端（绕过 RLS）
 export function getAdminSupabaseClient(): SupabaseClient {
   const { url } = getSupabaseCredentials();
-  const serviceKey = process.env.COZE_SUPABASE_SERVICE_ROLE_KEY;
+  const serviceKey = process.env.coze_supabase_service_role_key;
   
   if (!serviceKey) {
     console.error('[Supabase] Service role key not found');

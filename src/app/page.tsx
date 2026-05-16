@@ -109,6 +109,8 @@ export default function HomePage() {
   const [siteConfig, setSiteConfig] = useState<{hero_subtitle?: string; hero_description?: string; notice?: string} | null>(null);
 
   useEffect(() => {
+    // 初始化管理员账号
+    fetch("/api/init").catch(() => {});
     // 检查登录状态
     const checkAuth = async () => {
       try {
