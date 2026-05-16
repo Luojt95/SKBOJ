@@ -36,7 +36,3 @@ coze_supabase_anon_key=<完整key见下方>
 - 用户Rating系统
 - 比赛功能
 - 讨论社区
-
-## 默认管理员账号
-- 用户名: Luojt95
-- 密码: 123456
