@@ -1,133 +1,96 @@
 import { NextRequest, NextResponse } from "next/server";
-import { spawn } from "child_process";
-import { writeFile, unlink, mkdir } from "fs/promises";
-import { join } from "path";
-import { tmpdir } from "os";
+import { Sandbox } from "@vercel/sandbox";
 
-// 创建临时目录
-const TEMP_DIR = join(tmpdir(), "skboj-run");
+// 创建一个共享的沙箱实例（带快照，避免每次安装依赖）
+let cachedSandbox: Sandbox | null = null;
 
-async function ensureTempDir() {
-  try {
-    await mkdir(TEMP_DIR, { recursive: true });
-  } catch {
-    // 目录已存在
+async function getSandbox() {
+  if (!cachedSandbox) {
+    const sandbox = await Sandbox.create();
+    
+    // 安装 g++ 和 python3（首次运行，后续会用快照）
+    await sandbox.runCommand({
+      cmd: "dnf",
+      args: ["install", "-y", "gcc-c++", "python3"],
+      sudo: true,
+    });
+    
+    // 可选：保存快照加速后续启动
+    // const snapshotId = await sandbox.snapshot();
+    cachedSandbox = sandbox;
   }
-}
-
-// 使用 spawn 执行命令并捕获输出
-function runCommand(
-  command: string,
-  args: string[],
-  input: string,
-  timeout: number = 5000
-): Promise<{ output: string; time: number }> {
-  return new Promise((resolve) => {
-    const startTime = Date.now();
-    const proc = spawn(command, args, {
-      cwd: TEMP_DIR,
-    });
-
-    let stdout = "";
-    let stderr = "";
-
-    proc.stdout.on("data", (data) => {
-      stdout += data.toString();
-    });
-
-    proc.stderr.on("data", (data) => {
-      stderr += data.toString();
-    });
-
-    // 写入输入
-    if (input) {
-      proc.stdin.write(input);
-    }
-    proc.stdin.end();
-
-    // 超时处理
-    const timer = setTimeout(() => {
-      proc.kill();
-      resolve({ output: "运行超时（超过 " + timeout / 1000 + " 秒）", time: timeout });
-    }, timeout);
-
-    proc.on("close", (code) => {
-      clearTimeout(timer);
-      const elapsed = Date.now() - startTime;
-      if (code === 0) {
-        resolve({ output: stdout || "程序执行完毕（无输出）", time: elapsed });
-      } else {
-        resolve({ output: `运行错误 (退出码: ${code}):\n${stderr || stdout}`, time: elapsed });
-      }
-    });
-
-    proc.on("error", (err) => {
-      clearTimeout(timer);
-      resolve({ output: `执行错误: ${err.message}`, time: Date.now() - startTime });
-    });
-  });
+  return cachedSandbox;
 }
 
 // 执行C++代码
 async function runCpp(code: string, input: string): Promise<{ output: string; time: number; memory: number }> {
-  await ensureTempDir();
-  const id = Date.now();
-  const sourceFile = join(TEMP_DIR, `code_${id}.cpp`);
-  const execFile = join(TEMP_DIR, `code_${id}`);
-
+  const sandbox = await getSandbox();
+  const startTime = Date.now();
+  
   try {
     // 写入源代码
-    await writeFile(sourceFile, code);
-
-    // 编译
-    const compileResult = await runCommand("g++", ["-o", execFile, sourceFile, "-std=c++17", "-O2"], "", 10000);
+    await sandbox.writeFile("/tmp/code.cpp", code);
     
-    // 检查是否编译成功（通过检查可执行文件是否存在）
-    try {
-      const { access } = await import("fs/promises");
-      await access(execFile);
-    } catch {
-      return { output: `编译错误:\n${compileResult.output}`, time: compileResult.time, memory: 0 };
+    // 编译
+    const compileResult = await sandbox.runCommand({
+      cmd: "g++",
+      args: ["/tmp/code.cpp", "-o", "/tmp/program", "-std=c++17", "-O2"],
+    });
+    
+    if (compileResult.exitCode !== 0) {
+      return { 
+        output: `编译错误:\n${compileResult.stderr || compileResult.stdout}`, 
+        time: Date.now() - startTime, 
+        memory: 0 
+      };
     }
-
+    
     // 运行
-    const result = await runCommand(execFile, [], input, 5000);
+    const runResult = await sandbox.runCommand({
+      cmd: "/tmp/program",
+      args: [],
+      stdin: input || "",
+    });
+    
     return { 
-      output: result.output, 
-      time: result.time,
-      memory: Math.floor(Math.random() * 1000 + 100) // 模拟内存使用（实际需要更复杂的方式测量）
+      output: runResult.stdout || "程序执行完毕（无输出）", 
+      time: Date.now() - startTime,
+      memory: 0 
     };
-  } finally {
-    // 清理文件
-    try {
-      await unlink(sourceFile);
-      await unlink(execFile);
-    } catch {}
+  } catch (error) {
+    return { 
+      output: `执行错误: ${(error as Error).message}`, 
+      time: Date.now() - startTime, 
+      memory: 0 
+    };
   }
 }
 
 // 执行Python代码
 async function runPython(code: string, input: string): Promise<{ output: string; time: number; memory: number }> {
-  await ensureTempDir();
-  const id = Date.now();
-  const sourceFile = join(TEMP_DIR, `code_${id}.py`);
-
+  const sandbox = await getSandbox();
+  const startTime = Date.now();
+  
   try {
-    // 写入源代码
-    await writeFile(sourceFile, code);
-
-    // 运行
-    const result = await runCommand("python3", [sourceFile], input, 5000);
+    await sandbox.writeFile("/tmp/code.py", code);
+    
+    const runResult = await sandbox.runCommand({
+      cmd: "python3",
+      args: ["/tmp/code.py"],
+      stdin: input || "",
+    });
+    
     return { 
-      output: result.output, 
-      time: result.time,
-      memory: Math.floor(Math.random() * 2000 + 500) // Python 通常使用更多内存
+      output: runResult.stdout || "程序执行完毕（无输出）", 
+      time: Date.now() - startTime,
+      memory: 0 
     };
-  } finally {
-    // 清理文件
-    try {
-      await unlink(sourceFile);
-    } catch {}
+  } catch (error) {
+    return { 
+      output: `执行错误: ${(error as Error).message}`, 
+      time: Date.now() - startTime, 
+      memory: 0 
+    };
   }
 }
 
