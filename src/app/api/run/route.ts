@@ -6,7 +6,6 @@ let cachedSandbox: Sandbox | null = null;
 async function getSandbox() {
   if (!cachedSandbox) {
     const sandbox = await Sandbox.create();
-    // 安装 g++ 和 python3
     await sandbox.runCommand({
       cmd: "dnf",
       args: ["install", "-y", "gcc-c++", "python3"],
@@ -17,77 +16,6 @@ async function getSandbox() {
   return cachedSandbox;
 }
 
-async function writeFile(sandbox: Sandbox, path: string, content: string) {
-  // 使用 heredoc 方式写入，支持多行和特殊字符
-  await sandbox.runCommand({
-    cmd: "bash",
-    args: ["-c", `cat > ${path} << 'EOFCODE'\n${content}\nEOFCODE`],
-  });
-}
-
-async function runCpp(code: string, input: string) {
-  const sandbox = await getSandbox();
-  const startTime = Date.now();
-  
-  try {
-    await writeFile(sandbox, "/tmp/code.cpp", code);
-    
-    // 编译
-    const compile = await sandbox.runCommand({
-      cmd: "g++",
-      args: ["/tmp/code.cpp", "-o", "/tmp/program", "-std=c++17", "-O2"],
-    });
-    
-    if (compile.exitCode !== 0) {
-      return {
-        output: compile.stderr || compile.stdout || "编译错误",
-        time: Date.now() - startTime,
-      };
-    }
-    
-    // 运行
-    const run = await sandbox.runCommand({
-      cmd: "/tmp/program",
-      stdin: input || "",
-    });
-    
-    return {
-      output: run.stdout || run.stderr || "(无输出)",
-      time: Date.now() - startTime,
-    };
-  } catch (err) {
-    return {
-      output: "执行错误: " + (err as Error).message,
-      time: Date.now() - startTime,
-    };
-  }
-}
-
-async function runPython(code: string, input: string) {
-  const sandbox = await getSandbox();
-  const startTime = Date.now();
-  
-  try {
-    await writeFile(sandbox, "/tmp/code.py", code);
-    
-    const run = await sandbox.runCommand({
-      cmd: "python3",
-      args: ["/tmp/code.py"],
-      stdin: input || "",
-    });
-    
-    return {
-      output: run.stdout || run.stderr || "(无输出)",
-      time: Date.now() - startTime,
-    };
-  } catch (err) {
-    return {
-      output: "执行错误: " + (err as Error).message,
-      time: Date.now() - startTime,
-    };
-  }
-}
-
 export async function POST(request: NextRequest) {
   try {
     const { code, language, input } = await request.json();
@@ -96,27 +24,63 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "请输入代码" }, { status: 400 });
     }
 
-    let result;
+    const sandbox = await getSandbox();
+    let output = "";
+    let time = 0;
 
-    switch (language) {
-      case "cpp":
-        result = await runCpp(code, input || "");
-        break;
-      case "python":
-        result = await runPython(code, input || "");
-        break;
-      case "html":
-        result = { output: "HTML 代码已在预览区域渲染", time: 0 };
-        break;
-      default:
-        result = { output: "不支持的语言", time: 0 };
+    if (language === "cpp") {
+      await sandbox.runCommand({
+        cmd: "bash",
+        args: ["-c", `cat > /tmp/code.cpp << 'EOF'\n${code}\nEOF`],
+      });
+
+      const compile = await sandbox.runCommand({
+        cmd: "g++",
+        args: ["/tmp/code.cpp", "-o", "/tmp/program", "-std=c++17", "-O2"],
+      });
+
+      if (compile.exitCode !== 0) {
+        output = compile.stderr || compile.stdout || "编译错误";
+      } else {
+        const start = Date.now();
+        const run = await sandbox.runCommand({
+          cmd: "/tmp/program",
+          stdin: input || "",
+        });
+        time = Date.now() - start;
+        
+        // 直接取结果，不管它是什么
+        output = run.stdout || run.stderr;
+        // 如果结果为空，说明用户程序确实没输出，那就显示空
+        if (!output) output = "";
+      }
+
+    } else if (language === "python") {
+      await sandbox.runCommand({
+        cmd: "bash",
+        args: ["-c", `cat > /tmp/code.py << 'EOF'\n${code}\nEOF`],
+      });
+
+      const start = Date.now();
+      const run = await sandbox.runCommand({
+        cmd: "python3",
+        args: ["/tmp/code.py"],
+        stdin: input || "",
+      });
+      time = Date.now() - start;
+      output = run.stdout || run.stderr;
+      if (!output) output = "";
+
+    } else if (language === "html") {
+      output = "HTML代码已在预览区域渲染";
+    } else {
+      output = "不支持的语言";
     }
 
-    return NextResponse.json(result);
-  } catch (err) {
-    console.error("Run code error:", err);
+    return NextResponse.json({ output, time });
+  } catch (error) {
     return NextResponse.json(
-      { error: "运行失败: " + (err as Error).message },
+      { error: "运行失败: " + (error as Error).message },
       { status: 500 }
     );
   }
