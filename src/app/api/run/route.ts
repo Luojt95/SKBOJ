@@ -1,25 +1,33 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Sandbox } from "@vercel/sandbox";
 
-// 创建一个共享的沙箱实例（带快照，避免每次安装依赖）
+// 创建一个共享的沙箱实例
 let cachedSandbox: Sandbox | null = null;
 
 async function getSandbox() {
   if (!cachedSandbox) {
     const sandbox = await Sandbox.create();
     
-    // 安装 g++ 和 python3（首次运行，后续会用快照）
+    // 安装 g++ 和 python3
     await sandbox.runCommand({
       cmd: "dnf",
       args: ["install", "-y", "gcc-c++", "python3"],
       sudo: true,
     });
     
-    // 可选：保存快照加速后续启动
-    // const snapshotId = await sandbox.snapshot();
     cachedSandbox = sandbox;
   }
   return cachedSandbox;
+}
+
+// 通过命令写入文件
+async function writeFile(sandbox: Sandbox, path: string, content: string) {
+  // 转义单引号和特殊字符
+  const escaped = content.replace(/'/g, "'\\''");
+  await sandbox.runCommand({
+    cmd: "bash",
+    args: ["-c", `echo '${escaped}' > ${path}`],
+  });
 }
 
 // 执行C++代码
@@ -29,7 +37,7 @@ async function runCpp(code: string, input: string): Promise<{ output: string; ti
   
   try {
     // 写入源代码
-    await sandbox.writeFile("/tmp/code.cpp", code);
+    await writeFile(sandbox, "/tmp/code.cpp", code);
     
     // 编译
     const compileResult = await sandbox.runCommand({
@@ -72,7 +80,7 @@ async function runPython(code: string, input: string): Promise<{ output: string;
   const startTime = Date.now();
   
   try {
-    await sandbox.writeFile("/tmp/code.py", code);
+    await writeFile(sandbox, "/tmp/code.py", code);
     
     const runResult = await sandbox.runCommand({
       cmd: "python3",
