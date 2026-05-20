@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { getSupabaseClient } from "@/storage/database/supabase-client";
-import { spawn } from "child_process";
 import * as fs from "fs";
 import * as path from "path";
 
@@ -406,8 +405,6 @@ async function judgeCode(
   let maxTime = 0;
   let maxMemory = 0;
   let allPassed = true;
-  let compileError = false;
-  let compileMessage = "";
   
   const statusCounts = {
     ac: 0,
@@ -419,40 +416,19 @@ async function judgeCode(
   
   const testResults: Array<{ status: string; score: number }> = [];
 
-  // 先尝试编译（执行一个空代码或检测是否有编译错误）
-  // 实际上 Judge0 会在每个测试点单独编译，但为了检测编译错误，先跑一个简单的
-  const testCompile = await executeWithJudge0(code, language, "", 1000);
-  if (testCompile.compile_output || (testCompile.stderr && testCompile.status !== 3)) {
-    compileError = true;
-    compileMessage = testCompile.compile_output || testCompile.stderr || "编译错误";
-  }
-
-  if (compileError) {
-    const ceFeedback = `Status:CE\nscore:0\n${compileMessage}`;
-    return {
-      status: "ce",
-      score: 0,
-      timeUsed: 0,
-      memoryUsed: 0,
-      errorMessage: ceFeedback,
-      testResults: [],
-      statusCounts,
-    };
-  }
-
   for (let i = 0; i < limitedTestCases.length; i++) {
     const testCase = limitedTestCases[i];
-    console.log(`Running test case ${i + 1}/${limitedTestCases.length}`);
     
     try {
       const result = await executeWithJudge0(code, language, testCase.input, timeLimit);
       
-      // 判断结果状态
       let testStatus = "";
-      const actual = result.stdout.trim();
-      const expected = testCase.output.trim();
+      const actual = (result.stdout || "").trim();
+      const expected = (testCase.output || "").trim();
       
-      if (result.status === 3) { // 正常完成
+      // 根据 Judge0 官方文档正确映射状态
+      if (result.status === 3) {
+        // Accepted - 程序正常执行完成
         if (actual === expected) {
           testStatus = "ac";
           statusCounts.ac++;
@@ -462,19 +438,34 @@ async function judgeCode(
           statusCounts.wa++;
           allPassed = false;
         }
-      } else if (result.status === 4) { // 运行时错误
-        testStatus = "re";
-        statusCounts.re++;
+      } else if (result.status === 4) {
+        // Wrong Answer
+        testStatus = "wa";
+        statusCounts.wa++;
         allPassed = false;
-      } else if (result.status === 5) { // 时间超限
+      } else if (result.status === 5) {
+        // Time Limit Exceeded
         testStatus = "tle";
         statusCounts.tle++;
         allPassed = false;
-      } else if (result.status === 6) { // 内存超限
-        testStatus = "mle";
-        statusCounts.mle++;
+      } else if (result.status === 6) {
+        // Compilation Error
+        return {
+          status: "ce",
+          score: 0,
+          timeUsed: 0,
+          memoryUsed: 0,
+          errorMessage: `编译错误:\n${result.compile_output || result.stderr || "编译失败"}`,
+          testResults: [],
+          statusCounts,
+        };
+      } else if (result.status >= 7 && result.status <= 12) {
+        // Runtime Error (SIGSEGV, SIGXFSZ, SIGFPE, SIGABRT, NZEC, Other)
+        testStatus = "re";
+        statusCounts.re++;
         allPassed = false;
       } else {
+        // 其他未知状态
         testStatus = "re";
         statusCounts.re++;
         allPassed = false;
