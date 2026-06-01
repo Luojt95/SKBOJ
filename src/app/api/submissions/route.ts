@@ -59,7 +59,6 @@ async function judgeCode(
   errorMessage?: string;
   statusCounts: { ac: number; wa: number; re: number; tle: number; mle: number };
 }> {
-  // 没有测试数据 -> 返回 CE
   if (!testCases || testCases.length === 0) {
     return {
       status: "ce",
@@ -79,7 +78,6 @@ async function judgeCode(
 
   const statusCounts = { ac: 0, wa: 0, re: 0, tle: 0, mle: 0 };
 
-  // 检查编译错误 (CE) - Judge0 状态码 6
   const compileCheck = await executeWithJudge0(code, language, "", 1000);
   if (compileCheck.status === 6 || compileCheck.compile_output) {
     return {
@@ -101,7 +99,6 @@ async function judgeCode(
       const expected = (tc.output || "").trim();
       const perScore = tc.score || Math.floor(100 / limitedTestCases.length);
 
-      // Judge0 状态码: 3=AC, 4=WA, 5=TLE, 6=CE, 7-12=RE
       if (result.status === 3) {
         if (actual === expected) {
           statusCounts.ac++;
@@ -158,7 +155,10 @@ export async function POST(request: NextRequest) {
 
     const user = JSON.parse(userCookie.value);
     const body = await request.json();
-    const { problem_id, code, language, contestId } = body;
+    
+    // 兼容 problemId 和 problem_id 两种字段名
+    const problem_id = body.problem_id || body.problemId;
+    const { code, language, contestId } = body;
 
     if (!problem_id || !code) {
       return NextResponse.json({ error: "参数错误" }, { status: 400 });
