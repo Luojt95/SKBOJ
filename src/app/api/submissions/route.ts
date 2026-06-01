@@ -1,26 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
 import { cookies } from "next/headers";
+import { createClient } from "@supabase/supabase-js";
 import { randomUUID } from "crypto";
 
 const JUDGE0_URL = "https://ce.judge0.com";
 
-// 调用 Judge0 执行代码
+const getSupabaseClient = () => {
+  const url = process.env.coze_supabase_url;
+  const key = process.env.coze_supabase_anon_key;
+  if (!url || !key) throw new Error("Supabase 环境变量未配置");
+  return createClient(url, key);
+};
+
 async function executeWithJudge0(
   code: string,
   language: string,
   stdin: string,
   timeLimit: number
-): Promise<{ stdout: string; stderr: string; compile_output: string; time: number; memory: number }> {
-  const languageMap: Record<string, number> = {
-    cpp: 54,
-    python: 71,
-  };
-
+): Promise<{ stdout: string; stderr: string; compile_output: string; time: number; memory: number; status: number }> {
+  const languageMap: Record<string, number> = { cpp: 54, python: 71 };
   const languageId = languageMap[language];
-  if (!languageId) {
-    throw new Error(`不支持的语言: ${language}`);
-  }
+  if (!languageId) throw new Error(`不支持的语言: ${language}`);
 
   const response = await fetch(`${JUDGE0_URL}/submissions?wait=true`, {
     method: "POST",
@@ -33,117 +33,142 @@ async function executeWithJudge0(
     }),
   });
 
-  if (!response.ok) {
-    throw new Error(`Judge0 API 错误: ${response.status}`);
-  }
-
+  if (!response.ok) throw new Error(`Judge0 API 错误: ${response.status}`);
   const result = await response.json();
-  
+
   return {
     stdout: result.stdout || "",
     stderr: result.stderr || "",
     compile_output: result.compile_output || "",
     time: result.time ? parseFloat(result.time) * 1000 : 0,
     memory: result.memory || 0,
+    status: result.status_id || 0,
   };
 }
 
-// 判题函数
-async function judgeWithJudge0(
+async function judgeCode(
   code: string,
   language: string,
-  testCases: Array<{ input: string; expected_output: string }>,
+  testCases: Array<{ input: string; output: string; score?: number }>,
   timeLimit: number
-): Promise<{ status: string; score: number; timeUsed: number; memoryUsed: number; error?: string; details?: any[] }> {
-  const results = [];
+): Promise<{
+  status: string;
+  score: number;
+  timeUsed: number;
+  memoryUsed: number;
+  errorMessage?: string;
+  statusCounts: { ac: number; wa: number; re: number; tle: number; mle: number };
+}> {
+  // 没有测试数据 -> 返回 CE
+  if (!testCases || testCases.length === 0) {
+    return {
+      status: "ce",
+      score: 0,
+      timeUsed: 0,
+      memoryUsed: 0,
+      errorMessage: "题目没有测试数据，请联系管理员",
+      statusCounts: { ac: 0, wa: 0, re: 0, tle: 0, mle: 0 },
+    };
+  }
+
+  const limitedTestCases = testCases.slice(0, 30);
   let totalScore = 0;
   let maxTime = 0;
   let maxMemory = 0;
+  let allPassed = true;
 
-  for (let i = 0; i < testCases.length; i++) {
-    const tc = testCases[i];
+  const statusCounts = { ac: 0, wa: 0, re: 0, tle: 0, mle: 0 };
+
+  // 检查编译错误 (CE) - Judge0 状态码 6
+  const compileCheck = await executeWithJudge0(code, language, "", 1000);
+  if (compileCheck.status === 6 || compileCheck.compile_output) {
+    return {
+      status: "ce",
+      score: 0,
+      timeUsed: 0,
+      memoryUsed: 0,
+      errorMessage: `编译错误:\n${compileCheck.compile_output || compileCheck.stderr}`,
+      statusCounts,
+    };
+  }
+
+  for (let i = 0; i < limitedTestCases.length; i++) {
+    const tc = limitedTestCases[i];
     try {
       const result = await executeWithJudge0(code, language, tc.input, timeLimit);
-      
-      // 比较输出（去除末尾空格和换行）
-      const actual = result.stdout.trim();
-      const expected = tc.expected_output.trim();
-      const passed = actual === expected;
-      
-      if (passed) {
-        totalScore += Math.floor(100 / testCases.length);
+
+      const actual = (result.stdout || "").trim();
+      const expected = (tc.output || "").trim();
+      const perScore = tc.score || Math.floor(100 / limitedTestCases.length);
+
+      // Judge0 状态码: 3=AC, 4=WA, 5=TLE, 6=CE, 7-12=RE
+      if (result.status === 3) {
+        if (actual === expected) {
+          statusCounts.ac++;
+          totalScore += perScore;
+        } else {
+          statusCounts.wa++;
+          allPassed = false;
+        }
+      } else if (result.status === 4) {
+        statusCounts.wa++;
+        allPassed = false;
+      } else if (result.status === 5) {
+        statusCounts.tle++;
+        allPassed = false;
+      } else if (result.status >= 7 && result.status <= 12) {
+        statusCounts.re++;
+        allPassed = false;
+      } else {
+        statusCounts.wa++;
+        allPassed = false;
       }
-      
-      results.push({
-        testCase: i + 1,
-        passed,
-        input: tc.input,
-        expected,
-        actual,
-        time: result.time,
-        memory: result.memory,
-        stderr: result.stderr,
-        compile_output: result.compile_output,
-      });
-      
+
       maxTime = Math.max(maxTime, result.time);
       maxMemory = Math.max(maxMemory, result.memory);
-      
-      // 如果有编译错误，停止判题
-      if (result.compile_output) {
-        return {
-          status: "ce",
-          score: 0,
-          timeUsed: 0,
-          memoryUsed: 0,
-          error: `编译错误:\n${result.compile_output}`,
-          details: results,
-        };
-      }
     } catch (err) {
-      return {
-        status: "error",
-        score: 0,
-        timeUsed: 0,
-        memoryUsed: 0,
-        error: (err as Error).message,
-        details: results,
-      };
+      statusCounts.re++;
+      allPassed = false;
     }
   }
 
-  const allPassed = results.every(r => r.passed);
-  const status = allPassed ? "ac" : "wa";
+  const finalStatus = allPassed ? "ac" : "pac";
+  const displayStatus = finalStatus === "ac" ? "AC" : "UAC";
+  const memoryDisplay = maxMemory >= 1024 
+    ? `${(maxMemory / 1024).toFixed(2)}MB` 
+    : `${maxMemory}KB`;
+  
+  const feedback = `Status:${displayStatus}\nscore:${totalScore}\nruntime:${maxTime}ms\nrunmemory:${memoryDisplay}\nAC:${statusCounts.ac}\nWA:${statusCounts.wa}\nRE:${statusCounts.re}\nTLE:${statusCounts.tle}\nMLE:${statusCounts.mle}`;
 
   return {
-    status,
+    status: finalStatus,
     score: totalScore,
     timeUsed: maxTime,
     memoryUsed: maxMemory,
-    details: results,
+    errorMessage: feedback,
+    statusCounts,
   };
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createRouteHandlerClient({ cookies });
-    const { data: { session } } = await supabase.auth.getSession();
-    
-    if (!session) {
-      return NextResponse.json({ error: "请先登录" }, { status: 401 });
-    }
+    const cookieStore = await cookies();
+    const userCookie = cookieStore.get("user");
+    if (!userCookie) return NextResponse.json({ error: "请先登录" }, { status: 401 });
 
+    const user = JSON.parse(userCookie.value);
     const body = await request.json();
-    const { problem_id, code, language } = body;
+    const { problem_id, code, language, contestId } = body;
 
-    if (!problem_id || !code || !language) {
-      return NextResponse.json({ error: "缺少必要参数" }, { status: 400 });
+    if (!problem_id || !code) {
+      return NextResponse.json({ error: "参数错误" }, { status: 400 });
     }
 
-    // 获取题目信息（测试用例从题目表或单独的测试用例表获取）
+    const supabase = getSupabaseClient();
+
     const { data: problem, error: problemError } = await supabase
       .from("problems")
-      .select("title, time_limit, memory_limit, test_cases")
+      .select("test_cases, samples, time_limit, memory_limit")
       .eq("id", problem_id)
       .single();
 
@@ -151,76 +176,78 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "题目不存在" }, { status: 404 });
     }
 
-    // 获取测试用例（假设存储在 test_cases 字段或单独的表中）
-    let testCases = problem.test_cases;
-    if (!testCases || testCases.length === 0) {
-      // 如果没有测试用例，返回通过（仅测试）
-      const submissionId = randomUUID();
-      await supabase.from("submissions").insert({
-        id: submissionId,
-        problem_id,
-        user_id: session.user.id,
-        code,
-        language,
-        status: "ac",
-        score: 100,
-        time_used: 0,
-        memory_used: 0,
-        created_at: new Date().toISOString(),
-      });
-      
-      return NextResponse.json({
-        id: submissionId,
-        status: "ac",
-        score: 100,
-        time: 0,
-        memory: 0,
-      });
+    let testCases = problem.test_cases || [];
+    if (testCases.length === 0 && problem.samples && problem.samples.length > 0) {
+      testCases = problem.samples.map((s: any) => ({ input: s.input || "", output: s.output || "" }));
     }
 
-    // 执行判题
-    const judgeResult = await judgeWithJudge0(
-      code,
-      language,
-      testCases,
-      problem.time_limit || 1000
-    );
+    const result = await judgeCode(code, language, testCases, problem.time_limit || 1000);
 
-    // 保存提交记录
-    const submissionId = randomUUID();
-    const { error: insertError } = await supabase.from("submissions").insert({
-      id: submissionId,
-      problem_id,
-      user_id: session.user.id,
-      code,
-      language,
-      status: judgeResult.status,
-      score: judgeResult.score,
-      time_used: judgeResult.timeUsed,
-      memory_used: judgeResult.memoryUsed,
-      error_message: judgeResult.error,
-      details: judgeResult.details,
-      created_at: new Date().toISOString(),
-    });
+    const { data: submission, error: insertError } = await supabase
+      .from("submissions")
+      .insert({
+        problem_id,
+        user_id: user.id,
+        language,
+        code,
+        status: result.status,
+        score: result.score,
+        time_used: result.timeUsed,
+        memory_used: result.memoryUsed,
+        error_message: result.errorMessage,
+        contest_id: contestId || null,
+      })
+      .select()
+      .single();
 
     if (insertError) {
-      console.error("保存提交记录失败:", insertError);
+      console.error("Create submission error:", insertError);
+      return NextResponse.json({ error: "提交失败" }, { status: 500 });
     }
 
-    return NextResponse.json({
-      id: submissionId,
-      status: judgeResult.status,
-      score: judgeResult.score,
-      time: judgeResult.timeUsed,
-      memory: judgeResult.memoryUsed,
-      error: judgeResult.error,
-      details: judgeResult.details,
-    });
+    return NextResponse.json({ submission });
   } catch (error) {
-    console.error("Submission error:", error);
-    return NextResponse.json(
-      { error: "提交失败: " + (error as Error).message },
-      { status: 500 }
-    );
+    console.error("Submit error:", error);
+    return NextResponse.json({ error: "提交失败: " + (error as Error).message }, { status: 500 });
+  }
+}
+
+export async function GET(request: NextRequest) {
+  try {
+    const cookieStore = await cookies();
+    const userCookie = cookieStore.get("user");
+    if (!userCookie) return NextResponse.json({ submissions: [] });
+
+    const user = JSON.parse(userCookie.value);
+    const { searchParams } = new URL(request.url);
+    const problemId = searchParams.get("problemId");
+
+    const supabase = getSupabaseClient();
+    let query = supabase
+      .from("submissions")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(50);
+
+    if (problemId) query = query.eq("problem_id", parseInt(problemId));
+
+    const { data: submissions } = await query;
+
+    const problemIds = [...new Set(submissions?.map(s => s.problem_id) || [])];
+    const { data: problems } = await supabase
+      .from("problems")
+      .select("id, title")
+      .in("id", problemIds);
+
+    const problemMap = new Map(problems?.map(p => [p.id, p.title]) || []);
+    const submissionsWithProblem = submissions?.map(s => ({
+      ...s,
+      problems: { title: problemMap.get(s.problem_id) || `题目${s.problem_id}` }
+    })) || [];
+
+    return NextResponse.json({ submissions: submissionsWithProblem });
+  } catch (error) {
+    return NextResponse.json({ submissions: [] });
   }
 }
