@@ -165,10 +165,11 @@ export async function POST(request: NextRequest) {
     const user = JSON.parse(userCookie.value);
     const body = await request.json();
     
-    const problem_id = body.problem_id || body.problemId;
+    // 直接使用 problemId，因为前端传的就是这个
+    const problemId = body.problemId;
     const { code, language, contestId } = body;
 
-    if (!problem_id || !code) {
+    if (!problemId || !code) {
       return NextResponse.json({ error: "参数错误" }, { status: 400 });
     }
 
@@ -177,10 +178,11 @@ export async function POST(request: NextRequest) {
     const { data: problem, error: problemError } = await supabase
       .from("problems")
       .select("test_cases, samples, time_limit, memory_limit")
-      .eq("id", problem_id)
+      .eq("id", problemId)
       .single();
 
     if (problemError || !problem) {
+      console.error("Problem not found:", problemError);
       return NextResponse.json({ error: "题目不存在" }, { status: 404 });
     }
 
@@ -194,7 +196,7 @@ export async function POST(request: NextRequest) {
     const { data: submission, error: insertError } = await supabase
       .from("submissions")
       .insert({
-        problem_id,
+        problem_id: problemId,
         user_id: user.id,
         language,
         code,
