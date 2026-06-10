@@ -95,9 +95,18 @@ async function judgeCode(
     try {
       const result = await executeWithJudge0(code, language, tc.input, timeLimit);
 
-      const actual = (result.stdout || "").trim();
-      const expected = (tc.output || "").trim();
+      const actualRaw = result.stdout || "";
+      const expectedRaw = tc.output || "";
+      const actual = actualRaw.trim();
+      const expected = expectedRaw.trim();
       const perScore = tc.score || Math.floor(100 / limitedTestCases.length);
+
+      // 调试日志
+      console.log(`\n[DEBUG] Test case ${i + 1}:`);
+      console.log(`[DEBUG] actualRaw length: ${actualRaw.length}, hex: ${Buffer.from(actualRaw).toString('hex')}`);
+      console.log(`[DEBUG] expectedRaw length: ${expectedRaw.length}, hex: ${Buffer.from(expectedRaw).toString('hex')}`);
+      console.log(`[DEBUG] actual trimmed: "${actual}"`);
+      console.log(`[DEBUG] expected trimmed: "${expected}"`);
 
       if (result.status === 3) {
         if (actual === expected) {
@@ -156,7 +165,6 @@ export async function POST(request: NextRequest) {
     const user = JSON.parse(userCookie.value);
     const body = await request.json();
     
-    // 兼容 problemId 和 problem_id 两种字段名
     const problem_id = body.problem_id || body.problemId;
     const { code, language, contestId } = body;
 
