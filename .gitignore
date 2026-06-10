@@ -9,3 +9,6 @@ Thumbs.db
 .vercel
 .env*.local
 .cozeproj/reduction
+
+# Preview files
+.preview
