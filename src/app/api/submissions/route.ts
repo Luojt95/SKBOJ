@@ -16,8 +16,9 @@ async function executeWithJudge0(
   code: string,
   language: string,
   stdin: string,
+  expectedOutput: string,
   timeLimit: number
-): Promise<{ stdout: string; stderr: string; compile_output: string; time: number; memory: number; status: number }> {
+): Promise<{ stdout: string; stderr: string; compile_output: string; time: number; memory: number; status: number; message?: string }> {
   const languageMap: Record<string, number> = { cpp: 54, python: 71 };
   const languageId = languageMap[language];
   if (!languageId) throw new Error(`不支持的语言: ${language}`);
@@ -29,6 +30,7 @@ async function executeWithJudge0(
       source_code: code,
       language_id: languageId,
       stdin: stdin,
+      expected_output: expectedOutput,  // 让 Judge0 自己比较
       cpu_time_limit: timeLimit / 1000,
     }),
   });
@@ -43,6 +45,7 @@ async function executeWithJudge0(
     time: result.time ? parseFloat(result.time) * 1000 : 0,
     memory: result.memory || 0,
     status: result.status_id || 0,
+    message: result.message || "",
   };
 }
 
@@ -78,7 +81,8 @@ async function judgeCode(
 
   const statusCounts = { ac: 0, wa: 0, re: 0, tle: 0, mle: 0 };
 
-  const compileCheck = await executeWithJudge0(code, language, "", 1000);
+  // 先检查编译错误（用空输入）
+  const compileCheck = await executeWithJudge0(code, language, "", "", 1000);
   if (compileCheck.status === 6 || compileCheck.compile_output) {
     return {
       status: "ce",
@@ -93,29 +97,25 @@ async function judgeCode(
   for (let i = 0; i < limitedTestCases.length; i++) {
     const tc = limitedTestCases[i];
     try {
-      const result = await executeWithJudge0(code, language, tc.input, timeLimit);
+      const result = await executeWithJudge0(
+        code,
+        language,
+        tc.input,
+        tc.output,      // 传期望输出给 Judge0
+        timeLimit
+      );
 
-      const actualRaw = result.stdout || "";
-      const expectedRaw = tc.output || "";
-      const actual = actualRaw.trim();
-      const expected = expectedRaw.trim();
       const perScore = tc.score || Math.floor(100 / limitedTestCases.length);
 
-      // 调试日志
-      console.log(`\n[DEBUG] Test case ${i + 1}:`);
-      console.log(`[DEBUG] actualRaw length: ${actualRaw.length}, hex: ${Buffer.from(actualRaw).toString('hex')}`);
-      console.log(`[DEBUG] expectedRaw length: ${expectedRaw.length}, hex: ${Buffer.from(expectedRaw).toString('hex')}`);
-      console.log(`[DEBUG] actual trimmed: "${actual}"`);
-      console.log(`[DEBUG] expected trimmed: "${expected}"`);
-
+      // Judge0 状态码说明：
+      // 3 = Accepted (输出匹配 expected_output)
+      // 4 = Wrong Answer (输出不匹配 expected_output)
+      // 5 = Time Limit Exceeded
+      // 6 = Compilation Error
+      // 7-12 = Runtime Error
       if (result.status === 3) {
-        if (actual === expected) {
-          statusCounts.ac++;
-          totalScore += perScore;
-        } else {
-          statusCounts.wa++;
-          allPassed = false;
-        }
+        statusCounts.ac++;
+        totalScore += perScore;
       } else if (result.status === 4) {
         statusCounts.wa++;
         allPassed = false;
@@ -126,6 +126,7 @@ async function judgeCode(
         statusCounts.re++;
         allPassed = false;
       } else {
+        // 其他未知状态，当作 WA
         statusCounts.wa++;
         allPassed = false;
       }
@@ -164,8 +165,6 @@ export async function POST(request: NextRequest) {
 
     const user = JSON.parse(userCookie.value);
     const body = await request.json();
-    
-    // 直接使用 problemId，因为前端传的就是这个
     const problemId = body.problemId;
     const { code, language, contestId } = body;
 
