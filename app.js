@@ -122,6 +122,21 @@ async function register() {
   location.href = '/login';
 }
 
+function checkPwdMatch() {
+  const pwd = document.getElementById('regPassword').value;
+  const pwd2 = document.getElementById('regPassword2').value;
+  const hint = document.getElementById('pwdHint');
+  if (!hint) return;
+  if (!pwd2) { hint.textContent = ''; return; }
+  if (pwd === pwd2) {
+    hint.textContent = '✓ 两次密码一致';
+    hint.style.color = 'green';
+  } else {
+    hint.textContent = '✗ 两次密码不一致';
+    hint.style.color = 'red';
+  }
+}
+
 // ---------- 登录 ----------
 async function login() {
   const username = document.getElementById('loginUsername').value.trim();
@@ -257,11 +272,17 @@ async function initProfile() {
 }
 
 // ---------- 路由 ----------
-document.addEventListener('DOMContentLoaded', async () => {
+async function init() {
   await initNav();
   const path = location.pathname;
   if (path === '/' || path === '/index.html') initHome();
   else if (path.startsWith('/profile/')) initProfile();
   else if (path === '/prize' || path === '/prize.html') initPrize();
   else if (path === '/rank' || path === '/rank.html') initRank();
-});
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', init);
+} else {
+  init();
+}
