@@ -1,7 +1,6 @@
-/* global createClient */
 
-const supabase = createClient(
-  'https://dqkwsxmungraspslqeic.supabase.co',
+const db = supabase.createClient(
+  'https://dqkwsxmungraspslqeic.db.co',
   'sb_publishable_NOkN05poycZPEKgeeQz7pQ__tPR-yST'
 );
 
@@ -105,11 +104,11 @@ async function register() {
   if (existingLucky) return alert('该幸运数已被使用，请换一个');
 
   const email = username + '@skboj.local';
-  const { data, error } = await supabase.auth.signUp({ email, password: pwd });
+  const { data, error } = await db.auth.signUp({ email, password: pwd });
   if (error) return alert('注册失败：' + error.message);
 
   const { badges, totalRP } = evaluateNumber(lucky);
-  const { error: insertError } = await supabase.from('profiles').insert({
+  const { error: insertError } = await db.from('profiles').insert({
     id: data.user.id,
     username,
     lucky_number: lucky,
@@ -142,13 +141,13 @@ async function login() {
   const username = document.getElementById('loginUsername').value.trim();
   const pwd = document.getElementById('loginPassword').value;
   const email = username + '@skboj.local';
-  const { error } = await supabase.auth.signInWithPassword({ email, password: pwd });
+  const { error } = await db.auth.signInWithPassword({ email, password: pwd });
   if (error) return alert('登录失败：' + error.message);
   location.href = '/';
 }
 
 async function signOut() {
-  await supabase.auth.signOut();
+  await db.auth.signOut();
   location.reload();
 }
 
@@ -157,9 +156,9 @@ async function initNav() {
   const userInfo = document.getElementById('userInfo');
   if (!userInfo) return;
   try {
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user } } = await db.auth.getUser();
     if (user) {
-      const { data: profile } = await supabase.from('profiles')
+      const { data: profile } = await db.from('profiles')
         .select('username, lucky_number').eq('id', user.id).maybeSingle();
       if (profile) {
         userInfo.innerHTML =
@@ -181,9 +180,9 @@ async function initHome() {
   const welcome = document.getElementById('welcomeMsg');
   if (!welcome) return;
   try {
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user } } = await db.auth.getUser();
     if (user) {
-      const { data: profile } = await supabase.from('profiles')
+      const { data: profile } = await db.from('profiles')
         .select('username').eq('id', user.id).maybeSingle();
       welcome.textContent = '欢迎回来，' + (profile ? profile.username : '用户');
     } else {
@@ -215,7 +214,7 @@ async function initRank() {
   const div = document.getElementById('rankList');
   if (!div) return;
   try {
-    const { data, error } = await supabase.from('profiles')
+    const { data, error } = await db.from('profiles')
       .select('username, lucky_number, lucky_rp')
       .order('lucky_number', { ascending: true });
 
@@ -248,7 +247,7 @@ async function initProfile() {
 
   const nameEl = document.getElementById('profileName');
   try {
-    const { data: p } = await supabase.from('profiles')
+    const { data: p } = await db.from('profiles')
       .select('username, lucky_number, lucky_rp, lucky_badges')
       .eq('lucky_number', lucky)
       .maybeSingle();
