@@ -1,21 +1,74 @@
+/* global createClient */
+
 const supabase = createClient(
   'https://dqkwsxmungraspslqeic.supabase.co',
   'sb_publishable_NOkN05poycZPEKgeeQz7pQ__tPR-yST'
 );
 
+// ---------- 荣誉表 ----------
 const FEATURES = [
-  
+  { name: '回文数', condition: '正读倒读一样', rp: 50,
+    check: x => String(x) === String(x).split('').reverse().join('') },
+  { name: '纯位数', condition: '所有数字相同', rp: 200,
+    check: x => /^(\d)\1+$/.test(String(x)) },
+  { name: '递增数', condition: '数字严格递增', rp: 100,
+    check: x => {
+      const s = String(x);
+      if (s.length < 2) return false;
+      for (let i = 1; i < s.length; i++) if (+s[i] <= +s[i-1]) return false;
+      return true;
+    } },
+  { name: '递减数', condition: '数字严格递减', rp: 100,
+    check: x => {
+      const s = String(x);
+      if (s.length < 2) return false;
+      for (let i = 1; i < s.length; i++) if (+s[i] >= +s[i-1]) return false;
+      return true;
+    } },
+  { name: '质数', condition: '只能被 1 和自身整除', rp: 80,
+    check: x => {
+      if (x < 2) return false;
+      for (let i = 2; i * i <= x; i++) if (x % i === 0) return false;
+      return true;
+    } },
+  { name: '完全平方数', condition: '是整数的平方', rp: 60,
+    check: x => Number.isInteger(Math.sqrt(x)) },
+  { name: '完全立方数', condition: '是整数的立方', rp: 100,
+    check: x => Math.round(Math.cbrt(x)) ** 3 === x },
+  { name: '2 的幂', condition: '是 2 的整数次幂', rp: 150,
+    check: x => {
+      if (x <= 0) return false;
+      while (x % 2 === 0) x /= 2;
+      return x === 1;
+    } },
+  { name: '斐波那契数', condition: '属于斐波那契数列', rp: 120,
+    check: x => {
+      let a = 0, b = 1;
+      while (b < x) { [a, b] = [b, a + b]; }
+      return x === 0 || b === x;
+    } },
+  { name: '含 666', condition: '数字包含 666', rp: 30,
+    check: x => String(x).includes('666') },
+  { name: '含 888', condition: '数字包含 888', rp: 30,
+    check: x => String(x).includes('888') },
+  { name: '含 999', condition: '数字包含 999', rp: 30,
+    check: x => String(x).includes('999') },
+  { name: '含 123', condition: '数字包含 123', rp: 25,
+    check: x => String(x).includes('123') },
+  { name: '含 0', condition: '数字包含 0', rp: 5,
+    check: x => String(x).includes('0') },
+  { name: '满 10 位', condition: '数字达到 10 位', rp: 20,
+    check: x => String(x).length === 10 },
 ];
 
 function getRarity(rp) {
-  if (rp >= 100000000) return 'Mythic';
-  if (rp >= 5000000) return 'Legendary';
-  if (rp >= 1000000) return 'Epic';
-  if (rp >= 100000) return 'Rare';
-  if (rp >= 50000) return 'Uncommon';
-  if (rp >= 10000) return 'Common';
-  if (rp >= 5000) return 'Trash';
-  return 'Shit';
+  if (rp >= 800) return 'Mythic';
+  if (rp >= 500) return 'Legendary';
+  if (rp >= 300) return 'Epic';
+  if (rp >= 150) return 'Rare';
+  if (rp >= 80) return 'Uncommon';
+  if (rp >= 30) return 'Common';
+  return 'Trash';
 }
 
 function evaluateNumber(num) {
@@ -30,20 +83,6 @@ function evaluateNumber(num) {
   return { badges, totalRP, rarity: getRarity(totalRP) };
 }
 
-// ---------- 验证码 ----------
-let captchaCode = '';
-function refreshCaptcha() {
-  captchaCode = String(Math.floor(1000 + Math.random() * 9000));
-  const canvas = document.createElement('canvas');
-  canvas.width = 80; canvas.height = 30;
-  const ctx = canvas.getContext('2d');
-  ctx.font = '20px Arial';
-  ctx.fillText(captchaCode, 10, 22);
-  const img = document.getElementById('captchaImg');
-  if (img) img.src = canvas.toDataURL();
-}
-if (document.getElementById('captchaImg')) refreshCaptcha();
-
 // ---------- 注册 ----------
 async function register() {
   const username = document.getElementById('regUsername').value.trim();
@@ -53,7 +92,6 @@ async function register() {
 
   if (!username) return alert('请输入用户名');
   if (pwd !== pwd2) return alert('两次密码不一致');
-  if (document.getElementById('captchaInput').value !== captchaCode) return alert('验证码错误');
   if (!/^\d+$/.test(luckyStr)) return alert('幸运数必须是 0-9999999999 的整数');
   const lucky = parseInt(luckyStr, 10);
   if (lucky < 0 || lucky > 9999999999) return alert('幸运数必须在 0 到 9999999999 之间');
@@ -99,45 +137,84 @@ async function signOut() {
   location.reload();
 }
 
-// ---------- 首页 ----------
-async function initHome() {
-  const { data: { user } } = await supabase.auth.getUser();
-  const welcome = document.getElementById('welcomeMsg');
+// ---------- 导航栏 ----------
+async function initNav() {
   const userInfo = document.getElementById('userInfo');
-  if (!welcome) return;
-
-  if (user) {
-    const { data: profile } = await supabase.from('profiles')
-      .select('username, lucky_number').eq('id', user.id).single();
-    const name = profile ? profile.username : '用户';
-    const lucky = profile ? profile.lucky_number : '';
-    userInfo.innerHTML =
-      `<a href="/profile/${lucky}">${name}</a> | <a href="#" onclick="signOut();return false;">退出</a>`;
-    welcome.textContent = '欢迎回来，' + name;
-  } else {
-    welcome.textContent = '请先登录或注册';
+  if (!userInfo) return;
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { data: profile } = await supabase.from('profiles')
+        .select('username, lucky_number').eq('id', user.id).maybeSingle();
+      if (profile) {
+        userInfo.innerHTML =
+          `<a href="/profile/${profile.lucky_number}">${profile.username}</a> | <a href="#" onclick="signOut();return false;">退出</a>`;
+      } else {
+        userInfo.innerHTML = '<a href="#" onclick="signOut();return false;">退出</a>';
+      }
+    } else {
+      userInfo.innerHTML = '<a href="/login">登录</a> | <a href="/register">注册</a>';
+    }
+  } catch (e) {
+    console.error('initNav 出错：', e);
     userInfo.innerHTML = '<a href="/login">登录</a> | <a href="/register">注册</a>';
   }
+}
+
+// ---------- 首页 ----------
+async function initHome() {
+  const welcome = document.getElementById('welcomeMsg');
+  if (!welcome) return;
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { data: profile } = await supabase.from('profiles')
+        .select('username').eq('id', user.id).maybeSingle();
+      welcome.textContent = '欢迎回来，' + (profile ? profile.username : '用户');
+    } else {
+      welcome.textContent = '请先登录或注册';
+    }
+  } catch (e) {
+    console.error(e);
+  }
+}
+
+// ---------- 测试数字 ----------
+function testNumber() {
+  const input = document.getElementById('testNumber').value.trim();
+  if (!/^\d+$/.test(input)) return alert('请输入 0-9999999999 的整数');
+  const num = parseInt(input, 10);
+  if (num < 0 || num > 9999999999) return alert('数字必须在 0 到 9999999999 之间');
+
+  const { badges, totalRP, rarity } = evaluateNumber(num);
+  document.getElementById('testResult').innerHTML =
+    `<p>数字：${num}</p>` +
+    `<p>稀有度：<strong>${rarity}</strong>（${totalRP} RP）</p>` +
+    `<p>命中荣誉：${badges.length
+      ? badges.map(b => `${b.name}（${b.rp} RP）`).join('、')
+      : '无'}</p>`;
 }
 
 // ---------- 用户列表 ----------
 async function initRank() {
   const div = document.getElementById('rankList');
   if (!div) return;
+  try {
+    const { data, error } = await supabase.from('profiles')
+      .select('username, lucky_number, lucky_rp')
+      .order('lucky_number', { ascending: true });
 
-  const { data } = await supabase.from('profiles')
-    .select('username, lucky_number, lucky_rp')
-    .order('lucky_number', { ascending: true });
+    if (error) { div.innerHTML = '加载失败：' + error.message; return; }
+    if (!data || data.length === 0) { div.innerHTML = '<p>暂无用户</p>'; return; }
 
-  if (!data || data.length === 0) {
-    div.innerHTML = '<p>暂无用户</p>';
-    return;
+    div.innerHTML = data.map((p, i) =>
+      `<p>${i + 1}. <a href="/profile/${p.lucky_number}">${p.username}</a> — ` +
+      `幸运数 ${p.lucky_number}，稀有度 ${p.lucky_rp}（${getRarity(p.lucky_rp)}）</p>`
+    ).join('');
+  } catch (e) {
+    div.innerHTML = '加载出错：' + e.message;
+    console.error(e);
   }
-
-  div.innerHTML = data.map((p, i) =>
-    `<p>${i + 1}. <a href="/profile/${p.lucky_number}">${p.username}</a> — ` +
-    `幸运数 ${p.lucky_number}，稀有度 ${p.lucky_rp}（${getRarity(p.lucky_rp)}）</p>`
-  ).join('');
 }
 
 // ---------- 荣誉列表 ----------
@@ -154,28 +231,34 @@ async function initProfile() {
   const lucky = location.pathname.split('/').pop();
   if (!lucky || isNaN(lucky)) { location.href = '/'; return; }
 
-  const { data: p } = await supabase.from('profiles')
-    .select('username, lucky_number, lucky_rp, lucky_badges')
-    .eq('lucky_number', lucky)
-    .single();
-
   const nameEl = document.getElementById('profileName');
-  if (!p) { nameEl.textContent = '用户不存在'; return; }
+  try {
+    const { data: p } = await supabase.from('profiles')
+      .select('username, lucky_number, lucky_rp, lucky_badges')
+      .eq('lucky_number', lucky)
+      .maybeSingle();
 
-  nameEl.textContent = p.username;
-  document.getElementById('luckyNumber').textContent = p.lucky_number;
-  document.getElementById('luckyRP').textContent =
-    `${p.lucky_rp}（${getRarity(p.lucky_rp)}）`;
+    if (!p) { nameEl.textContent = '用户不存在'; return; }
 
-  const badges = p.lucky_badges || [];
-  const ul = document.getElementById('badgeList');
-  ul.innerHTML = badges.length
-    ? badges.map(b => `<li>${b.name}（${b.rp} RP）</li>`).join('')
-    : '<li>无</li>';
+    nameEl.textContent = p.username;
+    document.getElementById('luckyNumber').textContent = p.lucky_number;
+    document.getElementById('luckyRP').textContent =
+      `${p.lucky_rp}（${getRarity(p.lucky_rp)}）`;
+
+    const badges = p.lucky_badges || [];
+    const ul = document.getElementById('badgeList');
+    ul.innerHTML = badges.length
+      ? badges.map(b => `<li>${b.name}（${b.rp} RP）</li>`).join('')
+      : '<li>无</li>';
+  } catch (e) {
+    nameEl.textContent = '加载出错';
+    console.error(e);
+  }
 }
 
 // ---------- 路由 ----------
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+  await initNav();
   const path = location.pathname;
   if (path === '/' || path === '/index.html') initHome();
   else if (path.startsWith('/profile/')) initProfile();

@@ -3,15 +3,14 @@
 <head><meta charset="utf-8"><title>注册 - SKBOJ</title></head>
 <body>
   <nav>
-    <a href="/">首页</a> | <a href="/rank">用户</a> | <a href="/prize">荣誉</a>
+    <a href="/">首页</a> | <a href="/rp">测试数字</a> | <a href="/rank">用户</a> | <a href="/prize">荣誉</a>
+    <span id="userInfo" style="float:right"></span>
   </nav>
   <h1>注册</h1>
   <input id="regUsername" placeholder="用户名"><br>
   <input id="regPassword" type="password" placeholder="密码"><br>
   <input id="regPassword2" type="password" placeholder="再次输入密码"><br>
   <input id="regLucky" placeholder="你的幸运数（0-9999999999）" style="width:260px"><br>
-  <img id="captchaImg" src="" onclick="refreshCaptcha()" style="cursor:pointer" title="点击刷新"><br>
-  <input id="captchaInput" placeholder="输入4位数字"><br>
   <button onclick="register()">注册</button>
   <p><a href="/login">已有账号？去登录</a></p>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
