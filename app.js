@@ -103,7 +103,7 @@ async function register() {
     .from('profiles').select('id').eq('lucky_number', lucky).maybeSingle();
   if (existingLucky) return alert('该幸运数已被使用，请换一个');
 
-  const email = username + '@skboj.app';
+  const email = username + '@gmail.com';
   const { data, error } = await db.auth.signUp({ email, password: pwd });
   if (error) return alert('注册失败：' + error.message);
 
@@ -140,7 +140,7 @@ function checkPwdMatch() {
 async function login() {
   const username = document.getElementById('loginUsername').value.trim();
   const pwd = document.getElementById('loginPassword').value;
-  const email = username + '@skboj.app';
+  const email = username + '@gmail.com';
   const { error } = await db.auth.signInWithPassword({ email, password: pwd });
   if (error) return alert('登录失败：' + error.message);
   location.href = '/';
