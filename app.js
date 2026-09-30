@@ -1,6 +1,6 @@
 
 const db = supabase.createClient(
-  'https://dqkwsxmungraspslqeic.db.co',
+  'https://dqkwsxmungraspslqeic.supabase.co',
   'sb_publishable_NOkN05poycZPEKgeeQz7pQ__tPR-yST'
 );
 
