@@ -95,11 +95,11 @@ async function register() {
   const lucky = parseInt(luckyStr, 10);
   if (lucky < 0 || lucky > 9999999999) return alert('幸运数必须在 0 到 9999999999 之间');
 
-  const { data: existingUser } = await supabase
+  const { data: existingUser } = await db
     .from('profiles').select('id').eq('username', username).maybeSingle();
   if (existingUser) return alert('该用户名已被注册，请换一个');
 
-  const { data: existingLucky } = await supabase
+  const { data: existingLucky } = await db
     .from('profiles').select('id').eq('lucky_number', lucky).maybeSingle();
   if (existingLucky) return alert('该幸运数已被使用，请换一个');
 
