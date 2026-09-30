@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>诊断</title></head>
+<body>
+  <h1>SKBOJ 诊断页面</h1>
+  <div id="log" style="font-family:monospace; font-size:14px; line-height:1.6"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    const log = document.getElementById('log');
+    function say(msg, color) {
+      log.innerHTML += `<p style="color:${color||'#333'}; margin:4px 0">${msg}</p>`;
+    }
+    function hr() { log.innerHTML += '<hr>'; }
+
+    // ========== 1. 检查库加载 ==========
+    say('【1】检查 Supabase 库', 'blue');
+    if (typeof createClient === 'undefined') {
+      say('❌ createClient 未定义，CDN 加载失败', 'red');
+      say('  可能原因：网络问题、CDN 被墙、script 标签写错', 'red');
+      throw new Error('停止：库没加载');
+    }
+    say('✅ createClient 已加载', 'green');
+
+    const SUPABASE_URL = 'https://dqkwsxmungraspslqeic.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_NOkN05poycZPEKgeeQz7pQ__tPR-yST';
+    say('   URL: ' + SUPABASE_URL, '#666');
+    say('   Key: ' + SUPABASE_KEY.slice(0, 20) + '...', '#666');
+
+    let client;
+    try {
+      client = createClient(SUPABASE_URL, SUPABASE_KEY);
+      say('✅ createClient 调用成功', 'green');
+    } catch (e) {
+      say('❌ createClient 调用失败：' + e.message, 'red');
+      throw e;
+    }
+    hr();
+
+    // ========== 2. 检查网络连接 ==========
+    say('【2】检查网络连接', 'blue');
+    fetch(SUPABASE_URL + '/rest/v1/', {
+      headers: { 'apikey': SUPABASE_KEY }
+    })
+    .then(r => {
+      say('✅ 能连上 Supabase 服务器，HTTP 状态：' + r.status, 'green');
+    })
+    .catch(e => {
+      say('❌ 连不上 Supabase：' + e.message, 'red');
+      say('  可能原因：网络问题、URL 写错、项目被暂停', 'red');
+    });
+    hr();
+
+    // ========== 3. 检查 profiles 表 ==========
+    say('【3】检查 profiles 表', 'blue');
+    client.from('profiles').select('*').then(({ data, error }) => {
+      if (error) {
+        say('❌ 读取 profiles 失败', 'red');
+        say('   错误信息：' + error.message, 'red');
+        say('   错误代码：' + error.code, 'red');
+        say('   错误详情：' + error.details, 'red');
+        say('   错误提示：' + error.hint, 'red');
+        if (error.code === '42P01') {
+          say('   → 表不存在，需要执行建表 SQL', 'orange');
+        } else if (error.code === '42501' || error.message.includes('permission')) {
+          say('   → 权限不足，RLS 策略有问题', 'orange');
+        }
+      } else {
+        say('✅ 读取 profiles 成功，共 ' + data.length + ' 条记录', 'green');
+        if (data.length > 0) {
+          say('   第一条记录：' + JSON.stringify(data[0]), '#666');
+        }
+      }
+    }).catch(e => {
+      say('❌ 请求异常：' + e.message, 'red');
+    });
+    hr();
+
+    // ========== 4. 检查认证状态 ==========
+    say('【4】检查认证状态', 'blue');
+    client.auth.getUser().then(({ data, error }) => {
+      if (error) {
+        say('⚠️ 获取用户失败（可能未登录）：' + error.message, 'orange');
+      } else if (data.user) {
+        say('✅ 已登录：' + data.user.email, 'green');
+        say('   User ID: ' + data.user.id, '#666');
+      } else {
+        say('ℹ️ 未登录（正常）', '#666');
+      }
+    }).catch(e => {
+      say('❌ 认证请求异常：' + e.message, 'red');
+    });
+    hr();
+
+    // ========== 5. 检查 profiles 表结构 ==========
+    say('【5】检查 profiles 表字段', 'blue');
+    client.from('profiles').select('*').limit(1).then(({ data, error }) => {
+      if (error) {
+        say('❌ 无法检查：' + error.message, 'red');
+        return;
+      }
+      if (data.length === 0) {
+        say('ℹ️ 表是空的，无法检查字段', '#666');
+        say('  建议：先注册一个用户', '#666');
+        return;
+      }
+      const fields = Object.keys(data[0]);
+      say('✅ 表字段：' + fields.join(', '), 'green');
+
+      const required = ['id', 'username', 'lucky_number', 'lucky_rp', 'lucky_badges'];
+      required.forEach(f => {
+        if (fields.includes(f)) {
+          say('   ✅ ' + f, 'green');
+        } else {
+          say('   ❌ 缺少字段：' + f, 'red');
+        }
+      });
+    });
+    hr();
+
+    // ========== 6. 检查 DOM ==========
+    say('【6】检查 DOM 元素', 'blue');
+    setTimeout(() => {
+      const ids = ['userInfo', 'welcomeMsg', 'rankList', 'prizeList', 'profileName'];
+      ids.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+          say('✅ #' + id + ' 存在', 'green');
+        } else {
+          say('ℹ️ #' + id + ' 不存在（可能当前页面不需要）', '#666');
+        }
+      });
+    }, 100);
+
+    // ========== 7. 环境信息 ==========
+    setTimeout(() => {
+      hr();
+      say('【7】环境信息', 'blue');
+      say('   URL: ' + location.href, '#666');
+      say('   readyState: ' + document.readyState, '#666');
+      say('   浏览器: ' + navigator.userAgent, '#666');
+      say('   DOMContentLoaded 是否已触发: ' + (document.readyState !== 'loading'), '#666');
+    }, 200);
+  </script>
+</body>
+</html>
