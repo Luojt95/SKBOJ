@@ -1,0 +1,27 @@
+name: Supabase Keep Alive
+on:
+  schedule:
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Ping Supabase
+        run: |
+          curl -s -o /dev/null -w "%{http_code}" \
+            "https://dqkwsxmungraspslqeic.supabase.co/rest/v1/profiles?select=id&limit=1" \
+            -H "apikey: sb_publishable_NOkN05poycZPEKgeeQz7pQ__tPR-yST"
+
+      - name: Heartbeat commit
+        run: |
+          date -u > .heartbeat
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add .heartbeat
+          git commit -m "heartbeat [skip vercel]" || echo "no changes"
+          git push
