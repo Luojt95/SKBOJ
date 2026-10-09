@@ -56,8 +56,8 @@ const FEATURES = [
     check: x => String(x).includes('123') },
   { name: '含 0', condition: '数字包含 0', rp: 5,
     check: x => String(x).includes('0') },
-  { name: '满 10 位', condition: '数字达到 10 位', rp: 20,
-    check: x => String(x).length === 10 },
+  { name: '满 8 位', condition: '数字达到 8 位', rp: 20,
+    check: x => String(x).length === 8 },
 ];
 
 function getRarity(rp) {
@@ -91,9 +91,9 @@ async function register() {
 
   if (!username) return alert('请输入用户名');
   if (pwd !== pwd2) return alert('两次密码不一致');
-  if (!/^\d+$/.test(luckyStr)) return alert('幸运数必须是 0-9999999999 的整数');
+  if (!/^\d+$/.test(luckyStr)) return alert('幸运数必须是 0-99999999 的整数');
   const lucky = parseInt(luckyStr, 10);
-  if (lucky < 0 || lucky > 9999999999) return alert('幸运数必须在 0 到 9999999999 之间');
+  if (lucky < 0 || lucky > 99999999) return alert('幸运数必须在 0 到 99999999 之间');
 
   const { data: existingUser } = await db
     .from('profiles').select('id').eq('username', username).maybeSingle();
@@ -196,9 +196,9 @@ async function initHome() {
 // ---------- 测试数字 ----------
 function testNumber() {
   const input = document.getElementById('testNumber').value.trim();
-  if (!/^\d+$/.test(input)) return alert('请输入 0-9999999999 的整数');
+  if (!/^\d+$/.test(input)) return alert('请输入 0-99999999 的整数');
   const num = parseInt(input, 10);
-  if (num < 0 || num > 9999999999) return alert('数字必须在 0 到 9999999999 之间');
+  if (num < 0 || num > 99999999) return alert('数字必须在 0 到 99999999 之间');
 
   const { badges, totalRP, rarity } = evaluateNumber(num);
   document.getElementById('testResult').innerHTML =
