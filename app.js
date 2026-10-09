@@ -279,6 +279,7 @@ async function init() {
   else if (path.startsWith('/profile/')) initProfile();
   else if (path === '/prize' || path === '/prize.html') initPrize();
   else if (path === '/rank' || path === '/rank.html') initRank();
+  else if (path === '/admin' || path === '/admin.html') initAdmin();
 }
 
 if (document.readyState === 'loading') {
