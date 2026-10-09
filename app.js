@@ -1,4 +1,5 @@
 
+const ADMIN_USERNAMES = ['Luojt95'];
 const db = supabase.createClient(
   'https://dqkwsxmungraspslqeic.supabase.co',
   'sb_publishable_NOkN05poycZPEKgeeQz7pQ__tPR-yST'
@@ -284,4 +285,76 @@ if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', init);
 } else {
   init();
+}
+// ---------- 管理面板 ----------
+async function initAdmin() {
+  const msg = document.getElementById('adminMsg');
+  const area = document.getElementById('adminArea');
+  if (!msg) return;
+  try {
+    const { data: { user } } = await db.auth.getUser();
+    if (!user) { msg.textContent = '请先登录'; return; }
+    const { data: profile } = await db.from('profiles')
+      .select('username').eq('id', user.id).maybeSingle();
+    if (!profile || !ADMIN_USERNAMES.includes(profile.username)) {
+      msg.textContent = '你没有权限访问此页面';
+      return;
+    }
+    msg.textContent = '管理员：' + profile.username;
+    area.style.display = 'block';
+
+    const { data } = await db.from('profiles')
+      .select('id, username, lucky_number, lucky_rp')
+      .order('lucky_number', { ascending: true });
+
+    const rows = document.getElementById('userRows');
+    if (!data || data.length === 0) {
+      rows.innerHTML = '<tr><td colspan="4">暂无用户</td></tr>';
+      return;
+    }
+    rows.innerHTML = data.map(p => `
+      <tr>
+        <td>${p.username}</td>
+        <td>
+          <input type="number" value="${p.lucky_number}" id="lucky_${p.id}" style="width:130px">
+          <button onclick="updateLucky('${p.id}')">保存</button>
+        </td>
+        <td>${p.lucky_rp}（${getRarity(p.lucky_rp)}）</td>
+        <td><button onclick="deleteUser('${p.id}', '${p.username}')" style="color:red">注销</button></td>
+      </tr>
+    `).join('');
+  } catch (e) {
+    msg.textContent = '加载出错：' + e.message;
+    console.error(e);
+  }
+}
+
+async function updateLucky(userId) {
+  const input = document.getElementById('lucky_' + userId);
+  const luckyStr = input.value.trim();
+  if (!/^\d+$/.test(luckyStr)) return alert('幸运数必须是 0-99999999 的整数');
+  const lucky = parseInt(luckyStr, 10);
+  if (lucky < 0 || lucky > 99999999) return alert('幸运数必须在 0 到 99999999 之间');
+
+  const { data: existing } = await db.from('profiles')
+    .select('id').eq('lucky_number', lucky).maybeSingle();
+  if (existing && existing.id !== userId) return alert('该幸运数已被使用');
+
+  const { badges, totalRP } = evaluateNumber(lucky);
+  const { error } = await db.from('profiles').update({
+    lucky_number: lucky,
+    lucky_rp: totalRP,
+    lucky_badges: badges
+  }).eq('id', userId);
+  if (error) return alert('修改失败：' + error.message);
+  alert('已修改');
+  initAdmin();
+}
+
+async function deleteUser(userId, username) {
+  if (!confirm(`确定注销用户 ${username}？所有数据将永久删除。`)) return;
+  const { error } = await db.rpc('delete_user', { target_id: userId });
+  if (error) return alert('注销失败：' + error.message);
+  alert('已注销');
+  initAdmin();
 }

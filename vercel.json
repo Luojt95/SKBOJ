@@ -5,6 +5,7 @@
     { "source": "/register", "destination": "/register.html" },
     { "source": "/prize", "destination": "/prize.html" },
     { "source": "/rank", "destination": "/rank.html" },
+    { "source": "/admin", "destination": "/admin.html" },
     { "source": "/profile/(.*)", "destination": "/profile.html" }
   ]
 }
