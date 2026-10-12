@@ -451,3 +451,31 @@ async function deleteUser(userId, username) {
   alert('已注销');
   initAdmin();
 }
+
+async function recalcAllRP() {
+  if (!confirm('确定要重新测算所有用户的 RP 吗？')) return;
+  const btn = document.querySelector('#adminArea button');
+  if (btn) { btn.disabled = true; btn.textContent = '重测中...'; }
+
+  const { data: users, error } = await db.from('profiles')
+    .select('id, username, lucky_number');
+  if (error) {
+    alert('读取用户失败：' + error.message);
+    if (btn) { btn.disabled = false; btn.textContent = 'RP 重测'; }
+    return;
+  }
+
+  let done = 0, failed = 0;
+  for (const u of users) {
+    const { badges, totalRP } = evaluateNumber(u.lucky_number);
+    const { error: upErr } = await db.from('profiles').update({
+      lucky_rp: totalRP,
+      lucky_badges: badges
+    }).eq('id', u.id);
+    if (upErr) failed++; else done++;
+  }
+
+  alert(`重测完成：成功 ${done} 个，失败 ${failed} 个`);
+  if (btn) { btn.disabled = false; btn.textContent = 'RP 重测'; }
+  initAdmin();
+}
