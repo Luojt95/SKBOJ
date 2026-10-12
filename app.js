@@ -7,68 +7,160 @@ const db = supabase.createClient(
 
 // ---------- 荣誉表 ----------
 const FEATURES = [
-  { name: '回文数', condition: '正读倒读一样', rp: 50,
-    check: x => String(x) === String(x).split('').reverse().join('') },
-  { name: '纯位数', condition: '所有数字相同', rp: 200,
-    check: x => /^(\d)\1+$/.test(String(x)) },
-  { name: '递增数', condition: '数字严格递增', rp: 100,
-    check: x => {
-      const s = String(x);
-      if (s.length < 2) return false;
-      for (let i = 1; i < s.length; i++) if (+s[i] <= +s[i-1]) return false;
-      return true;
-    } },
-  { name: '递减数', condition: '数字严格递减', rp: 100,
-    check: x => {
-      const s = String(x);
-      if (s.length < 2) return false;
-      for (let i = 1; i < s.length; i++) if (+s[i] >= +s[i-1]) return false;
-      return true;
-    } },
-  { name: '质数', condition: '只能被 1 和自身整除', rp: 80,
-    check: x => {
-      if (x < 2) return false;
-      for (let i = 2; i * i <= x; i++) if (x % i === 0) return false;
-      return true;
-    } },
-  { name: '完全平方数', condition: '是整数的平方', rp: 60,
-    check: x => Number.isInteger(Math.sqrt(x)) },
-  { name: '完全立方数', condition: '是整数的立方', rp: 100,
-    check: x => Math.round(Math.cbrt(x)) ** 3 === x },
-  { name: '2 的幂', condition: '是 2 的整数次幂', rp: 150,
-    check: x => {
-      if (x <= 0) return false;
-      while (x % 2 === 0) x /= 2;
-      return x === 1;
-    } },
-  { name: '斐波那契数', condition: '属于斐波那契数列', rp: 120,
-    check: x => {
-      let a = 0, b = 1;
-      while (b < x) { [a, b] = [b, a + b]; }
-      return x === 0 || b === x;
-    } },
-  { name: '含 666', condition: '数字包含 666', rp: 30,
-    check: x => String(x).includes('666') },
-  { name: '含 888', condition: '数字包含 888', rp: 30,
-    check: x => String(x).includes('888') },
-  { name: '含 999', condition: '数字包含 999', rp: 30,
-    check: x => String(x).includes('999') },
-  { name: '含 123', condition: '数字包含 123', rp: 25,
-    check: x => String(x).includes('123') },
-  { name: '含 0', condition: '数字包含 0', rp: 5,
-    check: x => String(x).includes('0') },
-  { name: '满 8 位', condition: '数字达到 8 位', rp: 20,
-    check: x => String(x).length === 8 },
+  { name: '一位数', condition: '只有一位', rp: 987654321, check: x => String(x).length === 1 },
+  { name: '两位数', condition: '包含两位', rp: 87654321, check: x => String(x).length === 2 },
+  { name: '三位数', condition: '包含三位', rp: 7654321, check: x => String(x).length === 3 },
+  { name: '四位数', condition: '包含四位', rp: 654321, check: x => String(x).length === 4 },
+  { name: '五位数', condition: '包含五位', rp: 54321, check: x => String(x).length === 5 },
+  { name: '六位数', condition: '包含六位', rp: 4321, check: x => String(x).length === 6 },
+  { name: '七位数', condition: '包含七位', rp: 321, check: x => String(x).length === 7 },
+  { name: '八位数', condition: '包含八位', rp: 21, check: x => String(x).length === 8 },
+  { name: '报警', condition: '包含"110"', rp: 110, check: x => String(x).includes('110') },
+  { name: '火灾', condition: '包含"119"', rp: 119, check: x => String(x).includes('119') },
+  { name: 'SOS', condition: '包含"120"', rp: 120, check: x => String(x).includes('120') },
+  { name: '666', condition: '包含"666"', rp: 200, check: x => String(x).includes('666') },
+  { name: '888', condition: '包含"888"', rp: 300, check: x => String(x).includes('888') },
+  { name: '勾八', condition: '包含"78"或"91"', rp: 67, check: x => String(x).includes('78') || String(x).includes('91') },
+  { name: '114514', condition: '包含"114514"', rp: 114514, check: x => String(x).includes('114514') },
+  { name: '1919810', condition: '包含"1919810"', rp: 1919810, check: x => String(x).includes('1919810') },
+  { name: '走马灯', condition: '包含"142857"', rp: 142857, check: x => String(x).includes('142857') },
+  { name: '54188', condition: '包含"54188"', rp: 19999, check: x => String(x).includes('54188') },
+  { name: '14524', condition: '包含"14524"', rp: 16666, check: x => String(x).includes('14524') },
+  { name: '平方', condition: 'n^2', rp: 22222222, check: x => isPerfectPower(x, 2) },
+  { name: '立方', condition: 'n^3', rp: 33333333, check: x => isPerfectPower(x, 3) },
+  { name: '五次方', condition: 'n^5', rp: 55555555, check: x => isPerfectPower(x, 5) },
+  { name: '七次方', condition: 'n^7', rp: 77777777, check: x => isPerfectPower(x, 7) },
+  { name: '十一次方', condition: 'n^11', rp: 111111111, check: x => isPerfectPower(x, 11) },
+  { name: '十三次方', condition: 'n^13', rp: 133333333, check: x => isPerfectPower(x, 13) },
+  { name: '十七次方', condition: 'n^17', rp: 177777777, check: x => isPerfectPower(x, 17) },
+  { name: '十九次方', condition: 'n^19', rp: 199999999, check: x => isPerfectPower(x, 19) },
+  { name: '二十三次方', condition: 'n^23', rp: 233333333, check: x => isPerfectPower(x, 23) },
+  { name: '二十九次方', condition: 'n^29', rp: 299999999, check: x => isPerfectPower(x, 29) },
+  { name: '三十一次方', condition: 'n^31', rp: 311111111, check: x => isPerfectPower(x, 31) },
+  { name: '三十七次方', condition: 'n^37', rp: 377777777, check: x => isPerfectPower(x, 37) },
+  { name: '2的幂', condition: '2的整数次幂', rp: 222222222, check: x => isPowerOfBase(x, 2) },
+  { name: '3的幂', condition: '3的整数次幂', rp: 333333333, check: x => isPowerOfBase(x, 3) },
+  { name: '5的幂', condition: '5的整数次幂', rp: 555555555, check: x => isPowerOfBase(x, 5) },
+  { name: '7的幂', condition: '7的整数次幂', rp: 777777777, check: x => isPowerOfBase(x, 7) },
+  { name: '11的幂', condition: '11的整数次幂', rp: 1111111111, check: x => isPowerOfBase(x, 11) },
+  { name: '13的幂', condition: '13的整数次幂', rp: 1333333333, check: x => isPowerOfBase(x, 13) },
+  { name: '17的幂', condition: '17的整数次幂', rp: 1777777777, check: x => isPowerOfBase(x, 17) },
+  { name: '19的幂', condition: '19的整数次幂', rp: 1999999999, check: x => isPowerOfBase(x, 19) },
+  { name: '对子', condition: '包含两个相同的数', rp: 30, check: x => countPairs(x) >= 1 },
+  { name: '两对', condition: '包含两对相同的数', rp: 400, check: x => countPairs(x) >= 2 },
+  { name: '三对', condition: '包含三对相同的数', rp: 60000, check: x => countPairs(x) >= 3 },
+  { name: '四对', condition: '包含四对相同的数', rp: 9000000, check: x => countPairs(x) >= 4 },
+  { name: '递增', condition: '数字严格递增', rp: 123456789, check: x => isStrictIncreasing(x) },
+  { name: '递减', condition: '数字严格递减', rp: 198765432, check: x => isStrictDecreasing(x) },
+  { name: '山', condition: '先递增后递减', rp: 1234321, check: x => isMountain(x) },
+  { name: '谷', condition: '先递减后递增', rp: 1432234, check: x => isValley(x) },
+  { name: '偶数', condition: '偶数', rp: 10, check: x => x % 2 === 0 },
+  { name: '奇数', condition: '奇数', rp: 10, check: x => x % 2 === 1 },
+  { name: '3的倍数', condition: '能被 3 整除', rp: 30, check: x => x % 3 === 0 },
+  { name: '5的倍数', condition: '能被 5 整除', rp: 50, check: x => x % 5 === 0 },
+  { name: '7的倍数', condition: '能被 7 整除', rp: 70, check: x => x % 7 === 0 },
+  { name: '11的倍数', condition: '能被 11 整除', rp: 110, check: x => x % 11 === 0 },
+  { name: '13的倍数', condition: '能被 13 整除', rp: 130, check: x => x % 13 === 0 },
+  { name: '17的倍数', condition: '能被 17 整除', rp: 170, check: x => x % 17 === 0 },
+  { name: '19的倍数', condition: '能被 19 整除', rp: 190, check: x => x % 19 === 0 },
+  { name: '23的倍数', condition: '能被 23 整除', rp: 230, check: x => x % 23 === 0 },
+  { name: '29的倍数', condition: '能被 29 整除', rp: 290, check: x => x % 29 === 0 },
+  { name: '31的倍数', condition: '能被 31 整除', rp: 310, check: x => x % 31 === 0 },
+  { name: '37的倍数', condition: '能被 37 整除', rp: 370, check: x => x % 37 === 0 },
+  { name: '41的倍数', condition: '能被 41 整除', rp: 410, check: x => x % 41 === 0 },
+  { name: '43的倍数', condition: '能被 43 整除', rp: 430, check: x => x % 43 === 0 },
+  { name: '47的倍数', condition: '能被 47 整除', rp: 470, check: x => x % 47 === 0 },
+  { name: '53的倍数', condition: '能被 53 整除', rp: 530, check: x => x % 53 === 0 },
+  { name: '59的倍数', condition: '能被 59 整除', rp: 590, check: x => x % 59 === 0 },
+  { name: '61的倍数', condition: '能被 61 整除', rp: 610, check: x => x % 61 === 0 },
+  { name: '67的倍数', condition: '能被 67 整除', rp: 670, check: x => x % 67 === 0 },
+  { name: '71的倍数', condition: '能被 71 整除', rp: 710, check: x => x % 71 === 0 },
+  { name: '73的倍数', condition: '能被 73 整除', rp: 730, check: x => x % 73 === 0 },
+  { name: '79的倍数', condition: '能被 79 整除', rp: 790, check: x => x % 79 === 0 },
+  { name: '83的倍数', condition: '能被 83 整除', rp: 830, check: x => x % 83 === 0 },
+  { name: '89的倍数', condition: '能被 89 整除', rp: 890, check: x => x % 89 === 0 },
+  { name: '97的倍数', condition: '能被 97 整除', rp: 970, check: x => x % 97 === 0 },
+  { name: '最大', condition: '是99999999', rp: 2000000000, check: x => x === 99999999 },
 ];
 
+function isPerfectPower(x, p) {
+  if (x < 0) return false;
+  if (x === 0 || x === 1) return true;
+  const r = Math.round(Math.pow(x, 1/p));
+  for (let k = Math.max(2, r - 2); k <= r + 2; k++) {
+    let v = 1;
+    for (let i = 0; i < p; i++) v *= k;
+    if (v === x) return true;
+  }
+  return false;
+}
+
+function isPowerOfBase(x, base) {
+  if (x < 1) return false;
+  let v = 1;
+  while (v < x) v *= base;
+  return v === x;
+}
+
+function countPairs(x) {
+  const s = String(x);
+  const freq = {};
+  for (const c of s) freq[c] = (freq[c] || 0) + 1;
+  let pairs = 0;
+  for (const k in freq) pairs += Math.floor(freq[k] / 2);
+  return pairs;
+}
+
+function isStrictIncreasing(x) {
+  const s = String(x);
+  if (s.length < 2) return false;
+  for (let i = 1; i < s.length; i++) if (+s[i] <= +s[i-1]) return false;
+  return true;
+}
+
+function isStrictDecreasing(x) {
+  const s = String(x);
+  if (s.length < 2) return false;
+  for (let i = 1; i < s.length; i++) if (+s[i] >= +s[i-1]) return false;
+  return true;
+}
+
+function isMountain(x) {
+  const s = String(x);
+  if (s.length < 3) return false;
+  let peak = -1;
+  for (let i = 1; i < s.length - 1; i++) {
+    if (+s[i] > +s[i-1] && +s[i] > +s[i+1]) { peak = i; break; }
+  }
+  if (peak === -1) return false;
+  for (let i = 1; i <= peak; i++) if (+s[i] <= +s[i-1]) return false;
+  for (let i = peak + 1; i < s.length; i++) if (+s[i] >= +s[i-1]) return false;
+  return true;
+}
+
+function isValley(x) {
+  const s = String(x);
+  if (s.length < 3) return false;
+  let valley = -1;
+  for (let i = 1; i < s.length - 1; i++) {
+    if (+s[i] < +s[i-1] && +s[i] < +s[i+1]) { valley = i; break; }
+  }
+  if (valley === -1) return false;
+  for (let i = 1; i <= valley; i++) if (+s[i] >= +s[i-1]) return false;
+  for (let i = valley + 1; i < s.length; i++) if (+s[i] <= +s[i-1]) return false;
+  return true;
+}
+
 function getRarity(rp) {
-  if (rp >= 800) return 'Mythic';
-  if (rp >= 500) return 'Legendary';
-  if (rp >= 300) return 'Epic';
-  if (rp >= 150) return 'Rare';
-  if (rp >= 80) return 'Uncommon';
-  if (rp >= 30) return 'Common';
-  return 'Trash';
+  if (rp <= 100) return 'Shit';
+  if (rp <= 200) return 'Trash';
+  if (rp <= 500) return 'Common';
+  if (rp <= 1000) return 'Uncommon';
+  if (rp <= 5000) return 'Super';
+  if (rp <= 20000) return 'Copper';
+  if (rp <= 100000) return 'Silver';
+  if (rp <= 200000) return 'Gold';
+  return 'Mythic';
 }
 
 function evaluateNumber(num) {
