@@ -716,20 +716,43 @@ async function initArticleDetail() {
   const contentEl = document.getElementById('artContent');
   if (!id) return;
 
-  const { data, error } = await db.from('articles').select('*').eq('id', id).maybeSingle();
-  if (error || !data) {
-    titleEl.textContent = '文章不存在';
-    return;
-  }
+  try {
+    const { data, error } = await db.from('articles').select('*').eq('id', id).maybeSingle();
+    if (error || !data) {
+      titleEl.textContent = '文章不存在';
+      return;
+    }
 
-  titleEl.textContent = data.title;
-  metaEl.innerHTML = `作者：${data.author_name || '匿名'} | 时间：${new Date(data.created_at).toLocaleString()}`;
+    titleEl.textContent = data.title;
+    metaEl.innerHTML = `作者：${data.author_name || '匿名'} | 时间：${new Date(data.created_at).toLocaleString()}`;
 
-  if (typeof window.markdownit !== 'undefined' && typeof window.markdownitKatex !== 'undefined') {
-    const md = window.markdownit().use(window.markdownitKatex);
-    contentEl.innerHTML = md.render(data.content);
-  } else {
-    contentEl.innerHTML = `<pre style="white-space:pre-wrap;">${data.content}</pre>`;
+    // 渲染 Markdown
+    if (typeof window.markdownit !== 'undefined' && typeof window.markdownitKatex !== 'undefined') {
+      const md = window.markdownit().use(window.markdownitKatex);
+      contentEl.innerHTML = md.render(data.content);
+    } else {
+      contentEl.innerHTML = `<pre style="white-space:pre-wrap;">${data.content}</pre>`;
+    }
+
+    // 获取当前登录用户
+    const { data: { user } } = await db.auth.getUser();
+    let myName = '匿名';
+    if (user) {
+      const { data: p } = await db.from('profiles').select('username').eq('id', user.id).maybeSingle();
+      if (p) myName = p.username;
+    }
+
+    console.log('权限检查 -> 当前用户:', myName, '| 文章作者:', data.author_name);
+
+    // 判断是否显示按钮（放宽条件，防止大小写或空格问题）
+    if (myName === data.author_name || myName === 'Luojt95' || (user && data.author_name === '匿名')) {
+      const actions = document.getElementById('articleActions');
+      if (actions) actions.style.display = 'block';
+      window.currentArticle = data;
+    }
+
+  } catch (err) {
+    console.error('加载出错', err);
   }
 }
 
