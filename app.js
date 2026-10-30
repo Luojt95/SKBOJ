@@ -1,8 +1,7 @@
 const db = supabase.createClient(
-  'https://dqkwsxmungrasplqeic.supabase.co',
+  'https://dqkwsxmungraspslqeic.supabase.co', 
   'sb_publishable_NOkN05poycZPEKgeeQz7pQ__tPR-yST'
 );
-
 // ==========================================
 // 辅助数学与算法函数
 // ==========================================
