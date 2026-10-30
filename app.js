@@ -563,23 +563,51 @@ async function initAdmin() {
 
     const rows = document.getElementById('userRows');
     if (!data || data.length === 0) {
-      rows.innerHTML = '<tr><td colspan="4">暂无用户</td></tr>';
+      rows.innerHTML = '<tr><td colspan="5">暂无用户</td></tr>';
       return;
     }
-    rows.innerHTML = data.map(p => `
-      <tr>
-        <td>${p.username}</td>
+    
+    rows.innerHTML = data.map(p => {
+      const isAdmin = p.username === 'Luojt95' || p.role === 'admin';
+      
+      // 权限下拉框
+      const roleDisplay = `<select id="role_${p.id}" ${isAdmin ? 'disabled' : ''} onchange="updateRole('${p.id}')" style="margin:0; padding:4px; width:100px; background:#0d0f12; color:#fff; border:1px solid #2a303c;">
+        <option value="normal" ${p.role === 'normal' || !p.role ? 'selected' : ''}>普通用户</option>
+        <option value="bronze" ${p.role === 'bronze' ? 'selected' : ''}>铜</option>
+        <option value="silver" ${p.role === 'silver' ? 'selected' : ''}>银</option>
+        <option value="gold" ${p.role === 'gold' ? 'selected' : ''}>金</option>
+      </select>`;
+      
+      // Luojt95 没有注销按钮
+      const deleteBtn = p.username === 'Luojt95' ? '' : `<button onclick="deleteUser('${p.id}', '${p.username}')" style="color:red; border-color:red; padding:4px 10px; margin:0;">注销</button>`;
+
+      // 用户名带小钩子
+      return `<tr>
+        <td>${p.username}${getRoleBadge(p.username, p.role)}</td>
         <td>
-          <input type="number" value="${p.lucky_number}" id="lucky_${p.id}" style="width:130px">
-          <button onclick="updateLucky('${p.id}')">保存</button>
+          <input type="number" value="${p.lucky_number}" id="lucky_${p.id}" style="width:110px; margin:0; padding:4px;">
+          <button onclick="updateLucky('${p.id}')" style="padding:4px 10px; margin:0;">保存</button>
         </td>
-        <td>${p.lucky_rp}（${getRarityHtml(p.lucky_rp)}）</td>
-        <td><button onclick="deleteUser('${p.id}', '${p.username}')" style="color:red">注销</button></td>
-      </tr>
-    `).join('');
+        <td>${p.lucky_rp}（${getRarity(p.lucky_rp)}）</td>
+        <td>${roleDisplay}</td>
+        <td>${deleteBtn}</td>
+      </tr>`;
+    }).join('');
   } catch (e) {
     msg.textContent = '加载出错：' + e.message;
     console.error(e);
+  }
+}
+
+async function updateRole(userId) {
+  const select = document.getElementById('role_' + userId);
+  const newRole = select.value;
+  const { error } = await db.from('profiles').update({ role: newRole }).eq('id', userId);
+  if (error) {
+    alert('修改权限失败：' + error.message);
+  } else {
+    alert('权限修改成功');
+    initAdmin();
   }
 }
 
