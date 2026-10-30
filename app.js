@@ -339,16 +339,16 @@ function evaluateNumber(num) {
 
 function getRoleBadge(username, role) {
   if (username === 'Luojt95') role = 'admin';
-  const svgPath = '<path fill="currentColor" d="M22.5 12.5c0-1.58-.875-2.95-2.148-3.6.154-.435.238-.905.238-1.4 0-2.21-1.71-3.998-3.818-3.998-.47 0-.92.084-1.336.25C14.818 2.415 13.51 1.5 12 1.5s-2.816.917-3.437 2.25c-.416-.165-.866-.25-1.336-.25-2.11 0-3.818 1.79-3.818 4 0 .495.084.965.238 1.4-1.273.65-2.148 2.02-2.148 3.6 0 1.46.733 2.745 1.863 3.465-.05.25-.08.51-.08.785 0 2.21 1.708 4 3.818 4 .47 0 .92-.084 1.336-.25C10.182 21.585 11.49 22.5 13 22.5s2.816-.917 3.437-2.25c.416.165.866.25 1.336.25 2.11 0 3.818-1.79 3.818-4 0-.275-.03-.535-.08-.785 1.13-.72 1.863-2.005 1.863-3.465zm-11.25 3.25l-3.5-3.5 1.41-1.41 2.09 2.09 5.09-5.09 1.41 1.41-6.5 6.5z"/>';
-  
   const style = 'style="width: 14px; height: 14px; min-width: 14px; min-height: 14px; vertical-align: -2px; margin-left: 4px; display: inline-block;"';
+  const pathStr = (color) => `<path fill="${color}" d="M22.5 12.5c0-1.58-.875-2.95-2.148-3.6.154-.435.238-.905.238-1.4 0-2.21-1.71-3.998-3.818-3.998-.47 0-.92.084-1.336.25C14.818 2.415 13.51 1.5 12 1.5s-2.816.917-3.437 2.25c-.416-.165-.866-.25-1.336-.25-2.11 0-3.818 1.79-3.818 4 0 .495.084.965.238 1.4-1.273.65-2.148 2.02-2.148 3.6 0 1.46.733 2.745 1.863 3.465-.05.25-.08.51-.08.785 0 2.21 1.708 4 3.818 4 .47 0 .92-.084 1.336-.25C10.182 21.585 11.49 22.5 13 22.5s2.816-.917 3.437-2.25c.416.165.866.25 1.336.25 2.11 0 3.818-1.79 3.818-4 0-.275-.03-.535-.08-.785 1.13-.72 1.863-2.005 1.863-3.465zm-11.25 3.25l-3.5-3.5 1.41-1.41 2.09 2.09 5.09-5.09 1.41 1.41-6.5 6.5z"/>`;
 
-  if (role === 'admin') return `<svg class="badge-admin" ${style} viewBox="0 0 24 24">${svgPath}</svg>`;
-  if (role === 'gold') return `<svg class="badge-gold" ${style} viewBox="0 0 24 24">${svgPath}</svg>`;
-  if (role === 'silver') return `<svg class="badge-silver" ${style} viewBox="0 0 24 24">${svgPath}</svg>`;
-  if (role === 'bronze') return `<svg class="badge-bronze" ${style} viewBox="0 0 24 24">${svgPath}</svg>`;
+  if (role === 'admin') return `<svg ${style} viewBox="0 0 24 24">${pathStr('#a855f7')}</svg>`;
+  if (role === 'gold') return `<svg ${style} viewBox="0 0 24 24">${pathStr('#eab308')}</svg>`;
+  if (role === 'silver') return `<svg ${style} viewBox="0 0 24 24">${pathStr('#cbd5e1')}</svg>`;
+  if (role === 'bronze') return `<svg ${style} viewBox="0 0 24 24">${pathStr('#d97706')}</svg>`;
   return '';
 }
+
 
 
 // ---------- 注册 ----------
