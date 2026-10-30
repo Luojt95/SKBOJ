@@ -313,14 +313,14 @@ const FEATURES = [
 ];
 
 function getRarity(rp) {
-  if (rp <= 100) return 'Shit';
-  if (rp <= 200) return 'Trash';
-  if (rp <= 500) return 'Common';
-  if (rp <= 1000) return 'Uncommon';
-  if (rp <= 5000) return 'Super';
-  if (rp <= 20000) return 'Copper';
+  if (rp <= 200) return 'Shit';
+  if (rp <= 500) return 'Trash';
+  if (rp <= 2000) return 'Common';
+  if (rp <= 5000) return 'Uncommon';
+  if (rp <= 30000) return 'Copper';
   if (rp <= 100000) return 'Silver';
-  if (rp <= 200000) return 'Gold';
+  if (rp <= 600000) return 'Gold';
+  if (rp <= 4000000) return 'Diamond';
   return 'Mythic';
 }
 
