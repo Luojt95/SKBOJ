@@ -336,6 +336,16 @@ function evaluateNumber(num) {
   return { badges, totalRP, rarity: getRarity(totalRP) };
 }
 
+
+function getRoleBadge(username, role) {
+  if (username === 'Luojt95') role = 'admin';
+  if (role === 'admin') return '<svg class="role-badge badge-admin" viewBox="0 0 24 24"><path fill="currentColor" d="M22.5 12.5c0-1.58-.875-2.95-2.148-3.6.154-.435.238-.905.238-1.4 0-2.21-1.71-3.998-3.818-3.998-.47 0-.92.084-1.336.25C14.818 2.415 13.51 1.5 12 1.5s-2.816.917-3.437 2.25c-.416-.165-.866-.25-1.336-.25-2.11 0-3.818 1.79-3.818 4 0 .495.084.965.238 1.4-1.273.65-2.148 2.02-2.148 3.6 0 1.46.733 2.745 1.863 3.465-.05.25-.08.51-.08.785 0 2.21 1.708 4 3.818 4 .47 0 .92-.084 1.336-.25C10.182 21.585 11.49 22.5 13 22.5s2.816-.917 3.437-2.25c.416.165.866.25 1.336.25 2.11 0 3.818-1.79 3.818-4 0-.275-.03-.535-.08-.785 1.13-.72 1.863-2.005 1.863-3.465zm-11.25 3.25l-3.5-3.5 1.41-1.41 2.09 2.09 5.09-5.09 1.41 1.41-6.5 6.5z"/></svg>';
+  if (role === 'gold') return '<svg class="role-badge badge-gold" viewBox="0 0 24 24"><path fill="currentColor" d="M22.5 12.5c0-1.58-.875-2.95-2.148-3.6.154-.435.238-.905.238-1.4 0-2.21-1.71-3.998-3.818-3.998-.47 0-.92.084-1.336.25C14.818 2.415 13.51 1.5 12 1.5s-2.816.917-3.437 2.25c-.416-.165-.866-.25-1.336-.25-2.11 0-3.818 1.79-3.818 4 0 .495.084.965.238 1.4-1.273.65-2.148 2.02-2.148 3.6 0 1.46.733 2.745 1.863 3.465-.05.25-.08.51-.08.785 0 2.21 1.708 4 3.818 4 .47 0 .92-.084 1.336-.25C10.182 21.585 11.49 22.5 13 22.5s2.816-.917 3.437-2.25c.416.165.866.25 1.336.25 2.11 0 3.818-1.79 3.818-4 0-.275-.03-.535-.08-.785 1.13-.72 1.863-2.005 1.863-3.465zm-11.25 3.25l-3.5-3.5 1.41-1.41 2.09 2.09 5.09-5.09 1.41 1.41-6.5 6.5z"/></svg>';
+  if (role === 'silver') return '<svg class="role-badge badge-silver" viewBox="0 0 24 24"><path fill="currentColor" d="M22.5 12.5c0-1.58-.875-2.95-2.148-3.6.154-.435.238-.905.238-1.4 0-2.21-1.71-3.998-3.818-3.998-.47 0-.92.084-1.336.25C14.818 2.415 13.51 1.5 12 1.5s-2.816.917-3.437 2.25c-.416-.165-.866-.25-1.336-.25-2.11 0-3.818 1.79-3.818 4 0 .495.084.965.238 1.4-1.273.65-2.148 2.02-2.148 3.6 0 1.46.733 2.745 1.863 3.465-.05.25-.08.51-.08.785 0 2.21 1.708 4 3.818 4 .47 0 .92-.084 1.336-.25C10.182 21.585 11.49 22.5 13 22.5s2.816-.917 3.437-2.25c.416.165.866.25 1.336.25 2.11 0 3.818-1.79 3.818-4 0-.275-.03-.535-.08-.785 1.13-.72 1.863-2.005 1.863-3.465zm-11.25 3.25l-3.5-3.5 1.41-1.41 2.09 2.09 5.09-5.09 1.41 1.41-6.5 6.5z"/></svg>';
+  if (role === 'bronze') return '<svg class="role-badge badge-bronze" viewBox="0 0 24 24"><path fill="currentColor" d="M22.5 12.5c0-1.58-.875-2.95-2.148-3.6.154-.435.238-.905.238-1.4 0-2.21-1.71-3.998-3.818-3.998-.47 0-.92.084-1.336.25C14.818 2.415 13.51 1.5 12 1.5s-2.816.917-3.437 2.25c-.416-.165-.866-.25-1.336-.25-2.11 0-3.818 1.79-3.818 4 0 .495.084.965.238 1.4-1.273.65-2.148 2.02-2.148 3.6 0 1.46.733 2.745 1.863 3.465-.05.25-.08.51-.08.785 0 2.21 1.708 4 3.818 4 .47 0 .92-.084 1.336-.25C10.182 21.585 11.49 22.5 13 22.5s2.816-.917 3.437-2.25c.416.165.866.25 1.336.25 2.11 0 3.818-1.79 3.818-4 0-.275-.03-.535-.08-.785 1.13-.72 1.863-2.005 1.863-3.465zm-11.25 3.25l-3.5-3.5 1.41-1.41 2.09 2.09 5.09-5.09 1.41 1.41-6.5 6.5z"/></svg>';
+  return '';
+}
+
 // ---------- 注册 ----------
 async function register() {
   const username = document.getElementById('regUsername').value.trim();
@@ -414,10 +424,10 @@ async function initNav() {
     const { data: { user } } = await db.auth.getUser();
     if (user) {
       const { data: profile } = await db.from('profiles')
-        .select('username, lucky_number, lucky_rp').eq('id', user.id).maybeSingle();
+        .select('username, lucky_number, lucky_rp, role').eq('id', user.id).maybeSingle();
       if (profile) {
         userInfo.innerHTML =
-          `<a href="/profile/${profile.lucky_number}" class="rarity-${getRarity(profile.lucky_rp || 0).toLowerCase()}">${profile.username}</a> | <a href="#" onclick="signOut();return false;">退出</a>`;
+          `<a href="/profile/${profile.lucky_number}" class="rarity-${getRarity(profile.lucky_rp || 0).toLowerCase()}">${profile.username}${getRoleBadge(profile.username, profile.role)}</a> | <a href="#" onclick="signOut();return false;">退出</a>`;
       } else {
         userInfo.innerHTML = '<a href="#" onclick="signOut();return false;">退出</a>';
       }
@@ -470,14 +480,14 @@ async function initRank() {
   if (!div) return;
   try {
     const { data, error } = await db.from('profiles')
-      .select('username, lucky_number, lucky_rp')
+      .select('username, lucky_number, lucky_rp, role')
       .order('lucky_number', { ascending: true });
 
     if (error) { div.innerHTML = '加载失败：' + error.message; return; }
     if (!data || data.length === 0) { div.innerHTML = '<p>暂无用户</p>'; return; }
 
     div.innerHTML = data.map((p, i) =>
-      `<p>${i + 1}. <a href="/profile/${p.lucky_number}" class="rarity-${getRarity(p.lucky_rp || 0).toLowerCase()}">${p.username}</a> — ` +
+      `<p>${i + 1}. <a href="/profile/${p.lucky_number}" class="rarity-${getRarity(p.lucky_rp || 0).toLowerCase()}">${p.username}${getRoleBadge(p.username, p.role)}</a> — ` +
       `幸运数 ${p.lucky_number}，稀有度 ${p.lucky_rp}（${getRarityHtml(p.lucky_rp)}）</p>`
     ).join('');
   } catch (e) {
@@ -503,13 +513,13 @@ async function initProfile() {
   const nameEl = document.getElementById('profileName');
   try {
     const { data: p } = await db.from('profiles')
-      .select('username, lucky_number, lucky_rp, lucky_badges')
+      .select('username, lucky_number, lucky_rp, lucky_badges, role')
       .eq('lucky_number', lucky)
       .maybeSingle();
 
     if (!p) { nameEl.textContent = '用户不存在'; return; }
 
-    nameEl.innerHTML = `<span class="rarity-${getRarity(p.lucky_rp || 0).toLowerCase()}">${p.username}</span>`;
+    nameEl.innerHTML = `<span class="rarity-${getRarity(p.lucky_rp || 0).toLowerCase()}">${p.username}${getRoleBadge(p.username, p.role)}</span>`;
     document.getElementById('luckyNumber').textContent = p.lucky_number;
     document.getElementById('luckyRP').innerHTML =
       `${p.lucky_rp}（${getRarityHtml(p.lucky_rp)}）`;
@@ -543,7 +553,7 @@ async function initAdmin() {
     area.style.display = 'block';
 
     const { data } = await db.from('profiles')
-      .select('id, username, lucky_number, lucky_rp')
+      .select('id, username, lucky_number, lucky_rp, role')
       .order('lucky_number', { ascending: true });
 
     const rows = document.getElementById('userRows');
@@ -588,6 +598,19 @@ async function updateLucky(userId) {
   if (error) return alert('修改失败：' + error.message);
   alert('已修改');
   initAdmin();
+}
+
+
+async function updateRole(userId) {
+  const select = document.getElementById('role_' + userId);
+  const newRole = select.value;
+  const { error } = await db.from('profiles').update({ role: newRole }).eq('id', userId);
+  if (error) {
+    alert('修改权限失败：' + error.message);
+  } else {
+    alert('权限修改成功');
+    initAdmin();
+  }
 }
 
 async function deleteUser(userId, username) {
@@ -679,7 +702,7 @@ async function initArticleList() {
   div.innerHTML = data.map(a => `
     <div style="border-bottom: 1px solid #2a303c; padding: 15px 0;">
       <h3 style="margin: 0 0 10px 0;"><a href="/article/${a.id}" style="color: #00f3ff; text-decoration: none;">${a.title}</a></h3>
-      <p style="margin: 0; color: #a0aec0; font-size: 14px;">作者：${a.author_name || '匿名'} | 时间：${new Date(a.created_at).toLocaleString()}</p>
+      <p style="margin: 0; color: #a0aec0; font-size: 14px;">作者：${a.author_name || '匿名'}${getRoleBadge(a.author_name, a.author_role)} | 时间：${new Date(a.created_at).toLocaleString()}</p>
     </div>
   `).join('');
 }
@@ -702,9 +725,13 @@ async function saveArticle() {
   try {
     const { data: { user } } = await db.auth.getUser();
     let author_name = '匿名';
+    let author_role = 'normal';
     if (user) {
-      const { data: profile } = await db.from('profiles').select('username').eq('id', user.id).maybeSingle();
-      if (profile) author_name = profile.username;
+      const { data: profile } = await db.from('profiles').select('username, role').eq('id', user.id).maybeSingle();
+      if (profile) {
+        author_name = profile.username;
+        author_role = profile.username === 'Luojt95' ? 'admin' : profile.role;
+      }
     }
 
     // 生成防重复的 6 位十六进制 ID
@@ -715,7 +742,7 @@ async function saveArticle() {
       if (!exist) break;
     }
 
-    const { error } = await db.from('articles').insert({ id, title, content, author_name });
+    const { error } = await db.from('articles').insert({ id, title, content, author_name, author_role });
     if (error) throw new Error(error.message);
     
     location.href = '/article/' + id;
@@ -740,7 +767,7 @@ async function initArticleDetail() {
     }
 
     titleEl.textContent = data.title;
-    metaEl.innerHTML = `作者：${data.author_name || '匿名'} | 时间：${new Date(data.created_at).toLocaleString()}`;
+    metaEl.innerHTML = `作者：${data.author_name || '匿名'}${getRoleBadge(data.author_name, data.author_role)} | 时间：${new Date(data.created_at).toLocaleString()}`;
 
     // 渲染 Markdown
     if (typeof window.markdownit !== 'undefined' && typeof window.markdownitKatex !== 'undefined') {
