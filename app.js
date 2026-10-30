@@ -630,6 +630,22 @@ async function recalcAllRP() {
 async function init() {
   await initNav();
   const path = location.pathname;
+
+  // 获取登录状态
+  const { data: { user } } = await db.auth.getUser();
+
+  // 定义需要登录才能访问的路径
+  const protectedRoutes = ['/rp', '/rank', '/prize', '/article', '/profile', '/admin'];
+  const isProtected = protectedRoutes.some(route => path.startsWith(route));
+
+  // 如果未登录且访问受保护页面，强制跳转登录
+  if (isProtected && !user) {
+    alert('请先登录后访问');
+    location.href = '/login';
+    return;
+  }
+
+  // 正常页面加载分发
   if (path === '/' || path === '/index.html') initHome();
   else if (path.startsWith('/profile/')) initProfile();
   else if (path === '/prize' || path === '/prize.html') initPrize();
