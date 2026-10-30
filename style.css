@@ -173,9 +173,10 @@ th {
 .rarity-diamond { color: #00f3ff; text-shadow: 0 0 12px rgba(0, 243, 255, 0.8); }
 .rarity-mythic { color: #ff00ea; text-shadow: 0 0 15px rgba(255, 0, 234, 0.8), 0 0 30px rgba(255, 0, 234, 0.4); font-weight: bold; }
 EOF
-/* 权限钩子 */
-.role-badge { width: 16px; height: 16px; vertical-align: middle; margin-left: 4px; display: inline-block; }
-.badge-admin { color: #a855f7 !important; } /* 紫色 */
-.badge-gold { color: #eab308 !important; } /* 金色 */
-.badge-silver { color: #cbd5e1 !important; } /* 银色 */
-.badge-bronze { color: #d97706 !important; } /* 铜色 */
+
+
+/* 权限钩子颜色 */
+.badge-admin { color: #a855f7 !important; }
+.badge-gold { color: #eab308 !important; }
+.badge-silver { color: #cbd5e1 !important; }
+.badge-bronze { color: #d97706 !important; }
