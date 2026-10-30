@@ -724,6 +724,23 @@ function getRarityHtml(rp) {
 
 
 // ---------- 文章功能 ----------
+
+async function getCurrentUserRole() {
+  const { data: { user } } = await db.auth.getUser();
+  if (!user) return { name: '匿名', role: 'normal' };
+  const { data: p } = await db.from('profiles').select('username, role').eq('id', user.id).maybeSingle();
+  if (!p) return { name: '匿名', role: 'normal' };
+  return p;
+}
+
+function getCharLimit(name, role) {
+  if (name === 'Luojt95' || role === 'admin') return 99999;
+  if (role === 'gold') return 2048;
+  if (role === 'silver') return 1024;
+  if (role === 'bronze') return 512;
+  return 0; // normal
+}
+
 async function initArticleList() {
   const div = document.getElementById('articleList');
   if (!div) return;
@@ -740,17 +757,32 @@ async function initArticleList() {
   `).join('');
 }
 
-function showNewArticleForm() {
+async function showNewArticleForm() {
+  const { name, role } = await getCurrentUserRole();
+  const limit = getCharLimit(name, role);
+  
+  if (limit === 0) {
+    return alert('普通用户不可撰写文章，请联系管理员提升权限。');
+  }
+  
+  const textarea = document.getElementById('artContent');
+  textarea.maxLength = limit;
+  textarea.placeholder = `正文（支持 Markdown 与 $$公式$$，最多 ${limit} 字）`;
+  
   document.getElementById('newArticleArea').style.display = 'block';
 }
 
 async function saveArticle() {
   const title = document.getElementById('artTitle').value.trim();
   const content = document.getElementById('artContent').value.trim();
+  const { name, role } = await getCurrentUserRole();
+  const limit = getCharLimit(name, role);
+
+  if (limit === 0) return alert('普通用户不可发布文章');
   if (!title) return alert('请输入题目');
   if (title.length > 20) return alert('题目不能超过20个字符');
   if (!content) return alert('请输入正文');
-  if (content.length > 1000) return alert('正文不能超过1000个字符');
+  if (content.length > limit) return alert(`正文不能超过 ${limit} 个字符，当前 ${content.length} 字`);
 
   const btn = document.getElementById('publishBtn');
   if (btn) { btn.disabled = true; btn.textContent = '发布中...'; }
@@ -849,10 +881,13 @@ async function saveEditArticle() {
   const title = document.getElementById('editArtTitle').value.trim();
   const content = document.getElementById('editArtContent').value.trim();
   
+  const { name, role } = await getCurrentUserRole();
+  const limit = getCharLimit(name, role);
+
   if (!title) return alert('请输入题目');
   if (title.length > 20) return alert('题目不能超过20个字符');
   if (!content) return alert('请输入正文');
-  if (content.length > 1000) return alert('正文不能超过1000个字符');
+  if (content.length > limit) return alert(`正文不能超过 ${limit} 个字符，当前 ${content.length} 字`);
 
   const btn = event.target;
   btn.disabled = true; btn.textContent = '保存中...';
