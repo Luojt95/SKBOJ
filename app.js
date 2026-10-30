@@ -732,3 +732,51 @@ async function initArticleDetail() {
     contentEl.innerHTML = `<pre style="white-space:pre-wrap;">${data.content}</pre>`;
   }
 }
+
+
+// ---------- 文章编辑与删除 ----------
+function showEditForm() {
+  const art = window.currentArticle;
+  if (!art) return;
+  document.getElementById('editArtTitle').value = art.title;
+  document.getElementById('editArtContent').value = art.content;
+  document.getElementById('editArticleArea').style.display = 'block';
+  document.getElementById('artContent').style.display = 'none';
+}
+
+async function saveEditArticle() {
+  const art = window.currentArticle;
+  if (!art) return;
+  const title = document.getElementById('editArtTitle').value.trim();
+  const content = document.getElementById('editArtContent').value.trim();
+  
+  if (!title) return alert('请输入题目');
+  if (title.length > 20) return alert('题目不能超过20个字符');
+  if (!content) return alert('请输入正文');
+  if (content.length > 1000) return alert('正文不能超过1000个字符');
+
+  const btn = event.target;
+  btn.disabled = true; btn.textContent = '保存中...';
+
+  const { error } = await db.from('articles').update({ title, content }).eq('id', art.id);
+  if (error) {
+    alert('保存失败：' + error.message);
+    btn.disabled = false; btn.textContent = '保存';
+  } else {
+    location.reload();
+  }
+}
+
+async function deleteArticle() {
+  const art = window.currentArticle;
+  if (!art) return;
+  if (!confirm('确定要删除这篇文章吗？此操作不可恢复。')) return;
+
+  const { error } = await db.from('articles').delete().eq('id', art.id);
+  if (error) {
+    alert('删除失败：' + error.message);
+  } else {
+    alert('文章已删除');
+    location.href = '/article';
+  }
+}

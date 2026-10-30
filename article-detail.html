@@ -60,6 +60,17 @@
   <div class="container">
     <h1 id="artTitle">加载中...</h1>
     <p id="artMeta" style="color:#a0aec0; font-size:14px; border-bottom:1px solid #2a303c; padding-bottom:10px;"></p>
+    <div id="articleActions" style="display:none; margin: 15px 0;">
+      <button onclick="showEditForm()" style="font-size:14px; padding:6px 12px;">编辑</button>
+      <button onclick="deleteArticle()" style="font-size:14px; padding:6px 12px; color:#ff4d4d; border-color:#ff4d4d;">删除</button>
+    </div>
+    <div id="editArticleArea" style="display:none; text-align:left; background:#1a1f2b; padding:20px; border-radius:8px; margin-bottom:20px;">
+      <h3>编辑文章</h3>
+      <input id="editArtTitle" placeholder="文章标题（最多20字）" maxlength="20" style="width:100%; max-width:100%; margin-bottom:10px;">
+      <textarea id="editArtContent" placeholder="正文" maxlength="1000" rows="8" style="width:100%; max-width:100%; margin-bottom:10px;"></textarea>
+      <button onclick="saveEditArticle()">保存</button>
+      <button onclick="document.getElementById('editArticleArea').style.display='none'; document.getElementById('artContent').style.display='block';" style="color:#a0aec0; border-color:#a0aec0;">取消</button>
+    </div>
     <div id="artContent" class="markdown-body"></div>
     <p style="margin-top:40px;"><a href="/article">← 返回文章列表</a></p>
   </div>
