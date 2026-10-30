@@ -680,31 +680,33 @@ async function saveArticle() {
   if (!content) return alert('请输入正文');
   if (content.length > 1000) return alert('正文不能超过1000个字符');
 
-  const { data: { user } } = await db.auth.getUser();
-  let author_name = '匿名';
-  if (user) {
-    const { data: profile } = await db.from('profiles').select('username').eq('id', user.id).maybeSingle();
-    if (profile) author_name = profile.username;
-  }
+  const btn = document.getElementById('publishBtn');
+  if (btn) { btn.disabled = true; btn.textContent = '发布中...'; }
 
-  // 生成防重复的 6 位十六进制 ID
-  let id = '';
-  while (true) {
-    id = Math.floor(Math.random() * 0xffffff).toString(16).padStart(6, '0');
-    const { data: exist } = await db.from('articles').select('id').eq('id', id).maybeSingle();
-    if (!exist) break;
-  }
+  try {
+    const { data: { user } } = await db.auth.getUser();
+    let author_name = '匿名';
+    if (user) {
+      const { data: profile } = await db.from('profiles').select('username').eq('id', user.id).maybeSingle();
+      if (profile) author_name = profile.username;
+    }
 
-  const btn = event.target;
-  btn.disabled = true; btn.textContent = '发布中...';
+    // 生成防重复的 6 位十六进制 ID
+    let id = '';
+    while (true) {
+      id = Math.floor(Math.random() * 0xffffff).toString(16).padStart(6, '0');
+      const { data: exist } = await db.from('articles').select('id').eq('id', id).maybeSingle();
+      if (!exist) break;
+    }
 
-  const { error } = await db.from('articles').insert({ id, title, content, author_name });
-  if (error) {
-    alert('发布失败：' + error.message);
-    btn.disabled = false; btn.textContent = '发布';
-    return;
+    const { error } = await db.from('articles').insert({ id, title, content, author_name });
+    if (error) throw new Error(error.message);
+    
+    location.href = '/article/' + id;
+  } catch (err) {
+    alert('发布失败：' + err.message);
+    if (btn) { btn.disabled = false; btn.textContent = '发布'; }
   }
-  location.href = '/article/' + id;
 }
 
 async function initArticleDetail() {

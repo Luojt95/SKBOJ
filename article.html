@@ -17,7 +17,7 @@
       <h3>新建文章</h3>
       <input id="artTitle" placeholder="文章标题（最多20字）" maxlength="20" style="width:100%; max-width:100%; margin-bottom:10px;">
       <textarea id="artContent" placeholder="正文（支持 Markdown，$$包裹公式$$，最多1000字）" maxlength="1000" rows="8" style="width:100%; max-width:100%; margin-bottom:10px;"></textarea>
-      <button onclick="saveArticle()">发布</button>
+      <button id="publishBtn" onclick="saveArticle()">发布</button>
       <button onclick="document.getElementById('newArticleArea').style.display='none'" style="color:#a0aec0; border-color:#a0aec0;">取消</button>
     </div>
 
