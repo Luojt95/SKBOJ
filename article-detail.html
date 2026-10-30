@@ -15,6 +15,41 @@
     .markdown-body pre { background: #0d0f12; padding: 15px; border-radius: 8px; overflow-x: auto; border: 1px solid #2a303c; }
     .markdown-body code { font-family: monospace; color: #00f3ff; background: #0d0f12; padding: 2px 6px; border-radius: 4px; }
     .markdown-body blockquote { border-left: 4px solid #00f3ff; padding-left: 15px; color: #a0aec0; margin: 0; }
+  
+    /* 强制覆盖 Markdown 文字颜色，防止看不清 */
+    .markdown-body, .markdown-body p, .markdown-body li, .markdown-body h1, .markdown-body h2, .markdown-body h3, .markdown-body h4, .markdown-body h5, .markdown-body h6, .markdown-body strong, .markdown-body em {
+      color: #e2e8f0 !important;
+    }
+    .markdown-body a {
+      color: #00f3ff !important;
+      text-decoration: underline;
+    }
+    .markdown-body blockquote {
+      background: rgba(0, 243, 255, 0.1) !important;
+      border-left: 4px solid #00f3ff !important;
+      padding: 10px 15px !important;
+      color: #cbd5e0 !important;
+      margin: 15px 0;
+    }
+    .markdown-body pre {
+      background: #1a1f2b !important;
+      padding: 15px !important;
+      border-radius: 8px !important;
+      border: 1px solid #2a303c !important;
+      overflow-x: auto !important;
+    }
+    .markdown-body code {
+      font-family: monospace !important;
+      color: #00f3ff !important;
+      background: rgba(0, 243, 255, 0.15) !important;
+      padding: 2px 6px !important;
+      border-radius: 4px !important;
+    }
+    .markdown-body pre code {
+      background: transparent !important;
+      padding: 0 !important;
+    }
+
   </style>
 </head>
 <body>
