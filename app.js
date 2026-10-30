@@ -414,10 +414,10 @@ async function initNav() {
     const { data: { user } } = await db.auth.getUser();
     if (user) {
       const { data: profile } = await db.from('profiles')
-        .select('username, lucky_number').eq('id', user.id).maybeSingle();
+        .select('username, lucky_number, lucky_rp').eq('id', user.id).maybeSingle();
       if (profile) {
         userInfo.innerHTML =
-          `<a href="/profile/${profile.lucky_number}">${profile.username}</a> | <a href="#" onclick="signOut();return false;">退出</a>`;
+          `<a href="/profile/${profile.lucky_number}" class="rarity-${getRarity(profile.lucky_rp || 0).toLowerCase()}">${profile.username}</a> | <a href="#" onclick="signOut();return false;">退出</a>`;
       } else {
         userInfo.innerHTML = '<a href="#" onclick="signOut();return false;">退出</a>';
       }
@@ -477,7 +477,7 @@ async function initRank() {
     if (!data || data.length === 0) { div.innerHTML = '<p>暂无用户</p>'; return; }
 
     div.innerHTML = data.map((p, i) =>
-      `<p>${i + 1}. <a href="/profile/${p.lucky_number}">${p.username}</a> — ` +
+      `<p>${i + 1}. <a href="/profile/${p.lucky_number}" class="rarity-${getRarity(p.lucky_rp || 0).toLowerCase()}">${p.username}</a> — ` +
       `幸运数 ${p.lucky_number}，稀有度 ${p.lucky_rp}（${getRarityHtml(p.lucky_rp)}）</p>`
     ).join('');
   } catch (e) {
@@ -509,7 +509,7 @@ async function initProfile() {
 
     if (!p) { nameEl.textContent = '用户不存在'; return; }
 
-    nameEl.textContent = p.username;
+    nameEl.innerHTML = `<span class="rarity-${getRarity(p.lucky_rp || 0).toLowerCase()}">${p.username}</span>`;
     document.getElementById('luckyNumber').textContent = p.lucky_number;
     document.getElementById('luckyRP').textContent =
       `${p.lucky_rp}（${getRarityHtml(p.lucky_rp)}）`;
