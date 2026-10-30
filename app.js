@@ -478,7 +478,7 @@ async function initRank() {
 
     div.innerHTML = data.map((p, i) =>
       `<p>${i + 1}. <a href="/profile/${p.lucky_number}">${p.username}</a> — ` +
-      `幸运数 ${p.lucky_number}，稀有度 ${p.lucky_rp}（${getRarity(p.lucky_rp)}）</p>`
+      `幸运数 ${p.lucky_number}，稀有度 ${p.lucky_rp}（${getRarityHtml(p.lucky_rp)}）</p>`
     ).join('');
   } catch (e) {
     div.innerHTML = '加载出错：' + e.message;
@@ -512,7 +512,7 @@ async function initProfile() {
     nameEl.textContent = p.username;
     document.getElementById('luckyNumber').textContent = p.lucky_number;
     document.getElementById('luckyRP').textContent =
-      `${p.lucky_rp}（${getRarity(p.lucky_rp)}）`;
+      `${p.lucky_rp}（${getRarityHtml(p.lucky_rp)}）`;
 
     const badges = p.lucky_badges || [];
     const ul = document.getElementById('badgeList');
@@ -558,7 +558,7 @@ async function initAdmin() {
           <input type="number" value="${p.lucky_number}" id="lucky_${p.id}" style="width:130px">
           <button onclick="updateLucky('${p.id}')">保存</button>
         </td>
-        <td>${p.lucky_rp}（${getRarity(p.lucky_rp)}）</td>
+        <td>${p.lucky_rp}（${getRarityHtml(p.lucky_rp)}）</td>
         <td><button onclick="deleteUser('${p.id}', '${p.username}')" style="color:red">注销</button></td>
       </tr>
     `).join('');
@@ -641,4 +641,9 @@ if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', init);
 } else {
   init();
+}
+// 辅助函数：给段位加颜色
+function getRarityHtml(rp) {
+  const r = getRarity(rp);
+  return `<span class="rarity-${r.toLowerCase()}">${r}</span>`;
 }

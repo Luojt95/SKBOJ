@@ -1,0 +1,175 @@
+cat > style.css << 'EOF'
+/* 全局重置与背景 */
+body {
+  background-color: #0d0f12;
+  color: #e2e8f0;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 100vh;
+  background-image: radial-gradient(circle at 50% 0%, #1a1f2b 0%, #0d0f12 60%);
+  background-attachment: fixed;
+}
+
+/* 导航栏 */
+nav {
+  width: 100%;
+  background: rgba(13, 15, 18, 0.8);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid #2a303c;
+  padding: 15px 30px;
+  box-sizing: border-box;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 20px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+nav a {
+  color: #a0aec0;
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.3s, text-shadow 0.3s;
+}
+
+nav a:hover {
+  color: #00f3ff;
+  text-shadow: 0 0 8px rgba(0, 243, 255, 0.6);
+}
+
+#userInfo {
+  position: absolute;
+  right: 30px;
+  color: #a0aec0;
+}
+
+#userInfo a {
+  color: #00f3ff;
+}
+
+/* 内容容器 */
+.container {
+  width: 100%;
+  max-width: 800px;
+  margin: 40px auto;
+  padding: 30px;
+  background: rgba(25, 30, 40, 0.6);
+  border: 1px solid #2a303c;
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  box-sizing: border-box;
+  text-align: center;
+}
+
+h1, h2, h3 {
+  color: #ffffff;
+  text-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
+  margin-top: 0;
+}
+
+/* 输入框 */
+input, textarea {
+  width: 100%;
+  max-width: 300px;
+  padding: 12px 15px;
+  margin: 10px 0;
+  background: #0d0f12;
+  border: 1px solid #2a303c;
+  border-radius: 6px;
+  color: #fff;
+  font-size: 16px;
+  outline: none;
+  transition: border-color 0.3s, box-shadow 0.3s;
+  box-sizing: border-box;
+}
+
+input:focus, textarea:focus {
+  border-color: #00f3ff;
+  box-shadow: 0 0 10px rgba(0, 243, 255, 0.3);
+}
+
+/* 按钮 */
+button {
+  background: transparent;
+  color: #00f3ff;
+  border: 1px solid #00f3ff;
+  padding: 12px 24px;
+  margin: 10px 5px;
+  border-radius: 6px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s;
+  box-shadow: 0 0 5px rgba(0, 243, 255, 0.2);
+}
+
+button:hover {
+  background: #00f3ff;
+  color: #0d0f12;
+  box-shadow: 0 0 15px rgba(0, 243, 255, 0.6);
+}
+
+button:disabled {
+  border-color: #4a5568;
+  color: #4a5568;
+  cursor: not-allowed;
+  box-shadow: none;
+  background: transparent;
+}
+
+/* 列表和段落 */
+p {
+  line-height: 1.6;
+  color: #cbd5e0;
+}
+
+ul {
+  list-style-type: none;
+  padding: 0;
+}
+
+li {
+  padding: 8px 0;
+  border-bottom: 1px solid #2a303c;
+  color: #e2e8f0;
+}
+
+li:last-child {
+  border-bottom: none;
+}
+
+/* 表格 (管理面板) */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 20px;
+}
+
+th, td {
+  padding: 12px;
+  text-align: left;
+  border-bottom: 1px solid #2a303c;
+}
+
+th {
+  color: #00f3ff;
+  font-weight: 600;
+}
+
+/* 徽章/稀有度文字发光 */
+.rarity-shit { color: #718096; text-shadow: none; }
+.rarity-trash { color: #a0aec0; text-shadow: none; }
+.rarity-common { color: #e2e8f0; }
+.rarity-uncommon { color: #48bb78; text-shadow: 0 0 8px rgba(72, 187, 120, 0.5); }
+.rarity-copper { color: #ed8936; text-shadow: 0 0 8px rgba(237, 137, 54, 0.5); }
+.rarity-silver { color: #a0aec0; text-shadow: 0 0 8px rgba(160, 174, 192, 0.5); }
+.rarity-gold { color: #ecc94b; text-shadow: 0 0 10px rgba(236, 201, 75, 0.6); }
+.rarity-diamond { color: #00f3ff; text-shadow: 0 0 12px rgba(0, 243, 255, 0.8); }
+.rarity-mythic { color: #ff00ea; text-shadow: 0 0 15px rgba(255, 0, 234, 0.8), 0 0 30px rgba(255, 0, 234, 0.4); font-weight: bold; }
+EOF
