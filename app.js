@@ -511,7 +511,7 @@ async function initProfile() {
 
     nameEl.innerHTML = `<span class="rarity-${getRarity(p.lucky_rp || 0).toLowerCase()}">${p.username}</span>`;
     document.getElementById('luckyNumber').textContent = p.lucky_number;
-    document.getElementById('luckyRP').textContent =
+    document.getElementById('luckyRP').innerHTML =
       `${p.lucky_rp}（${getRarityHtml(p.lucky_rp)}）`;
 
     const badges = p.lucky_badges || [];
