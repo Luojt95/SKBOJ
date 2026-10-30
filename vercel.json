@@ -1,11 +1,40 @@
 {
   "rewrites": [
-    { "source": "/rp", "destination": "/rp.html" },
-    { "source": "/login", "destination": "/login.html" },
-    { "source": "/register", "destination": "/register.html" },
-    { "source": "/prize", "destination": "/prize.html" },
-    { "source": "/rank", "destination": "/rank.html" },
-    { "source": "/admin", "destination": "/admin.html" },
-    { "source": "/profile/(.*)", "destination": "/profile.html" }
+    {
+      "source": "/rp",
+      "destination": "/rp.html"
+    },
+    {
+      "source": "/login",
+      "destination": "/login.html"
+    },
+    {
+      "source": "/register",
+      "destination": "/register.html"
+    },
+    {
+      "source": "/prize",
+      "destination": "/prize.html"
+    },
+    {
+      "source": "/rank",
+      "destination": "/rank.html"
+    },
+    {
+      "source": "/admin",
+      "destination": "/admin.html"
+    },
+    {
+      "source": "/profile/(.*)",
+      "destination": "/profile.html"
+    },
+    {
+      "source": "/article",
+      "destination": "/article.html"
+    },
+    {
+      "source": "/article/(.*)",
+      "destination": "/article-detail.html"
+    }
   ]
 }

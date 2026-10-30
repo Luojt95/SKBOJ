@@ -635,6 +635,8 @@ async function init() {
   else if (path === '/prize' || path === '/prize.html') initPrize();
   else if (path === '/rank' || path === '/rank.html') initRank();
   else if (path === '/admin' || path === '/admin.html') initAdmin();
+  else if (path === '/article' || path === '/article.html') initArticleList();
+  else if (path.startsWith('/article/')) initArticleDetail();
 }
 
 if (document.readyState === 'loading') {
@@ -646,4 +648,85 @@ if (document.readyState === 'loading') {
 function getRarityHtml(rp) {
   const r = getRarity(rp);
   return `<span class="rarity-${r.toLowerCase()}">${r}</span>`;
+}
+
+
+// ---------- 文章功能 ----------
+async function initArticleList() {
+  const div = document.getElementById('articleList');
+  if (!div) return;
+  const { data } = await db.from('articles').select('id, title, author_name, created_at').order('created_at', { ascending: false });
+  if (!data || data.length === 0) {
+    div.innerHTML = '<p>暂无文章，快去发第一篇吧！</p>';
+    return;
+  }
+  div.innerHTML = data.map(a => `
+    <div style="border-bottom: 1px solid #2a303c; padding: 15px 0;">
+      <h3 style="margin: 0 0 10px 0;"><a href="/article/${a.id}" style="color: #00f3ff; text-decoration: none;">${a.title}</a></h3>
+      <p style="margin: 0; color: #a0aec0; font-size: 14px;">作者：${a.author_name || '匿名'} | 时间：${new Date(a.created_at).toLocaleString()}</p>
+    </div>
+  `).join('');
+}
+
+function showNewArticleForm() {
+  document.getElementById('newArticleArea').style.display = 'block';
+}
+
+async function saveArticle() {
+  const title = document.getElementById('artTitle').value.trim();
+  const content = document.getElementById('artContent').value.trim();
+  if (!title) return alert('请输入题目');
+  if (title.length > 20) return alert('题目不能超过20个字符');
+  if (!content) return alert('请输入正文');
+  if (content.length > 1000) return alert('正文不能超过1000个字符');
+
+  const { data: { user } } = await db.auth.getUser();
+  let author_name = '匿名';
+  if (user) {
+    const { data: profile } = await db.from('profiles').select('username').eq('id', user.id).maybeSingle();
+    if (profile) author_name = profile.username;
+  }
+
+  // 生成防重复的 6 位十六进制 ID
+  let id = '';
+  while (true) {
+    id = Math.floor(Math.random() * 0xffffff).toString(16).padStart(6, '0');
+    const { data: exist } = await db.from('articles').select('id').eq('id', id).maybeSingle();
+    if (!exist) break;
+  }
+
+  const btn = event.target;
+  btn.disabled = true; btn.textContent = '发布中...';
+
+  const { error } = await db.from('articles').insert({ id, title, content, author_name });
+  if (error) {
+    alert('发布失败：' + error.message);
+    btn.disabled = false; btn.textContent = '发布';
+    return;
+  }
+  location.href = '/article/' + id;
+}
+
+async function initArticleDetail() {
+  const id = location.pathname.split('/').pop();
+  const titleEl = document.getElementById('artTitle');
+  const metaEl = document.getElementById('artMeta');
+  const contentEl = document.getElementById('artContent');
+  if (!id) return;
+
+  const { data, error } = await db.from('articles').select('*').eq('id', id).maybeSingle();
+  if (error || !data) {
+    titleEl.textContent = '文章不存在';
+    return;
+  }
+
+  titleEl.textContent = data.title;
+  metaEl.innerHTML = `作者：${data.author_name || '匿名'} | 时间：${new Date(data.created_at).toLocaleString()}`;
+
+  if (typeof window.markdownit !== 'undefined' && typeof window.markdownitKatex !== 'undefined') {
+    const md = window.markdownit().use(window.markdownitKatex);
+    contentEl.innerHTML = md.render(data.content);
+  } else {
+    contentEl.innerHTML = `<pre style="white-space:pre-wrap;">${data.content}</pre>`;
+  }
 }
