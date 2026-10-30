@@ -1,12 +1,114 @@
-
-const ADMIN_USERNAMES = ['Luojt95'];
 const db = supabase.createClient(
-  'https://dqkwsxmungraspslqeic.supabase.co',
+  'https://dqkwsxmungrasplqeic.supabase.co',
   'sb_publishable_NOkN05poycZPEKgeeQz7pQ__tPR-yST'
 );
 
-// ---------- 荣誉表 ----------
+// ==========================================
+// 辅助数学与算法函数
+// ==========================================
+function getFreq(x) {
+  const s = String(x), freq = {};
+  for (const c of s) freq[c] = (freq[c] || 0) + 1;
+  return freq;
+}
+function sumFreqDiv(x, div) {
+  return Object.values(getFreq(x)).reduce((sum, c) => sum + Math.floor(c / div), 0);
+}
+function hasKSubstr(s, len, k) {
+  for (let i = 0; i <= s.length - len; i++) {
+    let sub = s.slice(i, i + len), curr = i, cnt = 1;
+    while (cnt < k) {
+      let next = s.indexOf(sub, curr + len);
+      if (next === -1) break;
+      curr = next; cnt++;
+    }
+    if (cnt === k) return true;
+  }
+  return false;
+}
+function getLIS(x) {
+  const s = String(x), n = s.length;
+  if (n === 0) return 0;
+  const dp = new Array(n).fill(1);
+  let max = 1;
+  for (let i = 1; i < n; i++) {
+    for (let j = 0; j < i; j++) {
+      if (+s[i] > +s[j]) dp[i] = Math.max(dp[i], dp[j] + 1);
+    }
+    max = Math.max(max, dp[i]);
+  }
+  return max;
+}
+function getLDS(x) {
+  const s = String(x), n = s.length;
+  if (n === 0) return 0;
+  const dp = new Array(n).fill(1);
+  let max = 1;
+  for (let i = 1; i < n; i++) {
+    for (let j = 0; j < i; j++) {
+      if (+s[i] < +s[j]) dp[i] = Math.max(dp[i], dp[j] + 1);
+    }
+    max = Math.max(max, dp[i]);
+  }
+  return max;
+}
+function getLPS(x) {
+  const s = String(x);
+  let max = 0;
+  for (let i = 1; i < s.length; i++) {
+    if (s.slice(0, i) === s.slice(s.length - i)) max = Math.max(max, i);
+  }
+  return max;
+}
+function isPrime(x) {
+  if (x < 2) return false;
+  for (let i = 2; i * i <= x; i++) if (x % i === 0) return false;
+  return true;
+}
+function isSquare(x) { return Number.isInteger(Math.sqrt(x)); }
+function isPerfectPower(x, p) {
+  if (x < 0) return false;
+  if (x === 0 || x === 1) return true;
+  const r = Math.round(Math.pow(x, 1 / p));
+  for (let k = Math.max(2, r - 2); k <= r + 2; k++) {
+    let v = 1;
+    for (let i = 0; i < p; i++) v *= k;
+    if (v === x) return true;
+  }
+  return false;
+}
+function isPowerOfBase(x, base) {
+  if (x < 1) return false;
+  let v = 1;
+  while (v < x) v *= base;
+  return v === x;
+}
+function isSemiPrime(x) {
+  if (x < 4) return false;
+  let cnt = 0;
+  for (let i = 2; i * i <= x; i++) {
+    while (x % i === 0) { cnt++; x /= i; if (cnt > 2) return false; }
+  }
+  if (x > 1) cnt++;
+  return cnt === 2;
+}
+function sumProperDivisors(n) {
+  if (n === 1) return 0;
+  let sum = 1;
+  for (let i = 2; i * i <= n; i++) {
+    if (n % i === 0) {
+      sum += i;
+      if (i * i !== n) sum += n / i;
+    }
+  }
+  return sum;
+}
+
+// ==========================================
+// 荣誉表 (严格按照你的要求)
+// ==========================================
 const FEATURES = [
+  // 位数
   { name: '一位数', condition: '只有一位', rp: 987654321, check: x => String(x).length === 1 },
   { name: '两位数', condition: '包含两位', rp: 87654321, check: x => String(x).length === 2 },
   { name: '三位数', condition: '包含三位', rp: 7654321, check: x => String(x).length === 3 },
@@ -15,17 +117,21 @@ const FEATURES = [
   { name: '六位数', condition: '包含六位', rp: 4321, check: x => String(x).length === 6 },
   { name: '七位数', condition: '包含七位', rp: 321, check: x => String(x).length === 7 },
   { name: '八位数', condition: '包含八位', rp: 21, check: x => String(x).length === 8 },
-  { name: '报警', condition: '包含"110"', rp: 110, check: x => String(x).includes('110') },
-  { name: '火灾', condition: '包含"119"', rp: 119, check: x => String(x).includes('119') },
-  { name: 'SOS', condition: '包含"120"', rp: 120, check: x => String(x).includes('120') },
-  { name: '666', condition: '包含"666"', rp: 200, check: x => String(x).includes('666') },
-  { name: '888', condition: '包含"888"', rp: 300, check: x => String(x).includes('888') },
-  { name: '勾八', condition: '包含"78"或"91"', rp: 67, check: x => String(x).includes('78') || String(x).includes('91') },
-  { name: '114514', condition: '包含"114514"', rp: 114514, check: x => String(x).includes('114514') },
-  { name: '1919810', condition: '包含"1919810"', rp: 1919810, check: x => String(x).includes('1919810') },
-  { name: '走马灯', condition: '包含"142857"', rp: 142857, check: x => String(x).includes('142857') },
-  { name: '54188', condition: '包含"54188"', rp: 19999, check: x => String(x).includes('54188') },
-  { name: '14524', condition: '包含"14524"', rp: 16666, check: x => String(x).includes('14524') },
+  // 特殊包含
+  { name: '报警', condition: '包含"110"', rp: 1100, check: x => String(x).includes('110') },
+  { name: '火灾', condition: '包含"119"', rp: 1190, check: x => String(x).includes('119') },
+  { name: 'SOS', condition: '包含"120"', rp: 1200, check: x => String(x).includes('120') },
+  { name: '666', condition: '包含"666"', rp: 2000, check: x => String(x).includes('666') },
+  { name: '888', condition: '包含"888"', rp: 3000, check: x => String(x).includes('888') },
+  { name: '123', condition: '包含"123"', rp: 1230, check: x => String(x).includes('123') },
+  { name: '250', condition: '包含"250"', rp: 2500, check: x => String(x).includes('250') },
+  { name: '勾八', condition: '包含"78"或"91"', rp: 670, check: x => String(x).includes('78') || String(x).includes('91') },
+  { name: '114514', condition: '包含"114514"', rp: 1145140, check: x => String(x).includes('114514') },
+  { name: '1919810', condition: '包含"1919810"', rp: 19198100, check: x => String(x).includes('1919810') },
+  { name: '走马灯', condition: '包含"142857"', rp: 1428570, check: x => String(x).includes('142857') },
+  { name: '54188', condition: '包含"54188"', rp: 199990, check: x => String(x).includes('54188') },
+  { name: '14524', condition: '包含"14524"', rp: 166660, check: x => String(x).includes('14524') },
+  // 幂次方
   { name: '平方', condition: 'n^2', rp: 22222222, check: x => isPerfectPower(x, 2) },
   { name: '立方', condition: 'n^3', rp: 33333333, check: x => isPerfectPower(x, 3) },
   { name: '五次方', condition: 'n^5', rp: 55555555, check: x => isPerfectPower(x, 5) },
@@ -40,22 +146,74 @@ const FEATURES = [
   { name: '三十七次方', condition: 'n^37', rp: 377777777, check: x => isPerfectPower(x, 37) },
   { name: '2的幂', condition: '2的整数次幂', rp: 222222222, check: x => isPowerOfBase(x, 2) },
   { name: '3的幂', condition: '3的整数次幂', rp: 333333333, check: x => isPowerOfBase(x, 3) },
-  { name: '5的幂', condition: '5的整数次幂', rp: 555555555, check: x => isPowerOfBase(x, 5) },
-  { name: '7的幂', condition: '7的整数次幂', rp: 777777777, check: x => isPowerOfBase(x, 7) },
-  { name: '11的幂', condition: '11的整数次幂', rp: 1111111111, check: x => isPowerOfBase(x, 11) },
-  { name: '13的幂', condition: '13的整数次幂', rp: 1333333333, check: x => isPowerOfBase(x, 13) },
-  { name: '17的幂', condition: '17的整数次幂', rp: 1777777777, check: x => isPowerOfBase(x, 17) },
-  { name: '19的幂', condition: '19的整数次幂', rp: 1999999999, check: x => isPowerOfBase(x, 19) },
-  { name: '对子', condition: '包含两个相同的数', rp: 30, check: x => countPairs(x) >= 1 },
-  { name: '两对', condition: '包含两对相同的数', rp: 400, check: x => countPairs(x) >= 2 },
-  { name: '三对', condition: '包含三对相同的数', rp: 60000, check: x => countPairs(x) >= 3 },
-  { name: '四对', condition: '包含四对相同的数', rp: 9000000, check: x => countPairs(x) >= 4 },
-  { name: '递增', condition: '数字严格递增', rp: 123456789, check: x => isStrictIncreasing(x) },
-  { name: '递减', condition: '数字严格递减', rp: 198765432, check: x => isStrictDecreasing(x) },
-  { name: '山', condition: '先递增后递减', rp: 1234321, check: x => isMountain(x) },
-  { name: '谷', condition: '先递减后递增', rp: 1432234, check: x => isValley(x) },
+  { name: '5的幂', condition: '5的整数次幂', rp: 444444444, check: x => isPowerOfBase(x, 5) },
+  { name: '7的幂', condition: '7的整数次幂', rp: 555555555, check: x => isPowerOfBase(x, 7) },
+  { name: '11的幂', condition: '11的整数次幂', rp: 666666666, check: x => isPowerOfBase(x, 11) },
+  { name: '13的幂', condition: '13的整数次幂', rp: 777777777, check: x => isPowerOfBase(x, 13) },
+  { name: '17的幂', condition: '17的整数次幂', rp: 888888888, check: x => isPowerOfBase(x, 17) },
+  { name: '19的幂', condition: '19的整数次幂', rp: 999999999, check: x => isPowerOfBase(x, 19) },
+  // 不等式组 (组合数字)
+  { name: '一元八次不等式', condition: '有八个数字且全部不同', rp: 800000, check: x => String(x).length === 8 && new Set(String(x)).size === 8 },
+  { name: '二元一次不等式组', condition: '包含两个相同的数', rp: 30, check: x => sumFreqDiv(x, 2) >= 1 },
+  { name: '二元二次不等式组', condition: '包含两对相同的数', rp: 400, check: x => sumFreqDiv(x, 2) >= 2 },
+  { name: '二元三次不等式组', condition: '包含三对相同的数', rp: 60000, check: x => sumFreqDiv(x, 2) >= 3 },
+  { name: '二元四次不等式组', condition: '包含四对相同的数', rp: 9000000, check: x => sumFreqDiv(x, 2) >= 4 },
+  { name: '三元一次不等式组', condition: '包含三个相同的数', rp: 300, check: x => sumFreqDiv(x, 3) >= 1 },
+  { name: '三元二次不等式组', condition: '包含两组三个相同的数', rp: 600000, check: x => sumFreqDiv(x, 3) >= 2 },
+  { name: '四元一次不等式组', condition: '包含四个相同的数', rp: 40000, check: x => sumFreqDiv(x, 4) >= 1 },
+  { name: '四元二次不等式组', condition: '包含两组四个相同的数', rp: 100000000, check: x => sumFreqDiv(x, 4) >= 2 },
+  { name: '五元一次不等式组', condition: '包含五个相同的数', rp: 500000, check: x => sumFreqDiv(x, 5) >= 1 },
+  { name: '六元一次不等式组', condition: '包含六个相同的数', rp: 4000000, check: x => sumFreqDiv(x, 6) >= 1 },
+  { name: '七元一次不等式组', condition: '包含七个相同的数', rp: 30000000, check: x => sumFreqDiv(x, 7) >= 1 },
+  { name: '八元一次不等式组', condition: '包含八个相同的数', rp: 200000000, check: x => sumFreqDiv(x, 8) >= 1 },
+  // 方程组 (包含不重叠子串)
+  { name: '二元二次方程组', condition: '包含两个相同的长为二的子串且不重', rp: 500, check: x => hasKSubstr(String(x), 2, 2) },
+  { name: '二元三次方程组', condition: '包含三个相同的长为二的子串且不重', rp: 90000, check: x => hasKSubstr(String(x), 2, 3) },
+  { name: '二元四次方程组', condition: '包含四个相同的长为二的子串且不重', rp: 20000000, check: x => hasKSubstr(String(x), 2, 4) },
+  { name: '三元二次方程组', condition: '包含两个相同的长为三的子串且不重', rp: 80000, check: x => hasKSubstr(String(x), 3, 2) },
+  { name: '四元二次方程组', condition: '包含两个相同的长为三的子串且不重', rp: 500000, check: x => hasKSubstr(String(x), 3, 2) }, // 依照你的原文本
+  // 子序列
+  { name: 'LIS8', condition: '最长上升子序列为 8', rp: 123456789, check: x => getLIS(x) === 8 },
+  { name: 'LIS7', condition: '最长上升子序列为 7', rp: 1234567, check: x => getLIS(x) === 7 },
+  { name: 'LIS6', condition: '最长上升子序列为 6', rp: 12345, check: x => getLIS(x) === 6 },
+  { name: 'LIS5', condition: '最长上升子序列为 5', rp: 1234, check: x => getLIS(x) === 5 },
+  { name: 'LDS8', condition: '最长下降子序列为 8', rp: 123456789, check: x => getLDS(x) === 8 },
+  { name: 'LDS7', condition: '最长下降子序列为 7', rp: 1234567, check: x => getLDS(x) === 7 },
+  { name: 'LDS6', condition: '最长下降子序列为 6', rp: 12345, check: x => getLDS(x) === 6 },
+  { name: 'LDS5', condition: '最长下降子序列为 5', rp: 1234, check: x => getLDS(x) === 5 },
+  // 公共前后缀
+  { name: 'LPS7', condition: '最长公共前后缀为 7', rp: 123456789, check: x => getLPS(x) === 7 },
+  { name: 'LPS6', condition: '最长公共前后缀为 6', rp: 12345678, check: x => getLPS(x) === 6 },
+  { name: 'LPS5', condition: '最长公共前后缀为 5', rp: 1234567, check: x => getLPS(x) === 5 },
+  { name: 'LPS4', condition: '最长公共前后缀为 4', rp: 123456, check: x => getLPS(x) === 4 },
+  { name: 'LPS3', condition: '最长公共前后缀为 3', rp: 12345, check: x => getLPS(x) === 3 },
+  { name: 'LPS2', condition: '最长公共前后缀为 2', rp: 1234, check: x => getLPS(x) === 2 },
+  { name: 'LPS1', condition: '最长公共前后缀为 1', rp: 123, check: x => getLPS(x) === 1 },
+  // 形态
+  { name: '山', condition: '先递增后递减', rp: 1234321, check: x => {
+      const s = String(x); if (s.length < 3) return false;
+      let peak = -1;
+      for (let i = 1; i < s.length - 1; i++) if (+s[i] > +s[i-1] && +s[i] > +s[i+1]) { peak = i; break; }
+      if (peak === -1) return false;
+      for (let i = 1; i <= peak; i++) if (+s[i] <= +s[i-1]) return false;
+      for (let i = peak + 1; i < s.length; i++) if (+s[i] >= +s[i-1]) return false;
+      return true;
+    } 
+  },
+  { name: '谷', condition: '先递减后递增', rp: 1432234, check: x => {
+      const s = String(x); if (s.length < 3) return false;
+      let valley = -1;
+      for (let i = 1; i < s.length - 1; i++) if (+s[i] < +s[i-1] && +s[i] < +s[i+1]) { valley = i; break; }
+      if (valley === -1) return false;
+      for (let i = 1; i <= valley; i++) if (+s[i] >= +s[i-1]) return false;
+      for (let i = valley + 1; i < s.length; i++) if (+s[i] <= +s[i-1]) return false;
+      return true;
+    } 
+  },
+  // 奇偶
   { name: '偶数', condition: '偶数', rp: 10, check: x => x % 2 === 0 },
   { name: '奇数', condition: '奇数', rp: 10, check: x => x % 2 === 1 },
+  // 质数倍数
   { name: '3的倍数', condition: '能被 3 整除', rp: 30, check: x => x % 3 === 0 },
   { name: '5的倍数', condition: '能被 5 整除', rp: 50, check: x => x % 5 === 0 },
   { name: '7的倍数', condition: '能被 7 整除', rp: 70, check: x => x % 7 === 0 },
@@ -80,76 +238,80 @@ const FEATURES = [
   { name: '83的倍数', condition: '能被 83 整除', rp: 830, check: x => x % 83 === 0 },
   { name: '89的倍数', condition: '能被 89 整除', rp: 890, check: x => x % 89 === 0 },
   { name: '97的倍数', condition: '能被 97 整除', rp: 970, check: x => x % 97 === 0 },
-  { name: '最大', condition: '是99999999', rp: 2000000000, check: x => x === 99999999 },
+  // 数论
+  { name: '质数', condition: '大于1，正因数只有1和自身', rp: 500, check: x => isPrime(x) },
+  { name: '半质数', condition: '恰好是两个质数（可相同）的乘积', rp: 250, check: x => isSemiPrime(x) },
+  { name: '安全素数', condition: '素数 p，且 (p-1)/2 也是素数', rp: 2000, check: x => isPrime(x) && isPrime((x - 1) / 2) },
+  { name: '索菲热尔曼素数', condition: '素数 p，且 2p+1 也是素数', rp: 2000, check: x => isPrime(x) && isPrime(2 * x + 1) },
+  { name: '陈素数', condition: '素数 p，且 p+2 是素数或两个素数的乘积', rp: 1500, check: x => isPrime(x) && (isPrime(x + 2) || isSemiPrime(x + 2)) },
+  { name: '费马数', condition: '形如 F_n = 2^{2^n}+1 的数', rp: 400000000, check: x => [3, 5, 17, 257, 65537, 4294967297].includes(x) },
+  { name: '斐波那契数', condition: '在斐波那契数列中', rp: 14930352, check: x => isSquare(5 * x * x - 4) || isSquare(5 * x * x + 4) },
+  { name: '阶乘数', condition: 'n!', rp: 39916800, check: x => [1, 2, 6, 24, 120, 720, 5040, 40320, 362880, 3628800, 39916800, 479001600].includes(x) },
+  { name: '完全数', condition: '是完全数', rp: 633550336, check: x => [6, 28, 496, 8128, 33550336].includes(x) },
+  { name: '卡普雷卡尔常数', condition: '是 495 或 6174', rp: 1495495495, check: x => x === 495 || x === 6174 },
+  { name: '不可触碰数', condition: '不能表示为任何正整数的真因数之和的数', rp: 3000, check: x => [2, 5, 52, 88, 96, 120, 124, 146, 162, 188, 206, 210, 216, 238, 246, 248, 262, 268, 276, 288, 290, 292, 304, 306, 322, 324, 326, 336, 342, 372, 406, 408, 426, 430, 448, 472, 474, 498, 516, 518, 520, 530, 540, 552, 556, 562, 576, 584, 612, 624, 626, 628, 658, 668, 670, 708, 714, 718, 726, 728, 738, 748, 750, 756, 766, 768, 782, 784, 792, 802, 804, 818, 836, 848, 852, 872, 892, 894, 896, 898, 902, 926, 934, 936, 964, 984, 992, 996, 998].includes(x) },
+  { name: '欧尔数', condition: '所有因数的调和平均是整数', rp: 5000, check: x => {
+      let d = 0, sigma = 0;
+      for (let i = 1; i * i <= x; i++) {
+        if (x % i === 0) {
+          d += (i * i === x) ? 1 : 2;
+          sigma += i + (i * i === x ? 0 : x / i);
+        }
+      }
+      return (d * x) % sigma === 0;
+    } 
+  },
+  { name: '反质数', condition: '约数个数严格多于任何比它小的正整数', rp: 1000, check: x => {
+      const highly = [1, 2, 4, 6, 12, 24, 36, 48, 60, 120, 180, 240, 360, 720, 840, 1260, 1680, 2520, 5040, 7560, 10080, 15120, 20160, 25200, 27720, 45360, 50400, 55440, 83160, 110880, 166320, 221760, 277200, 332640, 498960, 554400, 665280, 720720, 1081080, 1441440, 2162160, 2882880, 3603600, 4324320, 6486480, 7207200, 8648640, 10810800, 14414400, 17297280, 21621600, 32432400, 36756720, 43243200, 61261200, 73513440, 110270160];
+      return highly.includes(x);
+    } 
+  },
+  // 数字特征
+  { name: '回文数', condition: '正读反读相同', rp: 100000, check: x => String(x) === String(x).split('').reverse().join('') },
+  { name: '自守数', condition: '平方的末尾等于自身', rp: 200000000, check: x => String(x * x).endsWith(String(x)) },
+  { name: '卡普雷卡尔数', condition: '平方拆成两段相加等于自身', rp: 80000000, check: x => {
+      let sq = String(x * x), len = String(x).length;
+      if (sq.length < len) return false;
+      let right = sq.slice(-len), left = sq.slice(0, -len) || '0';
+      return parseInt(left) + parseInt(right) === x;
+    } 
+  },
+  { name: '自恋数', condition: 'n 位数，各位 n 次方和等于自身', rp: 70000000, check: x => {
+      const s = String(x), len = s.length;
+      let sum = 0;
+      for (let c of s) sum += Math.pow(+c, len);
+      return sum === x;
+    } 
+  },
+  { name: '明希豪森数', condition: '各位数字的自身次方和等于自身', rp: 80000000, check: x => {
+      let sum = 0;
+      for (let c of String(x)) sum += Math.pow(+c, +c === 0 ? 0 : +c); // 0^0 = 0
+      return sum === x;
+    } 
+  },
+  { name: '快乐数', condition: '反复求各位平方和，最终到达 1', rp: 75, check: x => {
+      let seen = new Set();
+      while (x !== 1 && !seen.has(x)) {
+        seen.add(x);
+        x = String(x).split('').reduce((s, c) => s + (+c) * (+c), 0);
+      }
+      return x === 1;
+    } 
+  },
+  { name: '卡特兰数', condition: '合法括号序列数/二叉树形态数', rp: 60000000, check: x => [1, 2, 5, 14, 42, 132, 429, 1430, 4862, 16796, 58786, 208012, 742900, 2674440, 9694845, 35357670].includes(x) },
+  { name: '三角形数', condition: 'T_n=n(n+1)/2', rp: 80000, check: x => isSquare(8 * x + 1) },
+  { name: '贝尔数', condition: 'n 元集合的划分数目', rp: 55000000, check: x => [1, 2, 5, 15, 52, 203, 877, 4140, 21147, 115975, 678570, 4213597, 27644437].includes(x) },
+  { name: '莫兹金数', condition: '圆上n点间画不相交弦的方法数', rp: 25000000, check: x => [1, 2, 4, 9, 21, 51, 127, 323, 835, 2188, 5798, 15511, 41835, 113634, 310572, 853467, 2356779, 6536382, 18199284, 50852019].includes(x) },
+  // 神级固定点
+  { name: '西西弗斯数', condition: '是 123', rp: 3000000000, check: x => x === 123 },
+  { name: '水仙花固定点', condition: '是 153', rp: 3000000000, check: x => x === 153 },
+  { name: '至尊', condition: '是 1', rp: 3000000000, check: x => x === 1 },
+  { name: '虚无', condition: '是 0', rp: 3000000000, check: x => x === 0 },
+  { name: '最大', condition: '是 99999999', rp: 3000000000, check: x => x === 99999999 },
+  { name: 'pai', condition: '是 3', rp: 3000000000, check: x => x === 3 },
+  { name: 'e', condition: '是 2', rp: 3000000000, check: x => x === 2 },
+  { name: '宇宙终极密码', condition: '是 42', rp: 3000000000, check: x => x === 42 }
 ];
-
-function isPerfectPower(x, p) {
-  if (x < 0) return false;
-  if (x === 0 || x === 1) return true;
-  const r = Math.round(Math.pow(x, 1/p));
-  for (let k = Math.max(2, r - 2); k <= r + 2; k++) {
-    let v = 1;
-    for (let i = 0; i < p; i++) v *= k;
-    if (v === x) return true;
-  }
-  return false;
-}
-
-function isPowerOfBase(x, base) {
-  if (x < 1) return false;
-  let v = 1;
-  while (v < x) v *= base;
-  return v === x;
-}
-
-function countPairs(x) {
-  const s = String(x);
-  const freq = {};
-  for (const c of s) freq[c] = (freq[c] || 0) + 1;
-  let pairs = 0;
-  for (const k in freq) pairs += Math.floor(freq[k] / 2);
-  return pairs;
-}
-
-function isStrictIncreasing(x) {
-  const s = String(x);
-  if (s.length < 2) return false;
-  for (let i = 1; i < s.length; i++) if (+s[i] <= +s[i-1]) return false;
-  return true;
-}
-
-function isStrictDecreasing(x) {
-  const s = String(x);
-  if (s.length < 2) return false;
-  for (let i = 1; i < s.length; i++) if (+s[i] >= +s[i-1]) return false;
-  return true;
-}
-
-function isMountain(x) {
-  const s = String(x);
-  if (s.length < 3) return false;
-  let peak = -1;
-  for (let i = 1; i < s.length - 1; i++) {
-    if (+s[i] > +s[i-1] && +s[i] > +s[i+1]) { peak = i; break; }
-  }
-  if (peak === -1) return false;
-  for (let i = 1; i <= peak; i++) if (+s[i] <= +s[i-1]) return false;
-  for (let i = peak + 1; i < s.length; i++) if (+s[i] >= +s[i-1]) return false;
-  return true;
-}
-
-function isValley(x) {
-  const s = String(x);
-  if (s.length < 3) return false;
-  let valley = -1;
-  for (let i = 1; i < s.length - 1; i++) {
-    if (+s[i] < +s[i-1] && +s[i] < +s[i+1]) { valley = i; break; }
-  }
-  if (valley === -1) return false;
-  for (let i = 1; i <= valley; i++) if (+s[i] >= +s[i-1]) return false;
-  for (let i = valley + 1; i < s.length; i++) if (+s[i] <= +s[i-1]) return false;
-  return true;
-}
 
 function getRarity(rp) {
   if (rp <= 100) return 'Shit';
@@ -183,6 +345,7 @@ async function register() {
   const luckyStr = document.getElementById('regLucky').value.trim();
 
   if (!username) return alert('请输入用户名');
+  if (username.length > 15) return alert('用户名最长 15 个字符');
   if (pwd !== pwd2) return alert('两次密码不一致');
   if (!/^\d+$/.test(luckyStr)) return alert('幸运数必须是 0-99999999 的整数');
   const lucky = parseInt(luckyStr, 10);
@@ -336,7 +499,7 @@ function initPrize() {
 // ---------- 个人中心 ----------
 async function initProfile() {
   const lucky = location.pathname.split('/').pop();
-  if (!lucky || isNaN(lucky)) { location.href = '/'; return; }
+  if (!lucky || lucky === 'profile' || lucky === 'profile.html' || isNaN(lucky)) { location.href = '/rank'; return; }
 
   const nameEl = document.getElementById('profileName');
   try {
@@ -363,22 +526,6 @@ async function initProfile() {
   }
 }
 
-// ---------- 路由 ----------
-async function init() {
-  await initNav();
-  const path = location.pathname;
-  if (path === '/' || path === '/index.html') initHome();
-  else if (path.startsWith('/profile/')) initProfile();
-  else if (path === '/prize' || path === '/prize.html') initPrize();
-  else if (path === '/rank' || path === '/rank.html') initRank();
-  else if (path === '/admin' || path === '/admin.html') initAdmin();
-}
-
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', init);
-} else {
-  init();
-}
 // ---------- 管理面板 ----------
 async function initAdmin() {
   const msg = document.getElementById('adminMsg');
@@ -389,7 +536,7 @@ async function initAdmin() {
     if (!user) { msg.textContent = '请先登录'; return; }
     const { data: profile } = await db.from('profiles')
       .select('username').eq('id', user.id).maybeSingle();
-    if (!profile || !ADMIN_USERNAMES.includes(profile.username)) {
+    if (!profile || !['Luojt95'].includes(profile.username)) {
       msg.textContent = '你没有权限访问此页面';
       return;
     }
@@ -465,17 +612,34 @@ async function recalcAllRP() {
     return;
   }
 
-  let done = 0, failed = 0;
+  let done = 0, failed = 0, firstErr = '';
   for (const u of users) {
     const { badges, totalRP } = evaluateNumber(u.lucky_number);
     const { error: upErr } = await db.from('profiles').update({
       lucky_rp: totalRP,
       lucky_badges: badges
     }).eq('id', u.id);
-    if (upErr) failed++; else done++;
+    if (upErr) { failed++; if (!firstErr) firstErr = upErr.message; } else done++;
   }
 
-  alert(`重测完成：成功 ${done} 个，失败 ${failed} 个`);
+  alert(`重测完成：成功 ${done} 个，失败 ${failed} 个` + (firstErr ? '\n首个错误：' + firstErr : ''));
   if (btn) { btn.disabled = false; btn.textContent = 'RP 重测'; }
   initAdmin();
+}
+
+// ---------- 路由 ----------
+async function init() {
+  await initNav();
+  const path = location.pathname;
+  if (path === '/' || path === '/index.html') initHome();
+  else if (path.startsWith('/profile/')) initProfile();
+  else if (path === '/prize' || path === '/prize.html') initPrize();
+  else if (path === '/rank' || path === '/rank.html') initRank();
+  else if (path === '/admin' || path === '/admin.html') initAdmin();
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', init);
+} else {
+  init();
 }
