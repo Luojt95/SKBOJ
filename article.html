@@ -2,8 +2,8 @@
 <html>
 <head>
   <meta charset="utf-8"><title>文章 - SKBOJ</title>
-  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
-  <link rel="stylesheet" href="/style.css">
+    <link rel="stylesheet" href="/style.css">
+  <link rel="icon" type="image/svg+xml" href="/skboj-icon.svg?v=2">
 </head>
 <body>
   <nav>
@@ -16,13 +16,13 @@
     
     <div id="newArticleArea" style="display:none; text-align:left; background:#1a1f2b; padding:20px; border-radius:8px; margin-bottom:20px;">
       <h3>新建文章</h3>
-      <input id="artTitle" placeholder="文章标题（最多20字）" maxlength="20" style="width:100%; max-width:100%; margin-bottom:10px;">
-      <textarea id="artContent" placeholder="正文（支持 Markdown，$$包裹公式$$，最多1000字）" maxlength="1000" rows="8" style="width:100%; max-width:100%; margin-bottom:10px;"></textarea>
+      <input id="artTitle" placeholder="文章标题（最�?0字）" maxlength="20" style="width:100%; max-width:100%; margin-bottom:10px;">
+      <textarea id="artContent" placeholder="正文（支�?Markdown�?$包裹公式$$，最�?000字）" maxlength="1000" rows="8" style="width:100%; max-width:100%; margin-bottom:10px;"></textarea>
       <button id="publishBtn" onclick="saveArticle()">发布</button>
       <button onclick="document.getElementById('newArticleArea').style.display='none'" style="color:#a0aec0; border-color:#a0aec0;">取消</button>
     </div>
 
-    <div id="articleList" style="text-align:left;">加载中...</div>
+    <div id="articleList" style="text-align:left;">加载�?..</div>
   </div>
   <script src="/supabase.js"></script>
   <script src="/app.js"></script>
