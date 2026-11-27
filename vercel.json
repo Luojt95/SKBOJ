@@ -1,40 +1,15 @@
 {
   "rewrites": [
-    {
-      "source": "/rp",
-      "destination": "/rp.html"
-    },
-    {
-      "source": "/login",
-      "destination": "/login.html"
-    },
-    {
-      "source": "/register",
-      "destination": "/register.html"
-    },
-    {
-      "source": "/prize",
-      "destination": "/prize.html"
-    },
-    {
-      "source": "/rank",
-      "destination": "/rank.html"
-    },
-    {
-      "source": "/admin",
-      "destination": "/admin.html"
-    },
-    {
-      "source": "/profile/(.*)",
-      "destination": "/profile.html"
-    },
-    {
-      "source": "/article",
-      "destination": "/article.html"
-    },
-    {
-      "source": "/article/(.*)",
-      "destination": "/article-detail.html"
-    }
+    { "source": "/rp", "destination": "/app-number.html" },
+    { "source": "/prize", "destination": "/app-number.html" },
+    { "source": "/app", "destination": "/app.html" },
+    { "source": "/app/number", "destination": "/app-number.html" },
+    { "source": "/login", "destination": "/login.html" },
+    { "source": "/register", "destination": "/register.html" },
+    { "source": "/article", "destination": "/article.html" },
+    { "source": "/article/(.*)", "destination": "/article-detail.html" },
+    { "source": "/rank", "destination": "/rank.html" },
+    { "source": "/admin", "destination": "/admin.html" },
+    { "source": "/profile/(.*)", "destination": "/profile.html" }
   ]
 }

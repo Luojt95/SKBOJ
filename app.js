@@ -687,28 +687,28 @@ async function init() {
   await initNav();
   const path = location.pathname;
 
-  // 获取登录状态
   const { data: { user } } = await db.auth.getUser();
-
-  // 定义需要登录才能访问的路径
-  const protectedRoutes = ['/rp', '/rank', '/prize', '/article', '/profile', '/admin'];
+  const protectedRoutes = ['/app', '/rank', '/article', '/profile', '/admin'];
   const isProtected = protectedRoutes.some(route => path.startsWith(route));
 
-  // 如果未登录且访问受保护页面，强制跳转登录
   if (isProtected && !user) {
     alert('请先登录后访问');
     location.href = '/login';
     return;
   }
 
-  // 正常页面加载分发
   if (path === '/' || path === '/index.html') initHome();
   else if (path.startsWith('/profile/')) initProfile();
-  else if (path === '/prize' || path === '/prize.html') initPrize();
   else if (path === '/rank' || path === '/rank.html') initRank();
   else if (path === '/admin' || path === '/admin.html') initAdmin();
   else if (path === '/article' || path === '/article.html') initArticleList();
   else if (path.startsWith('/article/')) initArticleDetail();
+  else if (path === '/app' || path === '/app.html') {
+    // /app 页面不需要额外逻辑，全是静态 HTML
+  } 
+  else if (path === '/app/number' || path === '/app-number.html') {
+    initAppNumber();
+  }
 }
 
 if (document.readyState === 'loading') {
@@ -913,4 +913,12 @@ async function deleteArticle() {
     alert('文章已删除');
     location.href = '/article';
   }
+}
+
+function initAppNumber() {
+  const div = document.getElementById('prizeList');
+  if (!div) return;
+  div.innerHTML = FEATURES.map(f =>
+    `<p style="border-bottom:1px solid #2a303c; padding-bottom:8px; margin:8px 0;">${f.name}（${f.rp} RP） - ${f.condition}</p>`
+  ).join('');
 }
