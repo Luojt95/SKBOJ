@@ -1,7 +1,9 @@
 <!DOCTYPE html>
 <html>
-<head><meta charset="utf-8"><title>管理 - SKBOJ</title>  <link rel="stylesheet" href="/style.css">
+<head>
+  <meta charset="utf-8"><title>管理 - SKBOJ</title>
   <link rel="icon" type="image/svg+xml" href="/skboj-icon.svg?v=2">
+  <link rel="stylesheet" href="/style.css">
 </head>
 <body>
   <nav>
@@ -9,20 +11,19 @@
     <span id="userInfo" style="float:right"></span>
   </nav>
   <div class="container">
-
-  <h1>管理面板</h1>
-  <p id="adminMsg">检查权限中...</p>
-  <div id="adminArea" style="display:none">
-    <button onclick="recalcAllRP()" style="margin-bottom:12px;padding:6px 16px">RP 重测</button>
-    <table border="1" cellpadding="6">
-      <thead>
-        <tr><th>用户�?/th><th>幸运�?/th><th>稀有度</th><th>权限设置</th><th>操作</th></tr>
-      </thead>
-      <tbody id="userRows"></tbody>
-    </table>
-  </div>
+    <h1>管理面板</h1>
+    <p id="adminMsg">检查权限中...</p>
+    <div id="adminArea" style="display:none">
+      <button onclick="recalcAllRP()" style="margin-bottom:12px; padding:6px 16px">RP 重测</button>
+      <table border="1" cellpadding="6">
+        <thead>
+          <tr><th>用户名</th><th>幸运数</th><th>稀有度</th><th>权限设置</th><th>操作</th></tr>
+        </thead>
+        <tbody id="userRows"></tbody>
+      </table>
     </div>
-<script src="/supabase.js"></script>
-  <script src="app.js"></script>
+  </div>
+  <script src="/supabase.js"></script>
+  <script src="/app.js"></script>
 </body>
 </html>
